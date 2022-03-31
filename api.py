@@ -15,6 +15,8 @@ def get_general_data():
     return data
 
 def get_fixtures():
+    """Fetches and returns fixture information from the
+    Fantasy Premier League API."""
     url = 'https://fantasy.premierleague.com/api/fixtures/'
     # Fetch data from the url.
     data = requests.get(url)
@@ -61,7 +63,11 @@ def authenticate(email, password):
     }
     # Authenticate.
     session.post(url, data=payload, headers=headers)
-    return session
+    # Verify the email and password.
+    if session.get('https://fantasy.premierleague.com/api/me/').json()['player']:
+        return session
+    else:
+        raise Exception("Invalid email or password!")
 
 def update_team(my_team, new_squad, squad_roles, elements, next_gameweek, email, password):
     """Logs into FPL and updates a team."""
