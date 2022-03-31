@@ -1,17 +1,23 @@
 import os
 import subprocess
+import json
 
 import pandas as pd
 import numpy as np
 
+import api
+
 
 DATE_FORMAT = r'%Y-%m-%dT%H:%M:%SZ'
-ROLLING_STATISTICS = [
-        'total_points', 'ict_index', 'influence', 'creativity', 'threat', 'bonus', 'bps',
-        'assists', 'clean_sheets', 'goals_conceded', 'goals_scored', 'minutes', 'saves']
+ROLLING_STATISTICS = ['total_points']
 
 
-def update_local_data():
+def get_last_checked_event(events):
+    """Returns the id of the last updated event."""
+    return int(events[events['data_checked']==True].nlargest(1, 'id').iloc[0]['id'])
+
+
+def update_vastaav_repo():
     """Updates my local clone of the github.com/vastaav/Fantasy-Premier-League repository."""
     # Get the full repo path.
     path = os.path.abspath('data/Fantasy-Premier-League')
@@ -21,6 +27,24 @@ def update_local_data():
     output = subprocess.run(command, capture_output=True, shell=True)
     # Print output.
     print(output.stdout.decode())
+
+def update_players_data(season, elements, events):
+    """Saves and stores data for all players."""
+    # Check whether the data is already up to date.
+    last_checked = get_last_checked_event(events)
+    with open("data/api/2021-22/players/last_checked.json", 'r') as f:
+        n = json.load(f)
+    if n == last_checked:
+        return
+     # Update data.   
+    for id in elements['id'].unique():
+        data = api.get_player_data(id)
+        data = pd.DataFrame(data['history'])
+        data.to_csv(f"data/api/{season}/players/{id}.csv", index=False)
+    # Keep track of when last we saved player data.
+    with open("data/api/2021-22/players/last_checked.json", 'w') as f:
+        json.dump(last_checked, f)
+
 
 
 def rolling_average_over_games(column, n):
@@ -45,7 +69,7 @@ def rolling_average_over_days(column, n):
     # Fill blanks.
     rolling_average = rolling_average.fillna(0)
     
-    return rolling_average
+    return rolling_average.values
 
 
 def get_player_training_data(df):
@@ -119,17 +143,17 @@ def get_all_training_data(season, players, teams, fixtures):
     df = pd.concat([home, away], ignore_index=True)
 
     # Add player position information.
-    df['position'] = df.element.map(players.set_index('id').element_type)
+    df['element_type'] = df.element.map(players.set_index('id').element_type)
 
     # Map the team stats of both the future opponent and the own team.
-    stats = [
-        'strength'
-        ]
-    for stat in stats:
-        # Set the stat for the own team.
-        df['team_' + stat] = df['team'].map(teams.set_index('id')[stat])
-        # Set the stat for the future opponent.
-        df['opponent_' + stat] = df['opponent_team'].map(teams.set_index('id')[stat])
+    # stats = [
+    #     'strength'
+    #     ]
+    # for stat in stats:
+    #     # Set the stat for the own team.
+    #     df['team_' + stat] = df['team'].map(teams.set_index('id')[stat])
+    #     # Set the stat for the future opponent.
+    #     df['opponent_' + stat] = df['opponent_team'].map(teams.set_index('id')[stat])
 
     # Drop information we don't need.
     columns_to_drop = [
@@ -173,7 +197,7 @@ def get_player_current_data(df, next_gameweek):
     data = pd.Series(dtype='float64')
 
     # Get the player id.
-    data.loc['element'] = df.loc[0, 'element']
+    data.loc['id'] = df.loc[0, 'element']
 
     # Compute rolling statistics.
     for column in ROLLING_STATISTICS:
@@ -187,57 +211,25 @@ def get_player_current_data(df, next_gameweek):
 
 def get_all_current_data(season, elements, teams, next_gameweek):
 
-    # Create a list to hold all the data.
     data = []
-
-    # Navigate to the data/season/players directory.
-    path = f'data/Fantasy-Premier-League/data/{season}/players'
-
-    # Scan through every folder in that directory.
-    for item in os.scandir(path):
-        
-        if item.is_dir():
-
-            gw_path = os.path.join(item.path, 'gw.csv')
-
-            # If the player has no data, skip.
-            if not os.path.exists(gw_path):
-                continue
-
-            # Read the gw.csv file into a dataframe.
-            df = pd.read_csv(gw_path)
-
-            # Get each player's data.
+    # Read data for each player
+    for item in os.scandir(f'data/api/{season}/players'):
+        if item.path.endswith('.csv'):
+            df = pd.read_csv(item.path)
             player_data = get_player_current_data(df, next_gameweek)
-
             if player_data is None:
                 continue
-
-            # Add to the list.
             data.append(player_data)
 
-    # Merge all the data into a single dataframe.
     df = pd.DataFrame(data)
-
-    # Add position information.
-    df['position'] = df['element'].map(elements.set_index('id')['element_type'])
-
-    # Add team information.
-    df['team'] = df['element'].map(elements.set_index('id')['team'])
-    # Map team stats.
-    stats = [
-        'strength'
-        ]
-    for stat in stats:
-        df['team_' + stat] = df['team'].map(teams.set_index('id')[stat])
-
-    # Rename columns.
-    df.rename(columns={'element': 'id'}, inplace=True)
+    # Map other information.
+    df['element_type'] = df['id'].map(elements.set_index('id')['element_type'])
+    df['team'] = df['id'].map(elements.set_index('id')['team'])
 
     return df
 
 
-def main_training_routine():
+def collect_training_data():
 
     print('Starting...')
 
@@ -265,9 +257,7 @@ def main_training_routine():
 
 
 def main():
-    main_training_routine()
-    pass
-
+    collect_training_data()
 
 if __name__ == '__main__':
     main()

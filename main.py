@@ -43,7 +43,7 @@ def make_predictions(players, elements):
     missing = list(set(elements['id']) - set(players['id']))
     missing = pd.Series(data=np.zeros(len(missing)), index=missing)
 
-    predictions = pd.concat(predictions, missing)
+    predictions = pd.concat([predictions, missing])
 
     return predictions
 
@@ -81,11 +81,11 @@ def get_gameweek_matchups(players, gw, fixtures, teams):
         gameweek_matchups = pd.concat([gameweek_matchups, home, away])
 
     # Map opponent stats.
-    stats = [
-        'strength'
-    ]
-    for stat in stats:
-        gameweek_matchups['opponent_' + stat] = gameweek_matchups['opponent_team'].map(teams.set_index('id')[stat])
+    # stats = [
+    #     'strength'
+    # ]
+    # for stat in stats:
+    #     gameweek_matchups['opponent_' + stat] = gameweek_matchups['opponent_team'].map(teams.set_index('id')[stat])
 
     return gameweek_matchups
 
@@ -114,27 +114,31 @@ def suggest_best_squad(my_team, next_gameweek_predictions, upper_gameweek_predic
 
 def main():
 
-    email = input('email: ')
-    password = input('password: ')
-
     season = '2021-22'
 
-    print('Updating local data...')
-    data.update_local_data()
+    # Request login details and attempt login.
+    email = input('email: ')
+    password = input('password: ')
+    print('Getting manager information...')
+    my_team = api.get_my_team_data(email, password)
 
-    print('Getting API player information...')
+    print('Getting general information...')
     general_data = api.get_general_data()
+    print('Getting fixtures...')
+    fixtures = api.get_fixtures()
+
+    # Unpack data
     teams = pd.DataFrame(general_data['teams'])
     events = pd.DataFrame(general_data['events'])
     elements = pd.DataFrame(general_data['elements'])
-    # Handle missing values.
     elements['chance_of_playing_next_round'].fillna(100, inplace=True)
-
-    print('Getting fixtures...')
-    fixtures = pd.DataFrame(api.get_fixtures())
-
+    fixtures = pd.DataFrame(fixtures)
     next_gameweek = events[events['is_next'] == True].iloc[0]['id']
     last_gameweek = events['id'].max()
+
+    # Gather data from API
+    print('Updating player data...')
+    data.update_players_data(season, elements, events)
 
     print('Getting local player information...')
     players = data.get_all_current_data(season, elements, teams, next_gameweek)
@@ -142,6 +146,12 @@ def main():
 
     print('Getting next gameweek matchups...')
     next_gameweek_matchups = get_gameweek_matchups(players, next_gameweek, fixtures, teams)
+
+    print('Making predictions...')
+    next_gameweek_predictions = make_predictions(next_gameweek_matchups, elements)
+    # Scale next gameweek's predictions by availability.
+    availability = elements.set_index('id')['chance_of_playing_next_round'] / 100
+    next_gameweek_predictions *= availability
 
     if next_gameweek == last_gameweek:
         upper_gameweek_matchups = None
@@ -160,20 +170,13 @@ def main():
         number_of_upper_gameweeks = len(upper_gameweek_matchups)
         # Concatenate all.
         upper_gameweek_matchups = pd.concat(upper_gameweek_matchups)
-        
+
         print('Making predictions...')
-        next_gameweek_predictions = make_predictions(next_gameweek_matchups, elements)
-        # Scale next gameweek's predictions by availability.
-        availability = elements.set_index('id')['chance_of_playing_next_round'] / 100
-        next_gameweek_predictions *= availability
         # Make predictions for upper gameweeks.
         upper_gameweek_predictions = make_predictions(upper_gameweek_matchups, elements)
 
     # Save predictions to a CSV file.
     print(NotImplemented)
-
-    print('Getting manager information...')
-    my_team = api.get_my_team_data(email, password)
 
     print('Suggesting best squad...')
     best_squad = suggest_best_squad(
