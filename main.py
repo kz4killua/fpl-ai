@@ -176,7 +176,14 @@ def main():
         upper_gameweek_predictions = make_predictions(upper_gameweek_matchups, elements)
 
     # Save predictions to a CSV file.
-    print(NotImplemented)
+    out = elements[['id', 'first_name', 'second_name', 'team', 'element_type']].copy()
+    out['team'] = out['team'].map(teams.set_index('id')['name'])
+    out['element_type'] = out['element_type'].replace({1: "GKP", 2: "DEF", 3: "MID", 4: "FWD"})
+    out = out.set_index('id')
+    out['next_gameweek_predictions'] = next_gameweek_predictions
+    out['upper_gameweek_predictions'] = upper_gameweek_predictions
+    out = out.reset_index()
+    out.to_csv("predictions.csv")
 
     print('Suggesting best squad...')
     best_squad = suggest_best_squad(
