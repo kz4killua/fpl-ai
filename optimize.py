@@ -103,8 +103,8 @@ def evaluate_squad(squad, elements, next_gameweek_predictions, upper_gameweek_pr
     the next gameweek and future gameweeks. """
 
     # Check if we have evaluated this squad before.
-    if tuple(squad) in squad_evaluations:
-        return squad_evaluations[tuple(squad)]
+    if frozenset(squad) in squad_evaluations:
+        return squad_evaluations[frozenset(squad)]
 
     # Estimate the number of points the squad will make in the next gameweek.
     next_gw_score = next_gameweek_score(
@@ -120,7 +120,7 @@ def evaluate_squad(squad, elements, next_gameweek_predictions, upper_gameweek_pr
     score = (next_gw_score * NEXT_GAMEWEEK_WEIGHT) + (upper_gw_score * UPPER_GAMEWEEK_WEIGHT)
 
     # Store evaluations.
-    squad_evaluations[tuple(squad)] = score
+    squad_evaluations[frozenset(squad)] = score
         
     return score
 
