@@ -13,6 +13,8 @@ STARTING_XI_MULTIPLIER = 1
 RESERVE_GKP_MULTIPLIER = 0.25
 RESERVE_OUT_MULTIPLIER = 0.25
 
+TRANSFER_CONFIDENCE = 0.5
+
 squad_evaluations = {}
 
 def expected_returns(player_or_squad, predictions):
@@ -94,8 +96,6 @@ def calculate_total_transfer_cost(squad, initial_squad, transfer_cost, free_tran
     transfers_made = len(squad - initial_squad)
     # Check the total cost of transfers.
     total_transfer_cost = max((transfers_made - free_transfers), 0) * transfer_cost
-    # Point hits should not be taken lightly.
-    total_transfer_cost = total_transfer_cost * 2
     return total_transfer_cost
 
 def evaluate_squad(squad, elements, next_gameweek_predictions, upper_gameweek_predictions, number_of_upper_gameweeks, initial_squad, transfer_cost, free_transfers):
@@ -143,6 +143,7 @@ def next_gameweek_score(squad, elements, next_gameweek_predictions, initial_squa
 
     # Calculate total transfer cost.
     total_transfer_cost = calculate_total_transfer_cost(squad, initial_squad, transfer_cost, free_transfers)
+    total_transfer_cost /= TRANSFER_CONFIDENCE
     # Subtract from the score.
     score -= total_transfer_cost
 
