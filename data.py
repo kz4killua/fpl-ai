@@ -12,15 +12,29 @@ DATE_FORMAT = r'%Y-%m-%dT%H:%M:%SZ'
 ROLLING_STATISTICS = ['total_points']
 
 
+def year_to_season(year):
+    """Returns a string representing a season of format yyyy-yy."""
+    return  str(year) + '-' + str(year + 1)[-2:]
+
 def get_last_checked_event(events):
     """Returns the id of the last updated event."""
     return int(events[events['data_checked']==True].nlargest(1, 'id').iloc[0]['id'])
 
+def rolling_average(column, n):
+    """Calculates the average value in a series
+    over the last n occurences excluding the current one."""
+
+    # Calculate the rolling average.
+    rolling_average = column.rolling(window=n, min_periods=1, closed='left').mean()
+    # Fill blanks.
+    rolling_average = rolling_average.fillna(0)
+
+    return rolling_average.values
 
 def update_vastaav_repo():
     """Updates my local clone of the github.com/vastaav/Fantasy-Premier-League repository."""
     # Get the full repo path.
-    path = os.path.abspath('data/Fantasy-Premier-League')
+    path = os.path.abspath('data/vastaav')
     # This is the command we will run.
     command = f'cd {path} && git pull origin master'
     # Capture output.
@@ -29,7 +43,7 @@ def update_vastaav_repo():
     print(output.stdout.decode())
 
 def update_players_data(season, elements, events):
-    """Saves and stores data for all players."""
+    """Saves and stores most recent data for all players."""
     # Check whether the data is already up to date.
     last_checked = get_last_checked_event(events)
     with open("data/api/2021-22/players/last_checked.json", 'r') as f:
@@ -46,32 +60,6 @@ def update_players_data(season, elements, events):
         json.dump(last_checked, f)
 
 
-
-def rolling_average_over_games(column, n):
-    """Calculates the average value in a column
-    over the last n games."""
-
-    # Calculate the rolling average.
-    rolling_average = column.rolling(window=n, min_periods=1, closed='left').mean()
-    # Fill blanks.
-    rolling_average = rolling_average.fillna(0)
-
-    return rolling_average
-
-def rolling_average_over_days(column, n):
-    """Calculates the average value in a column
-    over the last n days."""
-
-    # For this to work, the index of the column must contain timestamps.
-
-    # Calculate the rolling average.
-    rolling_average = column.rolling(window=f'{n}D', min_periods=1, closed='left').mean()
-    # Fill blanks.
-    rolling_average = rolling_average.fillna(0)
-    
-    return rolling_average.values
-
-
 def get_player_training_data(df):
     
     # Convert the kickoff times to date objects.
@@ -81,8 +69,8 @@ def get_player_training_data(df):
 
     # Compute rolling statistics.
     for column in ROLLING_STATISTICS:
-        df['avg_' + column + '_5_games'] = rolling_average_over_games(df[column], 5).values
-        df['avg_' + column] = rolling_average_over_games(df[column], len(df)).values
+        df['avg_' + column + '_5_games'] = rolling_average(df[column], 5)
+        df['avg_' + column] = rolling_average(df[column], len(df))
 
     # Check if the player got a red card in their last match.
     df['is_suspended'] = df['red_cards'].shift(1).fillna(0).astype('int')
@@ -95,7 +83,7 @@ def get_all_training_data(season, players, teams, fixtures):
     data = []
 
     # Navigate to the data/season/players directory.
-    path = f'data/Fantasy-Premier-League/data/{season}/players'
+    path = f'data/vastaav/data/{season}/players'
 
     # Scan through every folder in that directory.
     for item in os.scandir(path):
@@ -145,30 +133,11 @@ def get_all_training_data(season, players, teams, fixtures):
     # Add player position information.
     df['element_type'] = df.element.map(players.set_index('id').element_type)
 
-    # Map the team stats of both the future opponent and the own team.
-    # stats = [
-    #     'strength'
-    #     ]
-    # for stat in stats:
-    #     # Set the stat for the own team.
-    #     df['team_' + stat] = df['team'].map(teams.set_index('id')[stat])
-    #     # Set the stat for the future opponent.
-    #     df['opponent_' + stat] = df['opponent_team'].map(teams.set_index('id')[stat])
-
-    # Drop information we don't need.
-    columns_to_drop = [
-        'assists', 'bonus', 'bps', 'clean_sheets',
-        'creativity', 'goals_conceded', 'goals_scored',
-        'ict_index', 'influence', 'kickoff_time', 
-        'minutes', 'own_goals', 'penalties_missed',
-        'penalties_saved', 'red_cards', 'saves',
-        'selected', 'team_a_score', 'team_h_score',
-        'threat', 'transfers_balance',
-        'transfers_in', 'transfers_out', 'yellow_cards', 
-        'team_h', 'team_a', 'team_h_difficulty',
-        'team_a_difficulty'
-    ]
-    df.drop(columns=columns_to_drop, inplace=True)
+    df.drop(columns=[
+        'team_a_score', 'team_h_score', 'team_a', 'team_h',
+        'team_h_difficulty', 'team_a_difficulty', 'value',
+        'selected', 'transfers_balance', 'transfers_in', 'transfers_out',
+    ], inplace=True)
 
     # Transform features.
     df['was_home'] = df['was_home'].astype('int64')
@@ -238,9 +207,9 @@ def collect_training_data():
     for season in seasons:
 
         # Load accessory files.
-        players = pd.read_csv(f'data/Fantasy-Premier-League/data/{season}/players_raw.csv')
-        fixtures = pd.read_csv(f'data/Fantasy-Premier-League/data/{season}/fixtures.csv')
-        teams = pd.read_csv(f'data/Fantasy-Premier-League/data/{season}/teams.csv')
+        players = pd.read_csv(f'data/vastaav/data/{season}/players_raw.csv')
+        fixtures = pd.read_csv(f'data/vastaav/data/{season}/fixtures.csv')
+        teams = pd.read_csv(f'data/vastaav/data/{season}/teams.csv')
 
         # Get training data.
         data = get_all_training_data(season, players, teams, fixtures)
