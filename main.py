@@ -8,36 +8,28 @@ import api
 import data
 import optimize
 
+from optimize import MAX_UPPER_GAMEWEEKS
 
-MAX_UPPER_GAMEWEEKS = 5
-ANNEALING_ITERATIONS = 60000
-MODEL_PATH = 'model/model.pkl'
-FEATURES_PATH = 'model/features.json'
+# Load the model and feature data
+with open('model/model.pkl', 'rb') as f:
+    MODEL = pickle.load(f)
+with open('model/features.json') as g:
+    FEATURES = json.load(g)
 
 
 def preprocess(df):
-    """Carry out pre-prediction processing."""
+    """Carries out pre-prediction processing."""
     return df
 
-def load_model():
-    """Loads and returns model and feature data"""
-    # Load the model.
-    with open(MODEL_PATH, 'rb') as f:
-        model = pickle.load(f)
-    # Load feature data.
-    with open(FEATURES_PATH) as g:
-        features = json.load(g)
 
-    return model, features
-
-def make_predictions(players, elements, model, features):
+def make_predictions(players, elements):
     """Predicts the number of points given
     player statistics."""
 
     # Select features we are interested in.
-    X = players[features]
+    X = players[FEATURES]
     # Make predictions.
-    predictions = model.predict(X)
+    predictions = MODEL.predict(X)
 
     # Map player ids to predicted points
     predictions = pd.Series(data=predictions, index=players['id'])
@@ -53,7 +45,8 @@ def make_predictions(players, elements, model, features):
 
     return predictions
 
-def get_gameweek_matchups(players, gw, fixtures, teams):
+
+def get_gameweek_matchups(players, gw, fixtures):
     """Returns a dataframe of players mapped to each of their
     opponents in a given gameweek."""
 
@@ -88,9 +81,8 @@ def get_gameweek_matchups(players, gw, fixtures, teams):
 
     return gameweek_matchups
 
-def suggest_best_squad(
-    my_team, next_gameweek_predictions, upper_gameweek_predictions, 
-    number_of_upper_gameweeks, elements, iterations):
+
+def suggest_best_squad(my_team, next_gameweek_predictions, upper_gameweek_predictions, elements):
     """Passes a team to the simulated annealing function."""
 
     # Unpack team information.
@@ -101,7 +93,6 @@ def suggest_best_squad(
     # Gather transfer information.
     transfer_limit = my_team['transfers']['limit']
     transfers_made = my_team['transfers']['made']
-    transfer_cost = my_team['transfers']['cost']
     if transfer_limit is None:
         free_transfers = float('inf')
     else:
@@ -109,10 +100,11 @@ def suggest_best_squad(
 
     # Suggest a best squad.
     best_squad = optimize.simulated_annealing(
-        initial_squad, selling_prices, transfer_cost, free_transfers, initial_budget_remaining,
-        next_gameweek_predictions, upper_gameweek_predictions, number_of_upper_gameweeks, elements, iterations)
+        initial_squad, selling_prices, free_transfers, initial_budget_remaining,
+        next_gameweek_predictions, upper_gameweek_predictions, elements)
 
     return best_squad
+
 
 def save_predictions(elements, teams, next_gameweek_predictions, upper_gameweek_predictions):
     """Saves predictions to a CSV file."""
@@ -124,6 +116,42 @@ def save_predictions(elements, teams, next_gameweek_predictions, upper_gameweek_
     predictions['upper_gameweek_predictions'] = upper_gameweek_predictions
     predictions = predictions.reset_index()
     predictions.to_csv("predictions.csv", index=False)
+
+
+def get_next_gameweek_predictions(players, next_gameweek, fixtures, elements):
+    """Predicts points for the next gameweek."""
+    
+    next_gameweek_matchups = get_gameweek_matchups(players, next_gameweek, fixtures)
+    next_gameweek_predictions = make_predictions(next_gameweek_matchups, elements)
+    # Scale the next gameweek's predictions by availability.
+    availability = elements.set_index('id')['chance_of_playing_next_round'] / 100
+    next_gameweek_predictions *= availability
+
+    return next_gameweek_predictions
+
+
+def get_upper_gameweek_predictions(players, next_gameweek, last_gameweek, fixtures, elements):
+    """Predicts points for upper gameweeks."""
+
+    if next_gameweek == last_gameweek:
+        upper_gameweek_predictions = None
+
+    else:
+        upper_gameweek_matchups = []
+        for gameweek in range(next_gameweek + 1, min(next_gameweek + 1 + MAX_UPPER_GAMEWEEKS, last_gameweek + 1)):
+            # Get all player matchups for the given gameweek.
+            matchups = get_gameweek_matchups(players, gameweek, fixtures)
+            # Add to the list.
+            upper_gameweek_matchups.append(matchups)
+
+        # Concatenate all.
+        upper_gameweek_matchups = pd.concat(upper_gameweek_matchups)
+
+        # Make predictions for upper gameweeks.
+        upper_gameweek_predictions = make_predictions(upper_gameweek_matchups, elements)
+
+        return upper_gameweek_predictions
+
 
 def main():
 
@@ -155,47 +183,16 @@ def main():
     players = data.get_all_current_data(season, elements, teams, next_gameweek)
     players = preprocess(players)
 
-    print("Loading model...")
-    model, features = load_model()
-
-    print('Getting next gameweek matchups...')
-    next_gameweek_matchups = get_gameweek_matchups(players, next_gameweek, fixtures, teams)
-
-    print('Making predictions...')
-    next_gameweek_predictions = make_predictions(next_gameweek_matchups, elements, model, features)
-    # Scale the next gameweek's predictions by availability.
-    availability = elements.set_index('id')['chance_of_playing_next_round'] / 100
-    next_gameweek_predictions *= availability
-
-    if next_gameweek == last_gameweek:
-        upper_gameweek_matchups = None
-        upper_gameweek_predictions = None
-        number_of_upper_gameweeks = 0
-
-    else:
-        print('Getting upper gameweek matchups...')
-        upper_gameweek_matchups = []
-        for gameweek in range(next_gameweek + 1, min(next_gameweek + 1 + MAX_UPPER_GAMEWEEKS, last_gameweek + 1)):
-            # Get all player matchups for the given gameweek.
-            matchups = get_gameweek_matchups(players, gameweek, fixtures, teams)
-            # Add to the list.
-            upper_gameweek_matchups.append(matchups)
-        # Count the number of upper gameweeks.
-        number_of_upper_gameweeks = len(upper_gameweek_matchups)
-        # Concatenate all.
-        upper_gameweek_matchups = pd.concat(upper_gameweek_matchups)
-
-        print('Making predictions...')
-        # Make predictions for upper gameweeks.
-        upper_gameweek_predictions = make_predictions(upper_gameweek_matchups, elements, model, features)
+    print("Making predictions...")
+    next_gameweek_predictions = get_next_gameweek_predictions(players, next_gameweek, fixtures, elements)
+    upper_gameweek_predictions = get_upper_gameweek_predictions(players, next_gameweek, last_gameweek, fixtures, elements)
 
     # Save predictions to a CSV file
     save_predictions(elements, teams, next_gameweek_predictions, upper_gameweek_predictions)
 
     print('Suggesting best squad...')
     best_squad = suggest_best_squad(
-        my_team, next_gameweek_predictions, upper_gameweek_predictions, number_of_upper_gameweeks, elements, ANNEALING_ITERATIONS)
-    print('Suggesting squad roles...')
+        my_team, next_gameweek_predictions, upper_gameweek_predictions, elements)
     squad_roles = optimize.suggest_squad_roles(best_squad, elements, next_gameweek_predictions)
 
     print('Updating team...')

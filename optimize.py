@@ -1,10 +1,12 @@
 import math
 import random
 
-import pandas as pd
+TRANSFER_COST = 4
 
 TEMPERATURE_FACTOR = 1
+ANNEALING_ITERATIONS = 60000
 
+MAX_UPPER_GAMEWEEKS = 5
 NEXT_GAMEWEEK_WEIGHT = 1
 UPPER_GAMEWEEK_WEIGHT = 0.5
 
@@ -17,9 +19,11 @@ TRANSFER_CONFIDENCE = 0.5
 
 squad_evaluations = {}
 
+
 def expected_returns(player_or_squad, predictions):
     """Returns the expected returns of a player."""
     return predictions.loc[player_or_squad]
+
 
 def suggest_squad_roles(squad, elements, predictions):
 
@@ -89,16 +93,17 @@ def suggest_squad_roles(squad, elements, predictions):
     return output
 
 
-def calculate_total_transfer_cost(squad, initial_squad, transfer_cost, free_transfers):
+def calculate_total_transfer_cost(squad, initial_squad, free_transfers):
     """Calculates the points hit that will be taken to switch from 
     an initial squad to a given squad."""
     # Count the number of players transferred in.
     transfers_made = len(squad - initial_squad)
     # Check the total cost of transfers.
-    total_transfer_cost = max((transfers_made - free_transfers), 0) * transfer_cost
+    total_transfer_cost = max((transfers_made - free_transfers), 0) * TRANSFER_COST
     return total_transfer_cost
 
-def evaluate_squad(squad, elements, next_gameweek_predictions, upper_gameweek_predictions, number_of_upper_gameweeks, initial_squad, transfer_cost, free_transfers):
+
+def evaluate_squad(squad, elements, next_gameweek_predictions, upper_gameweek_predictions, initial_squad, free_transfers):
     """Returns the 'goodness' of a squad for both 
     the next gameweek and future gameweeks. """
 
@@ -108,13 +113,10 @@ def evaluate_squad(squad, elements, next_gameweek_predictions, upper_gameweek_pr
 
     # Estimate the number of points the squad will make in the next gameweek.
     next_gw_score = next_gameweek_score(
-        squad, elements, next_gameweek_predictions, initial_squad, transfer_cost, free_transfers)
+        squad, elements, next_gameweek_predictions, initial_squad, free_transfers)
     
     # Estimate the number of points that can be gotten in future gameweeks.
-    if number_of_upper_gameweeks == 0:
-        upper_gw_score = 0
-    else:
-        upper_gw_score = upper_gameweek_score(squad, upper_gameweek_predictions)
+    upper_gw_score = upper_gameweek_score(squad, upper_gameweek_predictions)
 
     # Calculate a score based on next week's estimate and that of future weeks.
     score = (next_gw_score * NEXT_GAMEWEEK_WEIGHT) + (upper_gw_score * UPPER_GAMEWEEK_WEIGHT)
@@ -124,7 +126,8 @@ def evaluate_squad(squad, elements, next_gameweek_predictions, upper_gameweek_pr
         
     return score
 
-def next_gameweek_score(squad, elements, next_gameweek_predictions, initial_squad, transfer_cost, free_transfers):
+
+def next_gameweek_score(squad, elements, next_gameweek_predictions, initial_squad, free_transfers):
     """Calculates the number of points predicted for a given squad in the next gameweek."""
     
     score = 0
@@ -142,17 +145,23 @@ def next_gameweek_score(squad, elements, next_gameweek_predictions, initial_squa
     score += expected_returns(list(squad_roles['reserve_out']), next_gameweek_predictions).sum() * RESERVE_OUT_MULTIPLIER
 
     # Calculate total transfer cost.
-    total_transfer_cost = calculate_total_transfer_cost(squad, initial_squad, transfer_cost, free_transfers)
+    total_transfer_cost = calculate_total_transfer_cost(squad, initial_squad, free_transfers)
     total_transfer_cost /= TRANSFER_CONFIDENCE
     # Subtract from the score.
     score -= total_transfer_cost
 
     return score   
 
+
 def upper_gameweek_score(squad, upper_gameweek_predictions):
     """Estimates the number of points expected for a squad over future gameweeks."""
-    return expected_returns(list(squad), upper_gameweek_predictions).sum()
- 
+    if upper_gameweek_predictions is None:
+        upper_gw_score = 0
+    else:
+        upper_gw_score = expected_returns(list(squad), upper_gameweek_predictions).sum()
+
+    return upper_gw_score
+
 
 def make_random_transfer(squad, initial_squad, selling_prices, elements, initial_budget_remaining): 
     """Randomly switches out one player in the squad
@@ -197,11 +206,13 @@ def make_random_transfer(squad, initial_squad, selling_prices, elements, initial
 
     return neighbour
 
-def get_temperature(t, max_t):
-    """Returns the temperature at a particular time-step."""
-    return ((max_t - t) / max_t) * TEMPERATURE_FACTOR
 
-def simulated_annealing(initial_squad, selling_prices, transfer_cost, free_transfers, initial_budget_remaining, next_gameweek_predictions, upper_gameweek_predictions, number_of_upper_gameweeks, elements, max_t):
+def get_temperature(t):
+    """Returns the temperature at a particular time-step."""
+    return ((ANNEALING_ITERATIONS - t) / ANNEALING_ITERATIONS) * TEMPERATURE_FACTOR
+
+
+def simulated_annealing(initial_squad, selling_prices, free_transfers, initial_budget_remaining, next_gameweek_predictions, upper_gameweek_predictions, elements):
     """Uses a simulated annealing algorithm to find the best transfers to make."""
 
     # Start with the initial squad.
@@ -211,19 +222,19 @@ def simulated_annealing(initial_squad, selling_prices, transfer_cost, free_trans
     best_squad = current
     best_score = evaluate_squad(
         current, elements, 
-        next_gameweek_predictions, upper_gameweek_predictions, number_of_upper_gameweeks, 
-        initial_squad, transfer_cost, free_transfers)
+        next_gameweek_predictions, upper_gameweek_predictions, 
+        initial_squad, free_transfers)
 
-    for t in range(1, max_t + 1):
+    for t in range(1, ANNEALING_ITERATIONS + 1):
 
-        temperature = get_temperature(t, max_t)
+        temperature = get_temperature(t)
 
         neighbour = make_random_transfer(
             current, initial_squad, selling_prices, elements, initial_budget_remaining)
 
         # How much better is the neighbour than the current state?
-        neighbour_score = evaluate_squad(neighbour, elements, next_gameweek_predictions, upper_gameweek_predictions, number_of_upper_gameweeks, initial_squad, transfer_cost, free_transfers)
-        current_score = evaluate_squad(current, elements, next_gameweek_predictions, upper_gameweek_predictions, number_of_upper_gameweeks, initial_squad, transfer_cost, free_transfers)
+        neighbour_score = evaluate_squad(neighbour, elements, next_gameweek_predictions, upper_gameweek_predictions, initial_squad, free_transfers)
+        current_score = evaluate_squad(current, elements, next_gameweek_predictions, upper_gameweek_predictions, initial_squad, free_transfers)
         delta_e = neighbour_score - current_score
 
         # Keep track of the best squad.
@@ -246,8 +257,6 @@ def simulated_annealing(initial_squad, selling_prices, transfer_cost, free_trans
                 current = neighbour
 
     return best_squad
-
-
 
 
 if __name__ == '__main__':
