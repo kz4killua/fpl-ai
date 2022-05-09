@@ -8,8 +8,6 @@ import api
 import data
 import optimize
 
-from optimize import MAX_UPPER_GAMEWEEKS
-
 # Load the model and feature data
 with open('model/model.pkl', 'rb') as f:
     MODEL = pickle.load(f)
@@ -138,7 +136,7 @@ def get_upper_gameweek_predictions(players, next_gameweek, last_gameweek, fixtur
 
     else:
         upper_gameweek_matchups = []
-        for gameweek in range(next_gameweek + 1, min(next_gameweek + 1 + MAX_UPPER_GAMEWEEKS, last_gameweek + 1)):
+        for gameweek in range(next_gameweek + 1, min(next_gameweek + 1 + optimize.MAX_UPPER_GAMEWEEKS, last_gameweek + 1)):
             # Get all player matchups for the given gameweek.
             matchups = get_gameweek_matchups(players, gameweek, fixtures)
             # Add to the list.
