@@ -17,8 +17,6 @@ RESERVE_OUT_MULTIPLIER = 0.25
 
 TRANSFER_CONFIDENCE = 0.5
 
-squad_evaluations = {}
-
 
 def expected_returns(player_or_squad, predictions):
     """Returns the expected returns of a player."""
@@ -103,7 +101,7 @@ def calculate_total_transfer_cost(squad, initial_squad, free_transfers):
     return total_transfer_cost
 
 
-def evaluate_squad(squad, elements, next_gameweek_predictions, upper_gameweek_predictions, initial_squad, free_transfers):
+def evaluate_squad(squad, elements, next_gameweek_predictions, upper_gameweek_predictions, initial_squad, free_transfers, squad_evaluations):
     """Returns the 'goodness' of a squad for both 
     the next gameweek and future gameweeks. """
 
@@ -218,12 +216,14 @@ def simulated_annealing(initial_squad, selling_prices, free_transfers, initial_b
     # Start with the initial squad.
     current = initial_squad.copy()
 
+    squad_evaluations = dict()
+
     # We will keep track of the best squad and score.
     best_squad = current
     best_score = evaluate_squad(
         current, elements, 
         next_gameweek_predictions, upper_gameweek_predictions, 
-        initial_squad, free_transfers)
+        initial_squad, free_transfers, squad_evaluations)
 
     for t in range(1, ANNEALING_ITERATIONS + 1):
 
@@ -233,8 +233,8 @@ def simulated_annealing(initial_squad, selling_prices, free_transfers, initial_b
             current, initial_squad, selling_prices, elements, initial_budget_remaining)
 
         # How much better is the neighbour than the current state?
-        neighbour_score = evaluate_squad(neighbour, elements, next_gameweek_predictions, upper_gameweek_predictions, initial_squad, free_transfers)
-        current_score = evaluate_squad(current, elements, next_gameweek_predictions, upper_gameweek_predictions, initial_squad, free_transfers)
+        neighbour_score = evaluate_squad(neighbour, elements, next_gameweek_predictions, upper_gameweek_predictions, initial_squad, free_transfers, squad_evaluations)
+        current_score = evaluate_squad(current, elements, next_gameweek_predictions, upper_gameweek_predictions, initial_squad, free_transfers, squad_evaluations)
         delta_e = neighbour_score - current_score
 
         # Keep track of the best squad.
