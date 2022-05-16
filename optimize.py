@@ -1,10 +1,11 @@
 import math
+import time
 import random
 
 TRANSFER_COST = 4
 
-TEMPERATURE_FACTOR = 1
-ANNEALING_ITERATIONS = 60000
+ANNEALING_TIME = 600
+MAX_TEMPERATURE = 1
 
 MAX_UPPER_GAMEWEEKS = 5
 NEXT_GAMEWEEK_WEIGHT = 1
@@ -205,9 +206,9 @@ def make_random_transfer(squad, initial_squad, selling_prices, elements, initial
     return neighbour
 
 
-def get_temperature(t):
+def get_temperature(elapsed):
     """Returns the temperature at a particular time-step."""
-    return ((ANNEALING_ITERATIONS - t) / ANNEALING_ITERATIONS) * TEMPERATURE_FACTOR
+    return ((ANNEALING_TIME - elapsed) / ANNEALING_TIME) * MAX_TEMPERATURE
 
 
 def simulated_annealing(initial_squad, selling_prices, free_transfers, initial_budget_remaining, next_gameweek_predictions, upper_gameweek_predictions, elements):
@@ -225,9 +226,18 @@ def simulated_annealing(initial_squad, selling_prices, free_transfers, initial_b
         next_gameweek_predictions, upper_gameweek_predictions, 
         initial_squad, free_transfers, squad_evaluations)
 
-    for t in range(1, ANNEALING_ITERATIONS + 1):
+    # Record the time when annealing started
+    start = time.time()
 
-        temperature = get_temperature(t)
+    while True:
+
+        # Check how many seconds have passed since the start
+        elapsed = time.time() - start
+        # Quit the program if we are out of time
+        if elapsed >= ANNEALING_TIME:
+            break
+        # Calculate the temperature at the current time step
+        temperature = get_temperature(elapsed)
 
         neighbour = make_random_transfer(
             current, initial_squad, selling_prices, elements, initial_budget_remaining)
