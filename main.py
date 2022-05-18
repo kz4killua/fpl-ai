@@ -148,7 +148,7 @@ def get_upper_gameweek_predictions(players, next_gameweek, last_gameweek, fixtur
         # Make predictions for upper gameweeks.
         upper_gameweek_predictions = make_predictions(upper_gameweek_matchups, elements)
 
-        return upper_gameweek_predictions
+    return upper_gameweek_predictions
 
 
 def main():
