@@ -98,7 +98,7 @@ def calculate_total_transfer_cost(squad, initial_squad, free_transfers):
     return total_transfer_cost
 
 
-def evaluate_squad(squad, elements, next_gameweek_predictions, upper_gameweek_predictions, initial_squad, free_transfers, squad_evaluations):
+def evaluate_squad(squad, element_types, next_gameweek_predictions, upper_gameweek_predictions, initial_squad, free_transfers, squad_evaluations):
     """Returns the 'goodness' of a squad for both 
     the next gameweek and future gameweeks. """
 
@@ -108,7 +108,7 @@ def evaluate_squad(squad, elements, next_gameweek_predictions, upper_gameweek_pr
 
     # Estimate the number of points the squad will make in the next gameweek.
     next_gw_score = next_gameweek_score(
-        squad, elements, next_gameweek_predictions, initial_squad, free_transfers)
+        squad, element_types, next_gameweek_predictions, initial_squad, free_transfers)
     
     # Estimate the number of points that can be gotten in future gameweeks.
     upper_gw_score = upper_gameweek_score(squad, upper_gameweek_predictions)
@@ -122,13 +122,13 @@ def evaluate_squad(squad, elements, next_gameweek_predictions, upper_gameweek_pr
     return score
 
 
-def next_gameweek_score(squad, elements, next_gameweek_predictions, initial_squad, free_transfers):
+def next_gameweek_score(squad, element_types, next_gameweek_predictions, initial_squad, free_transfers):
     """Calculates the number of points predicted for a given squad in the next gameweek."""
     
     score = 0
 
     # Get the best XI.
-    squad_roles = suggest_squad_roles(squad, elements.set_index('id')['element_type'], next_gameweek_predictions)
+    squad_roles = suggest_squad_roles(squad, element_types, next_gameweek_predictions)
 
     # Score the captain.
     score += expected_returns(squad_roles['captain'], next_gameweek_predictions) * CAPTAIN_MULTIPLIER  
@@ -169,19 +169,19 @@ def make_random_transfer(squad, initial_squad, selling_prices, elements, initial
     # Pick a random player to remove.
     player_out = random.choice(list(neighbour))
     # Check the player's position.
-    player_out_position = elements.set_index('id').loc[player_out, 'element_type']
+    player_out_position = elements.loc[player_out, 'element_type']
     # Remove the player from the squad.
     neighbour.remove(player_out)
     
     # Count the number of players in each team.
-    team_counts = elements.set_index('id').loc[list(neighbour), 'team'].value_counts()
+    team_counts = elements.loc[list(neighbour), 'team'].value_counts()
     # Check which teams are unavailable (already have more than 3 players).
     flagged_teams = set(team_counts[team_counts == 3].index)
 
     # Calculate how much money we have left.
     transfers_in = neighbour - initial_squad
     transfers_out = initial_squad - neighbour
-    expenses = elements.set_index('id').loc[list(transfers_in), 'now_cost'].sum()
+    expenses = elements.loc[list(transfers_in), 'now_cost'].sum()
     income = selling_prices.set_index('element').loc[list(transfers_out), 'selling_price'].sum()
     funds_left = initial_budget_remaining - expenses + income
 
@@ -210,6 +210,9 @@ def get_temperature(elapsed):
 def simulated_annealing(initial_squad, selling_prices, free_transfers, initial_budget_remaining, next_gameweek_predictions, upper_gameweek_predictions, elements):
     """Uses a simulated annealing algorithm to find the best transfers to make."""
 
+    # We will access players by their ids
+    elements = elements.set_index('id', drop=False)
+
     # Start with the initial squad.
     current = initial_squad.copy()
 
@@ -218,7 +221,7 @@ def simulated_annealing(initial_squad, selling_prices, free_transfers, initial_b
     # We will keep track of the best squad and score.
     best_squad = current
     best_score = evaluate_squad(
-        current, elements, 
+        current, elements['element_type'], 
         next_gameweek_predictions, upper_gameweek_predictions, 
         initial_squad, free_transfers, squad_evaluations)
 
@@ -239,8 +242,8 @@ def simulated_annealing(initial_squad, selling_prices, free_transfers, initial_b
             current, initial_squad, selling_prices, elements, initial_budget_remaining)
 
         # How much better is the neighbour than the current state?
-        neighbour_score = evaluate_squad(neighbour, elements, next_gameweek_predictions, upper_gameweek_predictions, initial_squad, free_transfers, squad_evaluations)
-        current_score = evaluate_squad(current, elements, next_gameweek_predictions, upper_gameweek_predictions, initial_squad, free_transfers, squad_evaluations)
+        neighbour_score = evaluate_squad(neighbour, elements['element_type'], next_gameweek_predictions, upper_gameweek_predictions, initial_squad, free_transfers, squad_evaluations)
+        current_score = evaluate_squad(current, elements['element_type'], next_gameweek_predictions, upper_gameweek_predictions, initial_squad, free_transfers, squad_evaluations)
         delta_e = neighbour_score - current_score
 
         # Keep track of the best squad.
