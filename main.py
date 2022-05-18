@@ -191,7 +191,7 @@ def main():
     print('Suggesting best squad...')
     best_squad = suggest_best_squad(
         my_team, next_gameweek_predictions, upper_gameweek_predictions, elements)
-    squad_roles = optimize.suggest_squad_roles(best_squad, elements, next_gameweek_predictions)
+    squad_roles = optimize.suggest_squad_roles(best_squad, elements.set_index('id')['element_type'], next_gameweek_predictions)
 
     print('Updating team...')
     api.update_team(my_team, best_squad, squad_roles, elements, next_gameweek, email, password)

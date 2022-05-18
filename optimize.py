@@ -3,6 +3,7 @@ import time
 import random
 
 TRANSFER_COST = 4
+GKP, DEF, MID, FWD = 1, 2, 3, 4
 
 ANNEALING_TIME = 600
 MAX_TEMPERATURE = 1
@@ -24,72 +25,67 @@ def expected_returns(player_or_squad, predictions):
     return predictions.loc[player_or_squad]
 
 
-def suggest_squad_roles(squad, elements, predictions):
+def suggest_squad_roles(squad, element_types, predictions):
+    """Suggests captain and starting XI choices for a squad."""
 
-    starting_xi = list()
+    # Sort the squad in descending order of points
+    players = sorted(squad, key=lambda player: predictions[player], reverse=True)
+
+    # The best two players should be captain and vice captain
+    captain, vice_captain = players[0], players[1]
+
+    starting_gkp = None
+    reserve_gkp = None
+
+    starting_defs = list()
+    starting_mids = list()
+    starting_fwds = list()
+
     reserve_out = list()
 
-    # Get players and their positions.
-    df = elements[elements['id'].isin(squad)][['id', 'element_type']].reset_index(drop=True)
-    # Add predicted total points.
-    df['expected_returns'] = expected_returns(df['id'], predictions).values
+    for player in players:
 
-    # Sort the players by their expected returns.
-    df = df.sort_values('expected_returns', ascending=False, ignore_index=True)
+        if element_types[player] == GKP:
+            if starting_gkp is None:
+                starting_gkp = player
+            else:
+                reserve_gkp = player
+            continue
 
-    # Get a list of all players in order of points.
-    players = list(df['id'])
-    # Split the squad by position.
-    gkps = list(df[df['element_type'] == 1]['id'])
-    defs = list(df[df['element_type'] == 2]['id'])
-    mids = list(df[df['element_type'] == 3]['id'])
-    fwds = list(df[df['element_type'] == 4]['id'])
+        # Count how many non required starters we have
+        non_required = 0
+        non_required += max(len(starting_defs) - 3, 0)
+        non_required += max(len(starting_mids) - 0, 0)
+        non_required += max(len(starting_fwds) - 1, 0)
 
-    starting_defs = []
-    starting_mids = []
-    starting_fwds = []
+        # If we have room for non-required players, add to the starting XI
+        if element_types[player] == DEF:
+            if len(starting_defs) < 3 or non_required < 6:
+                starting_defs.append(player)
+            else:
+                reserve_out.append(player)
 
-    # The two best players should be captain and vice captain.
-    captain = players[0]
-    vice_captain = players[1]
+        elif element_types[player] == MID:
+            if len(starting_mids) < 0 or non_required < 6:
+                starting_mids.append(player)
+            else:
+                reserve_out.append(player)
+        else:
+            if len(starting_fwds) < 1 or non_required < 6:
+                starting_fwds.append(player)
+            else:
+                reserve_out.append(player)
 
-    # The best GKP will start, the other will be on the bench.
-    starting_gkp = gkps[0]
-    reserve_gkp = gkps[1]
-
-    # We must start at least 3 defenders.
-    starting_defs.extend(defs[:3])
-    # We must start at least 1 forward.
-    starting_fwds.append(fwds[0])
-
-    # The 6 best remaining outfield players will start.
-    other_outfield_players = [
-        element for element in players if 
-        (element not in (set(starting_defs) | set(starting_mids) | set(starting_fwds))) and 
-        (element not in gkps)][:6]
-    # Add them to the right positions.
-    starting_defs += list(set(other_outfield_players) & set(defs))
-    starting_mids += list(set(other_outfield_players) & set(mids))
-    starting_fwds += list(set(other_outfield_players) & set(fwds))
-
-    starting_xi = [starting_gkp, *starting_defs, *starting_mids, *starting_fwds]
-
-    # Get the reserve outfield players.
-    reserve_out = list(set(squad) - set(starting_xi) - {reserve_gkp})
-
-    # Sort the reserve outfield players in descending order of expected points.
-    reserve_out = sorted(reserve_out, key=lambda player: expected_returns(player, predictions), reverse=True)
-
-    # Package the information.
-    output = {
+    # Package
+    squad_roles = {
         'captain': captain,
         'vice_captain': vice_captain,
-        'starting_xi': starting_xi,
+        'starting_xi': [starting_gkp, *starting_defs, *starting_mids, *starting_fwds],
         'reserve_out': reserve_out,
         'reserve_gkp': reserve_gkp
     }
 
-    return output
+    return squad_roles
 
 
 def calculate_total_transfer_cost(squad, initial_squad, free_transfers):
@@ -132,7 +128,7 @@ def next_gameweek_score(squad, elements, next_gameweek_predictions, initial_squa
     score = 0
 
     # Get the best XI.
-    squad_roles = suggest_squad_roles(squad, elements, next_gameweek_predictions)
+    squad_roles = suggest_squad_roles(squad, elements.set_index('id')['element_type'], next_gameweek_predictions)
 
     # Score the captain.
     score += expected_returns(squad_roles['captain'], next_gameweek_predictions) * CAPTAIN_MULTIPLIER  
