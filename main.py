@@ -87,7 +87,7 @@ def suggest_best_squad(my_team, next_gameweek_predictions, upper_gameweek_predic
     picks = pd.DataFrame(my_team['picks'])
     initial_budget_remaining = my_team['transfers']['bank']
     initial_squad = set(picks['element'])
-    selling_prices = picks[['element', 'selling_price']]
+    selling_prices = picks.set_index('element')['selling_price']
     # Gather transfer information.
     transfer_limit = my_team['transfers']['limit']
     transfers_made = my_team['transfers']['made']

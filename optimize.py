@@ -158,48 +158,53 @@ def upper_gameweek_score(squad, upper_gameweek_predictions):
     return upper_gw_score
 
 
-def make_random_transfer(squad, initial_squad, selling_prices, elements, initial_budget_remaining): 
-    """Randomly switches out one player in the squad
-    with another player in the same position from the 
-    available players."""
-
-    # Make a copy of the squad.
-    neighbour = squad.copy()
-
-    # Pick a random player to remove.
-    player_out = random.choice(list(neighbour))
-    # Check the player's position.
-    player_out_position = elements.loc[player_out, 'element_type']
-    # Remove the player from the squad.
-    neighbour.remove(player_out)
-    
-    # Count the number of players in each team.
-    team_counts = elements.loc[list(neighbour), 'team'].value_counts()
-    # Check which teams are unavailable (already have more than 3 players).
-    flagged_teams = set(team_counts[team_counts == 3].index)
-
-    # Calculate how much money we have left.
-    transfers_in = neighbour - initial_squad
-    transfers_out = initial_squad - neighbour
+def calculate_budget_remaining(new_squad, old_squad, initial_budget, elements, selling_prices):
+    """Calculates how much money is left in the budget."""
+    # Get players added and removed
+    transfers_in = new_squad - old_squad
+    transfers_out = old_squad - new_squad
+    # Calculate income and expenses
     expenses = elements.loc[list(transfers_in), 'now_cost'].sum()
-    income = selling_prices.set_index('element').loc[list(transfers_out), 'selling_price'].sum()
-    funds_left = initial_budget_remaining - expenses + income
+    income = selling_prices.loc[list(transfers_out)].sum()
+    # Calculate budget remaining
+    funds_left = initial_budget - expenses + income
 
-    # Filter valid players.
+    return funds_left
+
+
+def make_random_transfer(squad, initial_squad, selling_prices, elements, initial_budget): 
+    """Randomly switches out one player in the squad."""
+
+    new_squad = squad.copy()
+
+    # Remove a random player from the squad
+    player_out = random.choice(list(new_squad))
+    new_squad.remove(player_out)
+
+    # Check the player's position
+    player_out_position = elements.loc[player_out, 'element_type']
+    
+    # Check which teams have up to 3 players in our squad
+    team_counts = elements.loc[list(new_squad), 'team'].value_counts()
+    flagged_teams = set(team_counts[team_counts >= 3].index)
+
+    # Calculate how much money we have left
+    funds_left = calculate_budget_remaining(new_squad, initial_squad, initial_budget, elements, selling_prices)
+
+    # Filter valid players
     filtered_players = elements[
         (elements['element_type'] == player_out_position) &
         (elements['now_cost'] <= funds_left) &
         (elements['chance_of_playing_next_round'] == 100) &
         ~(elements['team'].isin(flagged_teams)) &
-        ~(elements['id'].isin(neighbour))
+        ~(elements['id'].isin(new_squad))
     ]
 
-    # Pick a random player.
+    # Add a random player to the squad
     player_in = random.choice(list(filtered_players['id']))
-    # Add the player to the squad.
-    neighbour.add(player_in)
+    new_squad.add(player_in)
 
-    return neighbour
+    return new_squad
 
 
 def get_temperature(elapsed):
