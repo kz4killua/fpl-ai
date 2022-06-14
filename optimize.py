@@ -158,14 +158,14 @@ def upper_gameweek_score(squad, upper_gameweek_predictions):
     return upper_gw_score
 
 
-def calculate_budget_remaining(new_squad, old_squad, initial_budget, elements, selling_prices):
+def calculate_budget(new_squad, initial_squad, initial_budget, current_costs, selling_prices):
     """Calculates how much money is left in the budget."""
     # Get players added and removed
-    transfers_in = new_squad - old_squad
-    transfers_out = old_squad - new_squad
+    transfers_in = new_squad - initial_squad
+    transfers_out = initial_squad - new_squad
     # Calculate income and expenses
-    expenses = elements.loc[list(transfers_in), 'now_cost'].sum()
-    income = selling_prices.loc[list(transfers_out)].sum()
+    expenses = current_costs[list(transfers_in)].sum()
+    income = selling_prices[list(transfers_out)].sum()
     # Calculate budget remaining
     funds_left = initial_budget - expenses + income
 
@@ -189,7 +189,7 @@ def make_random_transfer(squad, initial_squad, selling_prices, elements, initial
     flagged_teams = set(team_counts[team_counts >= 3].index)
 
     # Calculate how much money we have left
-    funds_left = calculate_budget_remaining(new_squad, initial_squad, initial_budget, elements, selling_prices)
+    funds_left = calculate_budget(new_squad, initial_squad, initial_budget, elements['now_cost'], selling_prices)
 
     # Filter valid players
     filtered_players = elements[
