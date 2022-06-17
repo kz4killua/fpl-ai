@@ -15,9 +15,9 @@ with open('model/features.json') as g:
     FEATURES = json.load(g)
 
 
-def preprocess(df):
+def preprocess(players):
     """Carries out pre-prediction processing."""
-    return df
+    return players
 
 
 def make_predictions(players, elements):
@@ -44,7 +44,7 @@ def make_predictions(players, elements):
     return predictions
 
 
-def get_gameweek_matchups(players, gw, fixtures):
+def get_gameweek_matchups(players, next_gameweek, fixtures):
     """Returns a dataframe of players mapped to each of their
     opponents in a given gameweek."""
 
@@ -52,7 +52,7 @@ def get_gameweek_matchups(players, gw, fixtures):
     gameweek_matchups = pd.DataFrame()
 
     # Select fixtures in the given gameweek.
-    gameweek_fixtures = fixtures[fixtures['event'] == gw]
+    gameweek_fixtures = fixtures[fixtures['event'] == next_gameweek]
 
     for index, row in gameweek_fixtures.iterrows():
 
