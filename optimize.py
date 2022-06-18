@@ -20,11 +20,6 @@ RESERVE_OUT_MULTIPLIER = 0.25
 TRANSFER_CONFIDENCE = 0.5
 
 
-def expected_returns(player_or_squad, predictions):
-    """Returns the expected returns of a player."""
-    return predictions.loc[player_or_squad]
-
-
 def suggest_squad_roles(squad, element_types, predictions):
     """Suggests captain and starting XI choices for a squad."""
 
@@ -111,7 +106,7 @@ def evaluate_squad(squad, element_types, next_gameweek_predictions, upper_gamewe
         squad, element_types, next_gameweek_predictions, initial_squad, free_transfers)
     
     # Estimate the number of points that can be gotten in future gameweeks.
-    upper_gw_score = upper_gameweek_score(squad, upper_gameweek_predictions)
+    upper_gw_score = upper_gameweek_score(squad, element_types, upper_gameweek_predictions)
 
     # Calculate a score based on next week's estimate and that of future weeks.
     score = (next_gw_score * NEXT_GAMEWEEK_WEIGHT) + (upper_gw_score * UPPER_GAMEWEEK_WEIGHT)
@@ -122,40 +117,43 @@ def evaluate_squad(squad, element_types, next_gameweek_predictions, upper_gamewe
     return score
 
 
-def next_gameweek_score(squad, element_types, next_gameweek_predictions, initial_squad, free_transfers):
-    """Calculates the number of points predicted for a given squad in the next gameweek."""
-    
+def gameweek_score(squad, element_types, predictions):
+    """Calculates the number of points predicted for a squad in a gameweek."""
     score = 0
 
     # Get the best XI.
-    squad_roles = suggest_squad_roles(squad, element_types, next_gameweek_predictions)
+    squad_roles = suggest_squad_roles(squad, element_types, predictions)
 
     # Score the captain.
-    score += expected_returns(squad_roles['captain'], next_gameweek_predictions) * CAPTAIN_MULTIPLIER  
-    # Score other players in the starting XI.
-    score += expected_returns(list(set(squad_roles['starting_xi']) - {squad_roles['captain']}), next_gameweek_predictions).sum() * STARTING_XI_MULTIPLIER
+    score += predictions[squad_roles['captain']] * CAPTAIN_MULTIPLIER
+    # Score other starting players.
+    score += predictions[list(set(squad_roles['starting_xi']) - {squad_roles['captain']})].sum() * STARTING_XI_MULTIPLIER
     # Score the reserve GKP.
-    score += expected_returns(squad_roles['reserve_gkp'], next_gameweek_predictions) * RESERVE_GKP_MULTIPLIER
+    score += predictions[squad_roles['reserve_gkp']] * RESERVE_GKP_MULTIPLIER
     # Score the reserve outfield players.
-    score += expected_returns(list(squad_roles['reserve_out']), next_gameweek_predictions).sum() * RESERVE_OUT_MULTIPLIER
+    score += predictions[squad_roles['reserve_out']].sum() * RESERVE_OUT_MULTIPLIER
 
+    return score
+
+
+def next_gameweek_score(squad, element_types, next_gameweek_predictions, initial_squad, free_transfers):
+    """Calculates the number of points predicted for a given squad in the next gameweek."""
+    score = gameweek_score(squad, element_types, next_gameweek_predictions)
     # Calculate total transfer cost.
     total_transfer_cost = calculate_total_transfer_cost(squad, initial_squad, free_transfers)
     total_transfer_cost /= TRANSFER_CONFIDENCE
     # Subtract from the score.
     score -= total_transfer_cost
-
     return score   
 
 
-def upper_gameweek_score(squad, upper_gameweek_predictions):
-    """Estimates the number of points expected for a squad over future gameweeks."""
-    if upper_gameweek_predictions is None:
-        upper_gw_score = 0
-    else:
-        upper_gw_score = expected_returns(list(squad), upper_gameweek_predictions).sum()
-
-    return upper_gw_score
+def upper_gameweek_score(squad, element_types, upper_gameweek_predictions):
+    """Calculates the number of points predicted for a squad over future gameweeks."""
+    score = sum(
+        gameweek_score(squad, element_types, gameweek_predictions)
+        for gameweek_predictions in upper_gameweek_predictions
+    )
+    return score
 
 
 def calculate_budget(new_squad, initial_squad, initial_budget, current_costs, selling_prices):

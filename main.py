@@ -104,50 +104,52 @@ def suggest_best_squad(my_team, next_gameweek_predictions, upper_gameweek_predic
     return best_squad
 
 
-def save_predictions(elements, teams, next_gameweek_predictions, upper_gameweek_predictions):
+def save_predictions(elements, teams, next_gameweek_predictions, upper_gameweek_predictions, next_gameweek):
     """Saves predictions to a CSV file."""
     predictions = elements[['id', 'first_name', 'second_name', 'team', 'element_type']].copy()
     predictions['team'] = predictions['team'].map(teams.set_index('id')['name'])
     predictions['element_type'].replace({1: "GKP", 2: "DEF", 3: "MID", 4: "FWD"}, inplace=True)
-    predictions = predictions.set_index('id')
-    predictions['next_gameweek_predictions'] = next_gameweek_predictions
-    predictions['upper_gameweek_predictions'] = upper_gameweek_predictions
-    predictions = predictions.reset_index()
+    predictions = predictions.set_index('id', drop=False)
+    predictions[f'gw_{next_gameweek}'] = next_gameweek_predictions
+    for gameweek, gameweek_predictions in enumerate(
+        upper_gameweek_predictions, start=next_gameweek+1):
+        predictions[f'gw_{gameweek}'] = gameweek_predictions
     predictions.to_csv("predictions.csv", index=False)
+
+
+def get_gameweek_predictions(players, gameweek, fixtures, elements):
+    """Predicts points for a given gameweek."""
+    matchups = get_gameweek_matchups(players, gameweek, fixtures)
+    predictions = make_predictions(matchups, elements)
+    return predictions
 
 
 def get_next_gameweek_predictions(players, next_gameweek, fixtures, elements):
     """Predicts points for the next gameweek."""
-    
-    next_gameweek_matchups = get_gameweek_matchups(players, next_gameweek, fixtures)
-    next_gameweek_predictions = make_predictions(next_gameweek_matchups, elements)
-    # Scale the next gameweek's predictions by availability.
+    predictions = get_gameweek_predictions(players, next_gameweek, fixtures, elements)
+    # Scale by availability.
     availability = elements.set_index('id')['chance_of_playing_next_round'] / 100
-    next_gameweek_predictions *= availability
+    predictions *= availability
+    return predictions
 
-    return next_gameweek_predictions
+
+def list_upper_gameweeks(next_gameweek, last_gameweek):
+    """Returns the ids of upper gameweeks."""
+    return range(
+        next_gameweek + 1, 
+        min(
+            next_gameweek + optimize.MAX_UPPER_GAMEWEEKS, 
+            last_gameweek
+            ) + 1
+        )
 
 
 def get_upper_gameweek_predictions(players, next_gameweek, last_gameweek, fixtures, elements):
     """Predicts points for upper gameweeks."""
-
-    if next_gameweek == last_gameweek:
-        upper_gameweek_predictions = None
-
-    else:
-        upper_gameweek_matchups = []
-        for gameweek in range(next_gameweek + 1, min(next_gameweek + 1 + optimize.MAX_UPPER_GAMEWEEKS, last_gameweek + 1)):
-            # Get all player matchups for the given gameweek.
-            matchups = get_gameweek_matchups(players, gameweek, fixtures)
-            # Add to the list.
-            upper_gameweek_matchups.append(matchups)
-
-        # Concatenate all.
-        upper_gameweek_matchups = pd.concat(upper_gameweek_matchups)
-
-        # Make predictions for upper gameweeks.
-        upper_gameweek_predictions = make_predictions(upper_gameweek_matchups, elements)
-
+    upper_gameweek_predictions = [
+        get_gameweek_predictions(players, gameweek, fixtures, elements)
+        for gameweek in list_upper_gameweeks(next_gameweek, last_gameweek)
+    ]
     return upper_gameweek_predictions
 
 
@@ -186,7 +188,10 @@ def main():
     upper_gameweek_predictions = get_upper_gameweek_predictions(players, next_gameweek, last_gameweek, fixtures, elements)
 
     # Save predictions to a CSV file
-    save_predictions(elements, teams, next_gameweek_predictions, upper_gameweek_predictions)
+    save_predictions(
+        elements, teams, next_gameweek_predictions, 
+        upper_gameweek_predictions, next_gameweek
+    )
 
     print('Suggesting best squad...')
     best_squad = suggest_best_squad(
