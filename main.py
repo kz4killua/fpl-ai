@@ -150,6 +150,13 @@ def get_upper_gameweek_predictions(players, next_gameweek, last_gameweek, fixtur
         get_gameweek_predictions(players, gameweek, fixtures, elements)
         for gameweek in list_upper_gameweeks(next_gameweek, last_gameweek)
     ]
+    # Scale by availability.
+    availability = elements.set_index('id')['status'].replace(
+        {'a': 1, 'd': 1, 'i': 0, 'u': 0, 'n': 1, 's': 1}).astype('int')
+    upper_gameweek_predictions = [
+        (predictions * availability)
+        for predictions in upper_gameweek_predictions
+    ]
     return upper_gameweek_predictions
 
 
