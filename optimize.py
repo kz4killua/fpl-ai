@@ -2,6 +2,8 @@ import math
 import time
 import random
 
+import numpy as np
+
 TRANSFER_COST = 4
 GKP, DEF, MID, FWD = 1, 2, 3, 4
 
@@ -14,8 +16,8 @@ UPPER_GAMEWEEK_WEIGHT = 0.5
 
 CAPTAIN_MULTIPLIER = 2
 STARTING_XI_MULTIPLIER = 1
-RESERVE_GKP_MULTIPLIER = 0.25
-RESERVE_OUT_MULTIPLIER = 0.25
+RESERVE_GKP_MULTIPLIER = 0.039
+RESERVE_OUT_MULTIPLIER = np.array([0.4425, 0.195, 0.0775])
 
 TRANSFER_CONFIDENCE = 0.5
 
@@ -131,7 +133,7 @@ def gameweek_score(squad, element_types, predictions):
     # Score the reserve GKP.
     score += predictions[squad_roles['reserve_gkp']] * RESERVE_GKP_MULTIPLIER
     # Score the reserve outfield players.
-    score += predictions[squad_roles['reserve_out']].sum() * RESERVE_OUT_MULTIPLIER
+    score += (predictions[squad_roles['reserve_out']] * RESERVE_OUT_MULTIPLIER).sum()
 
     return score
 
