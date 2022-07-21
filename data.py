@@ -30,6 +30,12 @@ def get_last_checked_event(events):
     return int(events[events['data_checked']==True].nlargest(1, 'id').iloc[0]['id'])
 
 
+def get_current_season(fixtures):
+    """Returns the current season."""
+    year = int(fixtures.iloc[0]['kickoff_time'].split('-')[0])
+    return year_to_season(year)
+
+
 def rolling_average(column, n):
     """Calculates the average value in a series
     over the last n occurences excluding the current one."""
