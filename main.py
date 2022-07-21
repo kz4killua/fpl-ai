@@ -1,3 +1,4 @@
+import os
 import pickle
 import json
 
@@ -162,11 +163,15 @@ def get_upper_gameweek_predictions(players, next_gameweek, last_gameweek, fixtur
 
 def main():
 
-    season = input('season: ')
-    # Request login details.
-    email = input('email: ')
-    password = input('password: ')
+    # Get login details
+    if "FPL_EMAIL" in os.environ and "FPL_PASSWORD" in os.environ:
+        email = os.environ.get("FPL_EMAIL")
+        password = os.environ.get("FPL_PASSWORD")
+    else:
+        email = input('FPL email: ')
+        password = input('FPL password: ')
 
+    # Get data from the API
     print('Getting manager information...')
     my_team = api.get_my_team_data(email, password)
     print('Getting general information...')
@@ -182,6 +187,8 @@ def main():
     fixtures = pd.DataFrame(fixtures)
     next_gameweek = events[events['is_next'] == True].iloc[0]['id']
     last_gameweek = events['id'].max()
+    
+    season = data.get_current_season(fixtures)
 
     print('Updating player data...')
     data.update_players_data(season, elements, events)
