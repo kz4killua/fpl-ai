@@ -207,6 +207,55 @@ def make_random_transfer(squad, initial_squad, selling_prices, elements, initial
     return new_squad
 
 
+def get_valid_transfers_in(initial_squad, player_out, elements, initial_budget, selling_prices):
+    """Returns all players that can be legally transferred in."""
+
+    position = elements.loc[player_out, 'element_type']
+    new_squad = initial_squad - {player_out}
+    funds_left = calculate_budget(new_squad, initial_squad, initial_budget, elements['now_cost'], selling_prices)
+
+    # Check which teams have up to 3 players in the squad
+    team_counts = elements.loc[list(initial_squad), 'team'].value_counts()
+    flagged_teams = set(team_counts[team_counts >= 3].index)
+
+    # Filter valid players 
+    filtered_elements = elements[
+        (elements['element_type'] == position) &
+        (elements['now_cost'] <= funds_left) &
+        (elements['chance_of_playing_next_round'] == 100) &
+        ~(elements['team'].isin(flagged_teams)) &
+        ~(elements['id'].isin(new_squad))
+    ]
+    valid_players = list(filtered_elements['id'])
+
+    return valid_players
+
+
+def best_transfer(initial_squad, initial_budget, elements, selling_prices, next_gameweek_predictions, upper_gameweek_predictions, free_transfers):
+    """Returns the best single transfer that can be made."""
+
+    # Remember to index elements by ID without dropping
+
+    best_squad = None
+    best_squad_evaluation = float('-inf')
+
+    for player_out in initial_squad:
+        
+        valid_transfers = get_valid_transfers_in(initial_squad, player_out, elements, initial_budget, selling_prices)
+
+        # Try all valid transfers
+        for player_in in valid_transfers:
+
+            new_squad = initial_squad - {player_out} | {player_in}
+            squad_evaluation = evaluate_squad(new_squad, elements['element_type'], next_gameweek_predictions, upper_gameweek_predictions, initial_squad, free_transfers, {})
+
+            if squad_evaluation > best_squad_evaluation:
+                best_squad_evaluation = squad_evaluation
+                best_squad = new_squad
+
+    return best_squad
+
+
 def get_temperature(elapsed):
     """Returns the temperature at a particular time-step."""
     return ((ANNEALING_TIME - elapsed) / ANNEALING_TIME) * MAX_TEMPERATURE
