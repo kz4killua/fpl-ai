@@ -98,9 +98,15 @@ def suggest_best_squad(my_team, next_gameweek_predictions, upper_gameweek_predic
         free_transfers = transfer_limit - transfers_made
 
     # Suggest a best squad.
-    best_squad = optimize.simulated_annealing(
-        initial_squad, selling_prices, free_transfers, initial_budget_remaining,
-        next_gameweek_predictions, upper_gameweek_predictions, elements)
+    best_squad = optimize.best_transfer(
+        initial_squad, initial_budget_remaining, elements, 
+        selling_prices, next_gameweek_predictions, upper_gameweek_predictions,
+        free_transfers
+    )
+
+    # best_squad = optimize.simulated_annealing(
+    #     initial_squad, selling_prices, free_transfers, initial_budget_remaining,
+    #     next_gameweek_predictions, upper_gameweek_predictions, elements)
 
     return best_squad
 
@@ -194,7 +200,7 @@ def main():
     data.update_players_data(season, elements, events)
 
     print('Getting local player information...')
-    players = data.get_all_current_data(season, elements, teams, next_gameweek)
+    players = data.get_current_data(season, elements, next_gameweek)
     players = preprocess(players)
 
     print("Making predictions...")
