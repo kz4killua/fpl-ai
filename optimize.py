@@ -235,6 +235,7 @@ def best_transfer(initial_squad, initial_budget, elements, selling_prices, next_
     """Returns the best single transfer that can be made."""
 
     # Remember to index elements by ID without dropping
+    elements = elements.set_index('id', drop=False)
 
     best_squad = None
     best_squad_evaluation = float('-inf')
