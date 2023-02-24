@@ -82,7 +82,7 @@ def get_gameweek_matchups(players, next_gameweek, fixtures):
 
 
 def suggest_best_squad(my_team, next_gameweek_predictions, upper_gameweek_predictions, elements):
-    """Passes a team to the simulated annealing function."""
+    """Optimizes a team to get best transfers."""
 
     # Unpack team information.
     picks = pd.DataFrame(my_team['picks'])
@@ -103,10 +103,6 @@ def suggest_best_squad(my_team, next_gameweek_predictions, upper_gameweek_predic
         selling_prices, next_gameweek_predictions, upper_gameweek_predictions,
         free_transfers
     )
-
-    # best_squad = optimize.simulated_annealing(
-    #     initial_squad, selling_prices, free_transfers, initial_budget_remaining,
-    #     next_gameweek_predictions, upper_gameweek_predictions, elements)
 
     return best_squad
 
