@@ -1,1 +1,1 @@
-["avg_total_points", "avg_total_points_5_games", "team_fixture_difficulty", "opponent_fixture_difficulty", "is_home"]
+["is_gkp", "is_def", "is_mid", "is_fwd", "avg_total_points", "avg_influence", "avg_creativity", "avg_threat", "avg_ict_index", "avg_goals_scored", "avg_goals_conceded", "avg_assists", "avg_clean_sheets", "avg_bonus", "avg_bps", "avg_minutes", "avg_was_home", "is_home"]
