@@ -2,10 +2,18 @@
 
 from .loading.fpl import load_fpl_players, load_fpl_teams
 from .loading.understat import load_understat_players, load_fixture_ids, load_player_ids, load_understat_fixtures, load_understat_teams
-
 from .merging import merge_players, merge_teams
-
 from .wrangling import wrangle_players, wrangle_teams
+from .injecting import insert_fixture_records
+
+
+def load_players_and_teams(seasons, fixtures, elements, teams):
+
+    local_players = load_players(seasons)
+    local_teams = load_teams(seasons)
+    local_players, local_teams = insert_fixture_records(fixtures, local_players, local_teams, max(seasons), elements, teams)
+
+    return local_players, local_teams
 
 
 def load_players(seasons):

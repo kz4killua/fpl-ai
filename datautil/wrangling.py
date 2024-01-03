@@ -1,6 +1,7 @@
 """Functions to prepare data for feature extraction and modeling"""
 
 import pandas as pd
+import numpy as np
 
 
 def wrangle_players(players):
@@ -39,7 +40,7 @@ def wrangle_teams(teams):
     """Handle missing values, convert dtypes, etc."""
 
     # Convert dates to datetime objects
-    teams['date'] = pd.to_datetime(teams['date'])
+    teams['date'] = teams['date'].apply(np.datetime64)
 
     # Convert `h_a` to a boolean.
     teams['was_home'] = (teams['h_a'] == 'h').astype(int)

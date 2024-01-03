@@ -57,19 +57,15 @@ def engineer_features(players, teams):
 
         *player_features,
 
-        *[
-            f"team_{column}" for column in team_features
-        ],
+        *[f"team_{column}" for column in team_features],
 
-        *[
-            f"opponent_team_{column}" for column in team_features
-        ],
-
+        *[f"opponent_team_{column}" for column in team_features],
+        
         'total_points'
 
     ]
 
-    return merged[columns]
+    return merged, columns
 
 
 def merge_players_and_teams(players, teams, team_features):
