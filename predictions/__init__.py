@@ -1,3 +1,4 @@
+import warnings
 from typing import Union, Iterable
 import pickle
 import json
@@ -17,8 +18,11 @@ def make_predictions(features: pd.DataFrame) -> pd.DataFrame:
     with open('models/model-all/columns.json') as f:
         columns = json.load(f)
 
-    # Make predictions
     X = features[columns]
+
+    if X.isna().sum().sum() > 0:
+        warnings.warn("Missing data was found in the prediction features.")
+
     predictions = model.predict(X)
 
     # Map predicted points to player IDs, fixtures, and gameweeks
