@@ -3,7 +3,7 @@ import unittest
 import pandas as pd
 import numpy as np
 
-from optimize.utilities import suggest_squad_roles, calculate_points, evaluate_squad, GKP, MID, DEF, FWD
+from optimize.utilities import suggest_squad_roles, calculate_points, get_valid_transfers, evaluate_squad, GKP, MID, DEF, FWD
 from predictions import group_predictions_by_gameweek
 
 
@@ -15,11 +15,10 @@ class TestOptimize(unittest.TestCase):
         predictions = pd.read_csv('tests/data/test_sample_predictions.csv')
         self.gameweek_predictions = group_predictions_by_gameweek(predictions)
         self.squad = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
-        self.positions = pd.Series({
-            1: GKP, 2: GKP, 3: DEF, 4: DEF, 5: DEF, 6: DEF, 7: DEF,
-            8: MID, 9: MID, 10: MID, 11: MID, 12: MID,
-            13: FWD, 14: FWD, 15: FWD
-        })
+        self.elements = pd.read_csv('tests/data/test_elements.csv').set_index('id', drop=False)
+        self.elements['chance_of_playing_next_round'].fillna(100, inplace=True)
+        self.selling_prices = pd.read_csv('tests/data/test_selling_prices.csv', index_col=['id'])['selling_price']
+        self.positions = self.elements['element_type']
 
 
     def test_suggest_squad_roles(self):
@@ -85,13 +84,22 @@ class TestOptimize(unittest.TestCase):
         )
         self.assertAlmostEqual(
             score, 76.84285714285714, 5
-        )
-        
+        )     
 
-    # TODO
+
     def test_get_valid_transfers(self):
-        ...
 
-    # TODO
-    def test_make_best_transfer(self):
-        ...
+        test_cases = [
+            # team restrictions
+            {"player_out": 1, "budget": 100, "expected": {1, 16, 17}},
+            {"player_out": 9, "budget": 100, "expected": {9, 23, 24, 25, 26, 27}},
+            {"player_out": 10, "budget": 100, "expected": {10, 24, 25, 26, 27}},
+            # budget restrictions
+            {"player_out": 11, "budget": 100, "expected": {11, 24, 25, 26, 27}},
+            {"player_out": 11, "budget": 0, "expected": {11, 27}},
+            {"player_out": 12, "budget": 0, "expected": {12}},
+        ]
+
+        for test_case in test_cases:
+            result = get_valid_transfers(self.squad, test_case['player_out'], self.elements, self.selling_prices, test_case['budget'])
+            self.assertSetEqual(result, test_case['expected'])

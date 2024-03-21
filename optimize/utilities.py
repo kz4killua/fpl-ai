@@ -152,7 +152,7 @@ def get_valid_transfers(squad: set, player_out: int, elements: pd.DataFrame, sel
     budget_left = budget + selling_prices[player_out]
 
     # Check which teams already have 3 players in the squad
-    team_counts = elements.loc[list(squad), 'team'].value_counts()
+    team_counts = elements.loc[list(new_squad), 'team'].value_counts()
     invalid_teams = set(team_counts[team_counts >= 3].index)
 
     # Filter the 'elements' dataframe to contain only valid players
@@ -164,7 +164,7 @@ def get_valid_transfers(squad: set, player_out: int, elements: pd.DataFrame, sel
         & ~(elements['id'].isin(new_squad))
     ]
 
-    return set(valid_transfers['id'])
+    return set(valid_transfers['id']) | {player_out}
 
 
 def make_best_transfer(squad: set, gameweeks: list, budget: int, elements: pd.DataFrame, selling_prices: pd.Series, gameweek_predictions: pd.DataFrame) -> set:
