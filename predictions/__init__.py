@@ -67,3 +67,31 @@ def sum_gameweek_predictions(players: list, gameweek: int, gameweek_predictions:
     # Return 0 points when a player has no fixtures in the gameweek.
     except KeyError:
         return 0
+    
+
+def weight_gameweek_predictions_by_availability(gameweek_predictions: pd.Series, elements: pd.DataFrame, next_gameweek: int):
+    """
+    Scale points predictions by a player's chance of playing.
+    """
+
+    next_gameweek_availability = elements.set_index('id')['chance_of_playing_next_round'].fillna(100) / 100
+    future_gameweek_availability = elements.set_index('id')['status'].replace({
+        'a': 1, 'd': 1, 'i': 0, 'u': 0, 'n': 1, 's': 1
+    }).astype('float')
+
+    for gameweek_number in range(next_gameweek, int(gameweek_predictions.index.get_level_values('round').max()) + 1):
+        
+        # Weight the next week using 'chance_of_playing_next_round' and all others using 'status'
+        if gameweek_number == next_gameweek:
+            gameweek_number_availability = next_gameweek_availability
+        else:
+            gameweek_number_availability = future_gameweek_availability
+
+        # Apply the weights to the predictions
+        gameweek_number_predictions = gameweek_predictions.loc[:, gameweek_number]
+        gameweek_number_predictions *= gameweek_number_availability[gameweek_number_predictions.index]
+        
+        # Update the predictions table
+        gameweek_predictions.loc[:, gameweek_number] = gameweek_number_predictions.values
+
+    return gameweek_predictions
