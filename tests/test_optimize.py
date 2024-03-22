@@ -3,7 +3,7 @@ import unittest
 import pandas as pd
 import numpy as np
 
-from optimize.utilities import suggest_squad_roles, calculate_points, get_valid_transfers, evaluate_squad, GKP, MID, DEF, FWD
+from optimize.utilities import suggest_squad_roles, calculate_points, get_valid_transfers, evaluate_squad, make_best_transfer
 from predictions import group_predictions_by_gameweek
 
 
@@ -103,3 +103,14 @@ class TestOptimize(unittest.TestCase):
         for test_case in test_cases:
             result = get_valid_transfers(self.squad, test_case['player_out'], self.elements, self.selling_prices, test_case['budget'])
             self.assertSetEqual(result, test_case['expected'])
+
+
+    def test_make_best_transfer(self):
+
+        test_cases = [
+            {"gameweeks": [1], "budget": 0, "expected": {1, 2, 3, 4, 5, 6, 18, 8, 9, 10, 11, 12, 13, 14, 15}},
+        ]
+
+        for test_case in test_cases:
+            squad = make_best_transfer(self.squad, test_case['gameweeks'], test_case['budget'], self.elements, self.selling_prices, self.gameweek_predictions)
+            self.assertSetEqual(squad, test_case['expected'])
