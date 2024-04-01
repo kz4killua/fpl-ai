@@ -8,13 +8,10 @@ from .injecting import insert_fixture_records
 from .updating.pipeline import update_local_data
 
 
-def load_players_and_teams(seasons, fixtures, elements, teams, events):
-
-    update_local_data(max(seasons), elements, events, teams)
+def load_players_and_teams(seasons):
 
     local_players = load_players(seasons)
     local_teams = load_teams(seasons)
-    local_players, local_teams = insert_fixture_records(fixtures, local_players, local_teams, max(seasons), elements, teams)
 
     return local_players, local_teams
 
