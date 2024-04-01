@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 
 from predictions import sum_gameweek_predictions
-from optimize.parameters import CAPTAIN_MULTIPLIER, RESERVE_GKP_MULTIPLIER, RESERVE_OUT_MULTIPLIER, STARTING_XI_MULTIPLER, SQUAD_EVALUATION_ROUND_FACTOR
+from optimize.parameters import CAPTAIN_MULTIPLIER, RESERVE_GKP_MULTIPLIER, RESERVE_OUT_MULTIPLIER, STARTING_XI_MULTIPLER, SQUAD_EVALUATION_ROUND_FACTOR, FUTURE_GAMEWEEKS_EVALUATED
 
 GKP = 1
 DEF = 2
@@ -192,3 +192,8 @@ def make_best_transfer(squad: set, gameweeks: list, budget: int, elements: pd.Da
                 best_squad_evaluation = new_squad_evaluation
 
     return best_squad
+
+
+def get_future_gameweeks(next_gameweek):
+    """List out the gameweeks to optimize over."""
+    return list(range(next_gameweek, min(39, next_gameweek + FUTURE_GAMEWEEKS_EVALUATED)))
