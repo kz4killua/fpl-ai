@@ -169,8 +169,12 @@ cython_debug/
 *.ipynb
 
 # saved files and models
+models/
 *.pkl
 *.zip
 
 # todos
 TODO.md
+
+# cloned github repositories
+data/fplcache
