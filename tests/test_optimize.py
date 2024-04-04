@@ -3,7 +3,7 @@ import unittest
 import pandas as pd
 import numpy as np
 
-from optimize.utilities import suggest_squad_roles, calculate_points, get_valid_transfers, evaluate_squad, make_best_transfer
+from optimize.utilities import suggest_squad_roles, calculate_points, get_valid_transfers, evaluate_squad, make_best_transfer, calculate_budget
 from predictions import group_predictions_by_gameweek
 
 
@@ -47,7 +47,8 @@ class TestOptimize(unittest.TestCase):
             'reserve_out': [7, 10, 15], 'reserve_gkp': 1
         }
         score = calculate_points(
-            roles, self.gameweek_predictions, gameweek, 
+            roles=roles,
+            total_points=self.gameweek_predictions.loc[:, gameweek],
             captain_multiplier=2,
             starting_xi_multiplier=1,
             reserve_gkp_multiplier=0.1,
@@ -62,7 +63,8 @@ class TestOptimize(unittest.TestCase):
             'reserve_out': [9, 10, 11], 'reserve_gkp': 2
         }
         score = calculate_points(
-            roles, self.gameweek_predictions, gameweek, 
+            roles=roles,
+            total_points=self.gameweek_predictions.loc[:, gameweek],
             captain_multiplier=2,
             starting_xi_multiplier=1,
             reserve_gkp_multiplier=0.1,
@@ -114,3 +116,47 @@ class TestOptimize(unittest.TestCase):
         for test_case in test_cases:
             squad = make_best_transfer(self.squad, test_case['gameweeks'], test_case['budget'], self.elements, self.selling_prices, self.gameweek_predictions)
             self.assertSetEqual(squad, test_case['expected'])
+
+
+    def test_calculate_budget(self):
+        
+        test_cases = [
+            {
+                'initial_squad': {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
+                'final_squad': {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
+                'selling_prices': self.selling_prices,
+                'now_costs': self.elements['now_cost'],
+                'initial_budget': 10,
+                'expected': 10
+            },
+
+            {
+                'initial_squad': {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
+                'final_squad': {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 30},
+                'selling_prices': self.selling_prices,
+                'now_costs': self.elements['now_cost'],
+                'initial_budget': 10,
+                'expected': 22
+            }, 
+
+            {
+                'initial_squad': {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
+                'final_squad': {17, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 30},
+                'selling_prices': self.selling_prices,
+                'now_costs': self.elements['now_cost'],
+                'initial_budget': 10,
+                'expected': 26
+            },
+        ]
+
+        for test_case in test_cases:
+            self.assertEqual(
+                calculate_budget(
+                    test_case['initial_squad'],
+                    test_case['final_squad'],
+                    test_case['initial_budget'],
+                    test_case['selling_prices'],
+                    test_case['now_costs']
+                ),
+                test_case['expected']
+            )

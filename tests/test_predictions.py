@@ -3,7 +3,7 @@ import unittest
 import pandas as pd
 import numpy as np
 
-from predictions import group_predictions_by_gameweek, sum_gameweek_predictions, weight_gameweek_predictions_by_availability
+from predictions import group_predictions_by_gameweek, sum_player_points, weight_gameweek_predictions_by_availability
 
 
 class TestPredictions(unittest.TestCase):
@@ -14,56 +14,35 @@ class TestPredictions(unittest.TestCase):
         self.elements = pd.read_csv('tests/data/test_elements.csv')
 
 
-    def test_sum_gameweek_predictions(self):
+    def test_sum_player_points(self):
 
-        self.assertEqual(
-            sum_gameweek_predictions([1, 2, 3], 1, self.gameweek_predictions), 23
-        )
-        self.assertEqual(
-            sum_gameweek_predictions([1, 2, 3], 2, self.gameweek_predictions), 7
-        )
-        self.assertEqual(
-            sum_gameweek_predictions([1, 2, 3], 3, self.gameweek_predictions), 10   
-        )
-        self.assertEqual(
-            sum_gameweek_predictions([1, 2, 3], 4, self.gameweek_predictions), 16
-        )
-        self.assertEqual(
-            sum_gameweek_predictions([1, 2, 3], 5, self.gameweek_predictions), 2
-        )
+        test_cases = [
+            {'players': [1, 2, 3], 'gameweek': 1, 'weights': None, 'expected': 23},
+            {'players': [1, 2, 3], 'gameweek': 2, 'weights': None, 'expected': 7},
+            {'players': [1, 2, 3], 'gameweek': 3, 'weights': None, 'expected': 10},
+            {'players': [1, 2, 3], 'gameweek': 4, 'weights': None, 'expected': 16},
+            {'players': [1, 2, 3], 'gameweek': 5, 'weights': None, 'expected': 2},
+            {'players': [2], 'gameweek': 1, 'weights': None, 'expected': 13},
+            {'players': [2], 'gameweek': 2, 'weights': None, 'expected': 2},
+            {'players': [2], 'gameweek': 3, 'weights': None, 'expected': 5},
+            {'players': [2], 'gameweek': 4, 'weights': None, 'expected': 0},
+            {'players': [2], 'gameweek': 5, 'weights': None, 'expected': 0},
+            {'players': [1, 2], 'gameweek': 4, 'weights': None, 'expected': 8},
+            {'players': [1, 2], 'gameweek': 5, 'weights': None, 'expected': 1},
+            {'players': [1, 2, 3], 'gameweek': 2, 'weights': 2, 'expected': 14},
+            {'players': [1, 2, 3], 'gameweek': 2, 'weights': [0.5, 1.5, 2.5], 'expected': 7.5},
+            {'players': [1, 2, 3], 'gameweek': 3, 'weights': [0.5, 1.5, 2.5], 'expected': 10},
+        ]
 
-        self.assertEqual(
-            sum_gameweek_predictions([2], 1, self.gameweek_predictions), 13
-        )
-        self.assertEqual(
-            sum_gameweek_predictions([2], 2, self.gameweek_predictions), 2
-        )
-        self.assertEqual(
-            sum_gameweek_predictions([2], 3, self.gameweek_predictions), 5
-        )
-        self.assertEqual(
-            sum_gameweek_predictions([2], 4, self.gameweek_predictions), 0
-        )
-        self.assertEqual(
-            sum_gameweek_predictions([2], 5, self.gameweek_predictions), 0
-        )
-
-        self.assertEqual(
-            sum_gameweek_predictions([1, 2], 4, self.gameweek_predictions), 8
-        )
-        self.assertEqual(
-            sum_gameweek_predictions([1, 2], 5, self.gameweek_predictions), 1
-        )
-
-        self.assertEqual(
-            sum_gameweek_predictions([1, 2, 3], 2, self.gameweek_predictions, 2), 14
-        )
-        self.assertEqual(
-            sum_gameweek_predictions([1, 2, 3], 2, self.gameweek_predictions, [0.5, 1.5, 2.5]), 7.5
-        )
-        self.assertEqual(
-            sum_gameweek_predictions([1, 2, 3], 3, self.gameweek_predictions, [0.5, 1.5, 2.5]), 10
-        )
+        for test_case in test_cases:
+            self.assertEqual(
+                sum_player_points(
+                    test_case['players'], 
+                    self.gameweek_predictions.loc[:, test_case['gameweek']], 
+                    test_case['weights']
+                ),
+                test_case['expected']
+            )
 
 
     def test_weight_gameweek_predictions_by_availability(self):
