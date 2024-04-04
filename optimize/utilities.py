@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 
-from predictions import sum_gameweek_predictions
+from predictions import sum_player_points
 from optimize.parameters import CAPTAIN_MULTIPLIER, RESERVE_GKP_MULTIPLIER, RESERVE_OUT_MULTIPLIER, STARTING_XI_MULTIPLER, SQUAD_EVALUATION_ROUND_FACTOR, FUTURE_GAMEWEEKS_EVALUATED
 
 GKP = 1
@@ -15,10 +15,11 @@ def suggest_squad_roles(squad: set, gameweek: int, positions: pd.Series, gamewee
     Suggests captaincy and starting XI choices for a squad combination.
     """
 
-    # Sort the squad in descending order of points
+    # Sort the squad in descending order of total points for the gameweek
+    total_points = gameweek_predictions.loc[:, gameweek]
     squad = sorted(
         squad, 
-        key=lambda player: sum_gameweek_predictions([player], gameweek, gameweek_predictions), 
+        key=lambda player: sum_player_points([player], total_points), 
         reverse=True
     )
 
@@ -74,36 +75,32 @@ def suggest_squad_roles(squad: set, gameweek: int, positions: pd.Series, gamewee
     }
 
 
-def calculate_points(roles, gameweek_predictions, gameweek, captain_multiplier=CAPTAIN_MULTIPLIER, starting_xi_multiplier=STARTING_XI_MULTIPLER, reserve_gkp_multiplier=RESERVE_GKP_MULTIPLIER, reserve_out_multiplier=RESERVE_OUT_MULTIPLIER):
+def calculate_points(roles: dict, total_points: pd.Series, captain_multiplier, starting_xi_multiplier, reserve_gkp_multiplier, reserve_out_multiplier):
     """
-    Calculates the predicted points haul for a single gameweek.
+    Calculates the points haul for a single gameweek.
     """
 
     points = 0
 
-    # Sum up predictions for each position
-    points += sum_gameweek_predictions(
-        players=[roles['captain']], 
-        gameweek=gameweek, 
-        gameweek_predictions=gameweek_predictions,
+    # Sum up points for each position
+    points += sum_player_points(
+        players=[roles['captain']],
+        total_points=total_points,
         weights=captain_multiplier
     )
-    points += sum_gameweek_predictions(
+    points += sum_player_points(
         players=list(set(roles['starting_xi']) - {roles['captain']}),
-        gameweek=gameweek,
-        gameweek_predictions=gameweek_predictions,
+        total_points=total_points,
         weights=starting_xi_multiplier
     )
-    points += sum_gameweek_predictions(
+    points += sum_player_points(
         players=[roles['reserve_gkp']],
-        gameweek=gameweek,
-        gameweek_predictions=gameweek_predictions,
+        total_points=total_points,
         weights=reserve_gkp_multiplier
     )
-    points += sum_gameweek_predictions(
+    points += sum_player_points(
         players=roles['reserve_out'],
-        gameweek=gameweek,
-        gameweek_predictions=gameweek_predictions,
+        total_points=total_points,
         weights=reserve_out_multiplier
     )
 
@@ -119,12 +116,14 @@ def evaluate_squad(squad, positions, gameweeks, gameweek_predictions, squad_eval
 
     # Sum up the predicted points haul for each gameweek.
     for gameweek in gameweeks:
+        total_points = gameweek_predictions.loc[:, gameweek]
         roles = suggest_squad_roles(
             squad, gameweek, positions, gameweek_predictions
         )
         scores.append(
             calculate_points(
-                roles, gameweek_predictions, gameweek,
+                roles=roles, 
+                total_points=total_points,
                 captain_multiplier=captain_multiplier,
                 starting_xi_multiplier=starting_xi_multiplier,
                 reserve_gkp_multiplier=reserve_gkp_multiplier,

@@ -43,31 +43,25 @@ def group_predictions_by_gameweek(predictions: pd.DataFrame) -> pd.Series:
     return predictions.groupby(['element', 'round']).sum()['total_points']
 
 
-def sum_gameweek_predictions(players: list, gameweek: int, gameweek_predictions: pd.Series, weights: Union[None, float, Iterable[float]] = None) -> float:
+def sum_player_points(players: list, total_points: pd.Series, weights: Union[None, float, Iterable[float]] = None) -> float:
     """
-    Add up (optionally weighted) predicted points for a list of players in a gameweek.
+    Add up (and optionally, weight) the total points for a list of players.
     """
     
-    try:
-        # Retrieve predictions (default value of 0) for each player
-        player_predictions = pd.Series({
-            (element, gameweek): 0 for element in players
-        })
-        player_predictions.update(
-            gameweek_predictions.loc[players, gameweek]
-        )
+    # Retrieve total points (default value of 0) for each player in the list
+    player_points = pd.Series(0, index=players)
+    for element in players:
+        if element not in total_points.index:
+            player_points.loc[element] = 0
+        else:
+            player_points.loc[element] = total_points.loc[element].sum()
 
-        # Apply weights to predicted points if provided.
-        if weights is not None:
-            player_predictions *= weights
+    # Apply weights if provided
+    if weights is not None:
+        player_points *= weights
 
-        # Sum up total points
-        return player_predictions.sum()
+    return player_points.sum()
 
-    # Return 0 points when a player has no fixtures in the gameweek.
-    except KeyError:
-        return 0
-    
 
 def weight_gameweek_predictions_by_availability(gameweek_predictions: pd.Series, elements: pd.DataFrame, next_gameweek: int):
     """
