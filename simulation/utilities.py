@@ -45,3 +45,62 @@ def make_automatic_substitutions(roles: set, minutes: pd.Series, positions: pd.S
         )
 
     return roles
+
+
+def calculate_selling_price(purchase_price: int, current_cost: int):
+    """
+    Calculates the selling price for a single player.
+    """
+
+    if current_cost <= purchase_price:
+        return current_cost
+    
+    # Apply a 50% sell-on fee to any profits
+    fee = round((current_cost - purchase_price) * 0.5)
+    return current_cost - fee
+
+
+def get_selling_prices(players: list, purchase_prices: pd.Series, now_costs: pd.Series) -> pd.Series:
+    """
+    Return a mapping of players to their selling prices.
+    """
+
+    selling_prices = pd.Series()
+
+    for player in players:
+        selling_prices.loc[player] = calculate_selling_price(
+            purchase_price=purchase_prices.loc[player],
+            current_cost=now_costs.loc[player]
+        )
+
+    return selling_prices
+
+
+def update_purchase_prices(purchase_prices: pd.Series, now_costs: pd.Series, old_squad: set, new_squad: set):
+    """
+    Returns an updated record of purchase prices after a squad change.
+    """
+
+    purchase_prices = purchase_prices.copy()
+
+    for player in new_squad - old_squad:
+        purchase_prices.loc[player] = now_costs[player]
+    for player in old_squad - new_squad:
+        purchase_prices.drop(labels=player, inplace=True)
+
+    return purchase_prices
+
+
+def update_selling_prices(selling_prices: pd.Series, now_costs: pd.Series, old_squad: set, new_squad: set):
+    """
+    Returns an updated record of selling prices after a squad change.
+    """
+
+    selling_prices = selling_prices.copy()
+
+    for player in new_squad - old_squad:
+        selling_prices.loc[player] = now_costs[player]
+    for player in old_squad - new_squad:
+        selling_prices.drop(labels=player, inplace=True)
+
+    return selling_prices
