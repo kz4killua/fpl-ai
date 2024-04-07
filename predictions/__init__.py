@@ -73,7 +73,7 @@ def weight_gameweek_predictions_by_availability(gameweek_predictions: pd.Series,
         'a': 1, 'd': 1, 'i': 0, 'u': 0, 'n': 1, 's': 1
     }).astype('float')
 
-    for gameweek_number in range(next_gameweek, int(gameweek_predictions.index.get_level_values('round').max()) + 1):
+    for gameweek_number in filter(lambda gameweek: gameweek >= next_gameweek, gameweek_predictions.index.get_level_values('round').unique()):
         
         # Weight the next week using 'chance_of_playing_next_round' and all others using 'status'
         if gameweek_number == next_gameweek:

@@ -12,7 +12,7 @@ def make_automatic_substitutions(roles: set, minutes: pd.Series, positions: pd.S
     position_counts = positions.loc[list(roles['starting_xi'])].value_counts()
     squad_limits = {GKP: 1, DEF: 5, MID: 5, FWD: 3}
     minutes = {
-        player: minutes.get(player, np.int64(0)).sum() for player in minutes.keys().unique()
+        player: minutes.get(player, np.int64(0)).sum() for player in [*roles['starting_xi'], roles['reserve_gkp'], *roles['reserve_out']]
     }
 
     for i, player in enumerate(roles['starting_xi']):
@@ -47,7 +47,7 @@ def make_automatic_substitutions(roles: set, minutes: pd.Series, positions: pd.S
     return roles
 
 
-def calculate_selling_price(purchase_price: int, current_cost: int):
+def calculate_selling_price(purchase_price: int, current_cost: int) -> int:
     """
     Calculates the selling price for a single player.
     """
@@ -76,7 +76,7 @@ def get_selling_prices(players: list, purchase_prices: pd.Series, now_costs: pd.
     return selling_prices
 
 
-def update_purchase_prices(purchase_prices: pd.Series, now_costs: pd.Series, old_squad: set, new_squad: set):
+def update_purchase_prices(purchase_prices: pd.Series, now_costs: pd.Series, old_squad: set, new_squad: set) -> pd.Series:
     """
     Returns an updated record of purchase prices after a squad change.
     """
@@ -91,7 +91,7 @@ def update_purchase_prices(purchase_prices: pd.Series, now_costs: pd.Series, old
     return purchase_prices
 
 
-def update_selling_prices(selling_prices: pd.Series, now_costs: pd.Series, old_squad: set, new_squad: set):
+def update_selling_prices(selling_prices: pd.Series, now_costs: pd.Series, old_squad: set, new_squad: set) -> pd.Series:
     """
     Returns an updated record of selling prices after a squad change.
     """
