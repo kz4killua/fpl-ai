@@ -2,7 +2,7 @@ import unittest
 
 import pandas as pd
 from optimize.utilities import GKP, MID, DEF, FWD
-from simulation.utilities import make_automatic_substitutions, calculate_selling_price, get_selling_prices, update_purchase_prices
+from simulation.utilities import make_automatic_substitutions, calculate_selling_price, get_selling_prices, update_purchase_prices, update_selling_prices
 
 
 class TestMakeAutomaticSubstitutions(unittest.TestCase):
@@ -87,7 +87,7 @@ class TestMakeAutomaticSubstitutions(unittest.TestCase):
             self.assertListEqual(substituted_roles['starting_xi'], expected['starting_xi'])
 
 
-class TestSellingPrices(unittest.TestCase):
+class TestSellingAndPurchasePrices(unittest.TestCase):
 
     def test_calculate_selling_price(self):
         
@@ -142,17 +142,18 @@ class TestSellingPrices(unittest.TestCase):
         
         test_cases = [
             {
-                'purchase_prices': pd.Series({
-                    1: 55, 2: 50, 3: 55, 4: 50
-                }),
-                'now_costs': pd.Series({
-                    1: 55, 2: 49, 3: 59, 4: 53, 5: 52
-                }),
+                'purchase_prices': pd.Series({1: 55, 2: 50, 3: 55, 4: 50}),
+                'now_costs': pd.Series({1: 55, 2: 49, 3: 59, 4: 53, 5: 52, 6: 63}),
                 'old_squad': {1, 2, 3, 4},
                 'new_squad': {1, 2, 3, 5},
-                'expected': pd.Series({
-                    1: 55, 2: 50, 3: 55, 5: 52
-                }),
+                'expected': pd.Series({1: 55, 2: 50, 3: 55, 5: 52}),
+            },
+            {
+                'purchase_prices': pd.Series({1: 55, 2: 50, 3: 55, 4: 50}),
+                'now_costs': pd.Series({1: 55, 2: 49, 3: 59, 4: 53, 5: 52, 6: 63}),
+                'old_squad': {1, 2, 3, 4},
+                'new_squad': {1, 2, 5, 6},
+                'expected': pd.Series({1: 55, 2: 50, 5: 52, 6: 63}),
             }
         ]
 
@@ -160,6 +161,36 @@ class TestSellingPrices(unittest.TestCase):
 
             result = update_purchase_prices(
                 test_case['purchase_prices'], 
+                test_case['now_costs'], 
+                test_case['old_squad'],
+                test_case['new_squad']
+            )
+            self.assertTrue((result == test_case['expected']).all())
+
+
+    def test_update_selling_prices(self):
+
+        test_cases = [
+            {
+                'selling_prices': pd.Series({1: 55, 2: 50, 3: 55, 4: 50}),
+                'now_costs': pd.Series({1: 55, 2: 49, 3: 59, 4: 53, 5: 52, 6: 63}),
+                'old_squad': {1, 2, 3, 4},
+                'new_squad': {1, 2, 3, 5},
+                'expected': pd.Series({1: 55, 2: 50, 3: 55, 5: 52}),
+            },
+            {
+                'selling_prices': pd.Series({1: 55, 2: 50, 3: 55, 4: 50}),
+                'now_costs': pd.Series({1: 55, 2: 49, 3: 59, 4: 53, 5: 52, 6: 63}),
+                'old_squad': {1, 2, 3, 4},
+                'new_squad': {1, 2, 5, 6},
+                'expected': pd.Series({1: 55, 2: 50, 5: 52, 6: 63}),
+            }
+        ]
+
+        for test_case in test_cases:
+
+            result = update_selling_prices(
+                test_case['selling_prices'], 
                 test_case['now_costs'], 
                 test_case['old_squad'],
                 test_case['new_squad']
