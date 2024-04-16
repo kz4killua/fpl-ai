@@ -2,6 +2,7 @@ import warnings
 from typing import Union, Iterable
 import pickle
 import json
+from collections import abc
 
 import pandas as pd
 import numpy as np
@@ -48,19 +49,20 @@ def sum_player_points(players: list, total_points: pd.Series, weights: Union[Non
     Add up (and optionally, weight) the total points for a list of players.
     """
     
-    # Retrieve total points (default value of 0) for each player in the list
-    player_points = pd.Series(0, index=players)
-    for element in players:
-        if element not in total_points.index:
-            player_points.loc[element] = 0
+    points = 0
+
+    # Weights should be an iterable of numeric values
+    if not isinstance(weights, abc.Iterable):
+        if weights is None:
+            weights = [1 for i in range(len(players))]
         else:
-            player_points.loc[element] = total_points.loc[element].sum()
+            weights = [weights for i in range(len(players))]
+    
+    # Sum up points for each player
+    for i, element in enumerate(players):
+        points += total_points.get(element, 0) * weights[i]
 
-    # Apply weights if provided
-    if weights is not None:
-        player_points *= weights
-
-    return player_points.sum()
+    return points
 
 
 def weight_gameweek_predictions_by_availability(gameweek_predictions: pd.Series, elements: pd.DataFrame, next_gameweek: int):
