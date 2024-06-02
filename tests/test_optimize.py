@@ -3,7 +3,7 @@ import unittest
 import pandas as pd
 import numpy as np
 
-from optimize.utilities import suggest_squad_roles, calculate_points, get_valid_transfers, evaluate_squad, make_best_transfer, calculate_budget
+from optimize.utilities import suggest_squad_roles, calculate_points, get_valid_transfers, evaluate_squad, make_best_transfer, calculate_budget, get_future_gameweeks
 from predictions import group_predictions_by_gameweek
 
 
@@ -160,3 +160,21 @@ class TestOptimize(unittest.TestCase):
                 ),
                 test_case['expected']
             )
+
+
+    def test_get_future_gameweeks(self):
+
+        test_cases = [
+            {'next_gameweek': 1, 'last_gameweek': 38, 'future_gameweeks_evaluated': 5, 'expected': [1, 2, 3, 4, 5]},
+            {'next_gameweek': 36, 'last_gameweek': 38, 'future_gameweeks_evaluated': 5, 'expected': [36, 37, 38]},
+            {'next_gameweek': 5, 'last_gameweek': 8, 'future_gameweeks_evaluated': 7, 'expected': [5, 6, 7, 8]},
+            {'next_gameweek': 5, 'last_gameweek': 38, 'future_gameweeks_evaluated': 3, 'expected': [5, 6, 7]},
+        ]
+
+        for test_case in test_cases:
+            result = get_future_gameweeks(
+                test_case['next_gameweek'], 
+                test_case['last_gameweek'],
+                test_case['future_gameweeks_evaluated']
+            )
+            self.assertListEqual(result, test_case['expected'])
