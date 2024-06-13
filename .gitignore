@@ -171,5 +171,6 @@ cython_debug/
 
 # saved files and models
 models/
+catboost_info/
 *.pkl
 *.zip
