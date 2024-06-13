@@ -171,7 +171,7 @@ def make_best_transfer(squad: set, gameweeks: list, budget: int, elements: pd.Da
     Find the best single transfer that can be made.
     """
 
-    elements.set_index('id', drop=False, inplace=True)
+    assert elements.index.name == "id"
     positions = elements['element_type']
     
     best_squad = squad
