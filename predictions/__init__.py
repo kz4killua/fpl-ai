@@ -8,15 +8,15 @@ import pandas as pd
 import numpy as np
 
 
-def make_predictions(features: pd.DataFrame) -> pd.DataFrame:
+def make_predictions(features: pd.DataFrame, model_path: str, columns_path: str) -> pd.DataFrame:
     """
     Returns a dataframe mapping player IDs and fixture details to predicted points.
     """
 
     # Load the model and prediction columns
-    with open('models/model-all/model.pkl', 'rb') as f:
+    with open(model_path, 'rb') as f:
         model = pickle.load(f)
-    with open('models/model-all/columns.json') as f:
+    with open(columns_path, 'r') as f:
         columns = json.load(f)
 
     X = features[columns]
