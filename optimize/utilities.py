@@ -193,9 +193,19 @@ def make_best_transfer(squad: set, gameweeks: list, budget: int, elements: pd.Da
     return best_squad
 
 
-def get_future_gameweeks(next_gameweek, last_gameweek=38, future_gameweeks_evaluated=FUTURE_GAMEWEEKS_EVALUATED):
+def get_future_gameweeks(next_gameweek, last_gameweek=38, wildcard_gameweeks=[], future_gameweeks_evaluated=FUTURE_GAMEWEEKS_EVALUATED):
     """List out the gameweeks to optimize over."""
-    return list(range(next_gameweek, min(last_gameweek + 1, next_gameweek + future_gameweeks_evaluated)))
+
+    future_gameweeks = list(range(next_gameweek, min(last_gameweek + 1, next_gameweek + future_gameweeks_evaluated)))
+
+    # Do not evaluate past the next wildcard gameweek
+    if wildcard_gameweeks:
+        for gameweek in sorted(wildcard_gameweeks):
+            if gameweek > next_gameweek:
+                future_gameweeks = [x for x in future_gameweeks if x < gameweek]
+                break
+
+    return future_gameweeks
 
 
 def calculate_budget(initial_squad: set, final_squad: set, initial_budget: int, selling_prices: pd.Series, now_costs: pd.Series) -> int:

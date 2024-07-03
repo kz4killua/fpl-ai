@@ -165,16 +165,90 @@ class TestOptimize(unittest.TestCase):
     def test_get_future_gameweeks(self):
 
         test_cases = [
-            {'next_gameweek': 1, 'last_gameweek': 38, 'future_gameweeks_evaluated': 5, 'expected': [1, 2, 3, 4, 5]},
-            {'next_gameweek': 36, 'last_gameweek': 38, 'future_gameweeks_evaluated': 5, 'expected': [36, 37, 38]},
-            {'next_gameweek': 5, 'last_gameweek': 8, 'future_gameweeks_evaluated': 7, 'expected': [5, 6, 7, 8]},
-            {'next_gameweek': 5, 'last_gameweek': 38, 'future_gameweeks_evaluated': 3, 'expected': [5, 6, 7]},
+            {
+                'next_gameweek': 1, 
+                'last_gameweek': 38, 
+                'future_gameweeks_evaluated': 5, 
+                'expected': [1, 2, 3, 4, 5],
+                'wildcard_gameweeks': []
+            },
+            {
+                'next_gameweek': 36, 
+                'last_gameweek': 38, 
+                'future_gameweeks_evaluated': 5, 
+                'expected': [36, 37, 38],
+                'wildcard_gameweeks': []
+            },
+            {
+                'next_gameweek': 5, 
+                'last_gameweek': 8, 
+                'future_gameweeks_evaluated': 7, 
+                'expected': [5, 6, 7, 8],
+                'wildcard_gameweeks': []
+            },
+            {
+                'next_gameweek': 5, 
+                'last_gameweek': 38, 
+                'future_gameweeks_evaluated': 3, 
+                'expected': [5, 6, 7],
+                'wildcard_gameweeks': []
+            },
+            {
+                'next_gameweek': 1, 
+                'last_gameweek': 38, 
+                'future_gameweeks_evaluated': 5, 
+                'expected': [1, 2, 3, 4, 5],
+                'wildcard_gameweeks': [10, 26],
+            },
+            {
+                'next_gameweek': 36, 
+                'last_gameweek': 38, 
+                'future_gameweeks_evaluated': 5, 
+                'expected': [36, 37, 38],
+                'wildcard_gameweeks': [10, 26], 
+            },
+            {
+                'next_gameweek': 7, 
+                'last_gameweek': 38, 
+                'future_gameweeks_evaluated': 5, 
+                'expected': [7, 8, 9],
+                'wildcard_gameweeks': [10, 26], 
+            },
+            {
+                'next_gameweek': 10, 
+                'last_gameweek': 38, 
+                'future_gameweeks_evaluated': 5, 
+                'expected': [10, 11, 12, 13, 14],
+                'wildcard_gameweeks': [10, 26], 
+            },
+            {
+                'next_gameweek': 10, 
+                'last_gameweek': 38, 
+                'future_gameweeks_evaluated': 5, 
+                'expected': [10, 11, 12],
+                'wildcard_gameweeks': [10, 13], 
+            },
+            {
+                'next_gameweek': 38, 
+                'last_gameweek': 38, 
+                'future_gameweeks_evaluated': 5, 
+                'expected': [38],
+                'wildcard_gameweeks': [38], 
+            },
+            {
+                'next_gameweek': 15, 
+                'last_gameweek': 38, 
+                'future_gameweeks_evaluated': 10, 
+                'expected': [15, 16, 17, 18],
+                'wildcard_gameweeks': [14, 19], 
+            },
         ]
 
         for test_case in test_cases:
             result = get_future_gameweeks(
-                test_case['next_gameweek'], 
-                test_case['last_gameweek'],
-                test_case['future_gameweeks_evaluated']
+                next_gameweek=test_case['next_gameweek'], 
+                last_gameweek=test_case['last_gameweek'],
+                wildcard_gameweeks=test_case['wildcard_gameweeks'],
+                future_gameweeks_evaluated=test_case['future_gameweeks_evaluated']
             )
             self.assertListEqual(result, test_case['expected'])
