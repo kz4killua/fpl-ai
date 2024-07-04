@@ -23,14 +23,16 @@ class TestOptimize(unittest.TestCase):
 
     def test_suggest_squad_roles(self):
 
-        roles = suggest_squad_roles(self.squad, 1, self.positions, self.gameweek_predictions)
+        gameweek = 1
+        roles = suggest_squad_roles(self.squad, self.positions, self.gameweek_predictions.loc[:, gameweek])
         self.assertEqual(roles['captain'], 2)
         self.assertEqual(roles['vice_captain'], 11)
         self.assertEqual(roles['reserve_gkp'], 1)
         self.assertSetEqual(set(roles['starting_xi']), {2, 3, 5, 11, 13, 4, 12, 6, 9, 8, 14})
         self.assertSetEqual(set(roles['reserve_out']), {7, 10, 15})
 
-        roles = suggest_squad_roles(self.squad, 4, self.positions, self.gameweek_predictions)
+        gameweek = 4
+        roles = suggest_squad_roles(self.squad, self.positions, self.gameweek_predictions.loc[:, gameweek])
         self.assertEqual(roles['captain'], 15)
         self.assertEqual(roles['vice_captain'], 4)
         self.assertEqual(roles['reserve_gkp'], 2)

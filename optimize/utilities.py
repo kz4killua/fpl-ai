@@ -10,13 +10,12 @@ MID = 3
 FWD = 4
 
 
-def suggest_squad_roles(squad: set, gameweek: int, positions: pd.Series, gameweek_predictions: pd.Series) -> dict:
+def suggest_squad_roles(squad: set, positions: pd.Series, total_points: pd.Series) -> dict:
     """
     Suggests captaincy and starting XI choices for a squad combination.
     """
 
     # Sort the squad in descending order of total points for the gameweek
-    total_points = gameweek_predictions.loc[:, gameweek]
     squad = sorted(
         squad, 
         key=lambda player: sum_player_points([player], total_points), 
@@ -118,7 +117,7 @@ def evaluate_squad(squad, positions, gameweeks, gameweek_predictions, squad_eval
     for gameweek in gameweeks:
         total_points = gameweek_predictions.loc[:, gameweek]
         roles = suggest_squad_roles(
-            squad, gameweek, positions, gameweek_predictions
+            squad, positions, total_points
         )
         scores.append(
             calculate_points(
