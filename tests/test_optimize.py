@@ -78,8 +78,16 @@ class TestOptimize(unittest.TestCase):
     def test_evaluate_squad(self):
         
         gameweeks = [1, 2, 3]
+        positions = self.positions.to_dict()
+        gameweek_predictions = {
+            gameweek: (
+                self.gameweek_predictions.loc[:, gameweek].to_dict()
+            )
+            for gameweek in gameweeks
+        }
+
         score = evaluate_squad(
-            self.squad, self.positions, gameweeks, self.gameweek_predictions,
+            self.squad, positions, gameweeks, gameweek_predictions,
             squad_evaluation_round_factor=0.5,
             captain_multiplier=2,
             starting_xi_multiplier=1,

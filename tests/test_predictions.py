@@ -17,28 +17,29 @@ class TestPredictions(unittest.TestCase):
     def test_sum_player_points(self):
 
         test_cases = [
-            {'players': [1, 2, 3], 'gameweek': 1, 'weights': None, 'expected': 23},
-            {'players': [1, 2, 3], 'gameweek': 2, 'weights': None, 'expected': 7},
-            {'players': [1, 2, 3], 'gameweek': 3, 'weights': None, 'expected': 10},
-            {'players': [1, 2, 3], 'gameweek': 4, 'weights': None, 'expected': 16},
-            {'players': [1, 2, 3], 'gameweek': 5, 'weights': None, 'expected': 2},
-            {'players': [2], 'gameweek': 1, 'weights': None, 'expected': 13},
-            {'players': [2], 'gameweek': 2, 'weights': None, 'expected': 2},
-            {'players': [2], 'gameweek': 3, 'weights': None, 'expected': 5},
-            {'players': [2], 'gameweek': 4, 'weights': None, 'expected': 0},
-            {'players': [2], 'gameweek': 5, 'weights': None, 'expected': 0},
-            {'players': [1, 2], 'gameweek': 4, 'weights': None, 'expected': 8},
-            {'players': [1, 2], 'gameweek': 5, 'weights': None, 'expected': 1},
+            {'players': [1, 2, 3], 'gameweek': 1, 'weights': 1, 'expected': 23},
+            {'players': [1, 2, 3], 'gameweek': 2, 'weights': 1, 'expected': 7},
+            {'players': [1, 2, 3], 'gameweek': 3, 'weights': 1, 'expected': 10},
+            {'players': [1, 2, 3], 'gameweek': 4, 'weights': 1, 'expected': 16},
+            {'players': [1, 2, 3], 'gameweek': 5, 'weights': 1, 'expected': 2},
+            {'players': [2], 'gameweek': 1, 'weights': 1, 'expected': 13},
+            {'players': [2], 'gameweek': 2, 'weights': 1, 'expected': 2},
+            {'players': [2], 'gameweek': 3, 'weights': 1, 'expected': 5},
+            {'players': [2], 'gameweek': 4, 'weights': 1, 'expected': 0},
+            {'players': [2], 'gameweek': 5, 'weights': 1, 'expected': 0},
+            {'players': [1, 2], 'gameweek': 4, 'weights': 1, 'expected': 8},
+            {'players': [1, 2], 'gameweek': 5, 'weights': 1, 'expected': 1},
             {'players': [1, 2, 3], 'gameweek': 2, 'weights': 2, 'expected': 14},
             {'players': [1, 2, 3], 'gameweek': 2, 'weights': [0.5, 1.5, 2.5], 'expected': 7.5},
             {'players': [1, 2, 3], 'gameweek': 3, 'weights': [0.5, 1.5, 2.5], 'expected': 10},
         ]
 
         for test_case in test_cases:
+            total_points = self.gameweek_predictions.loc[:, test_case['gameweek']].to_dict()
             self.assertEqual(
                 sum_player_points(
                     test_case['players'], 
-                    self.gameweek_predictions.loc[:, test_case['gameweek']], 
+                    total_points, 
                     test_case['weights']
                 ),
                 test_case['expected']

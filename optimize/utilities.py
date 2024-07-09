@@ -10,7 +10,7 @@ MID = 3
 FWD = 4
 
 
-def suggest_squad_roles(squad: set, positions: pd.Series, total_points: pd.Series) -> dict:
+def suggest_squad_roles(squad: set, positions: dict, total_points: dict) -> dict:
     """
     Suggests captaincy and starting XI choices for a squad combination.
     """
@@ -74,7 +74,7 @@ def suggest_squad_roles(squad: set, positions: pd.Series, total_points: pd.Serie
     }
 
 
-def calculate_points(roles: dict, total_points: pd.Series, captain_multiplier, starting_xi_multiplier, reserve_gkp_multiplier, reserve_out_multiplier):
+def calculate_points(roles: dict, total_points: dict, captain_multiplier: float, starting_xi_multiplier: float, reserve_gkp_multiplier: float, reserve_out_multiplier: float):
     """
     Calculates the points haul for a single gameweek.
     """
@@ -106,7 +106,7 @@ def calculate_points(roles: dict, total_points: pd.Series, captain_multiplier, s
     return points
 
 
-def evaluate_squad(squad, positions, gameweeks, gameweek_predictions, squad_evaluation_round_factor=SQUAD_EVALUATION_ROUND_FACTOR, captain_multiplier=CAPTAIN_MULTIPLIER, starting_xi_multiplier=STARTING_XI_MULTIPLER, reserve_gkp_multiplier=RESERVE_GKP_MULTIPLIER, reserve_out_multiplier=RESERVE_OUT_MULTIPLIER):
+def evaluate_squad(squad: set, positions: dict, gameweeks: list[int], gameweek_predictions: dict[int, dict[int, float]], squad_evaluation_round_factor: float = SQUAD_EVALUATION_ROUND_FACTOR, captain_multiplier: float = CAPTAIN_MULTIPLIER, starting_xi_multiplier: float = STARTING_XI_MULTIPLER, reserve_gkp_multiplier: float = RESERVE_GKP_MULTIPLIER, reserve_out_multiplier: np.ndarray = RESERVE_OUT_MULTIPLIER):
     """
     Returns a score representing the 'goodness' of a squad for upcoming 'gameweeks'.
     """
@@ -115,7 +115,7 @@ def evaluate_squad(squad, positions, gameweeks, gameweek_predictions, squad_eval
 
     # Sum up the predicted points haul for each gameweek.
     for gameweek in gameweeks:
-        total_points = gameweek_predictions.loc[:, gameweek]
+        total_points = gameweek_predictions[gameweek]
         roles = suggest_squad_roles(
             squad, positions, total_points
         )
@@ -172,6 +172,15 @@ def make_best_transfer(squad: set, gameweeks: list, budget: int, elements: pd.Da
 
     assert elements.index.name == "id"
     positions = elements['element_type']
+
+    # Use dictionaries for (much) faster lookups
+    positions = positions.to_dict()
+    gameweek_predictions = {
+        gameweek: (
+            gameweek_predictions.loc[:, gameweek].to_dict()
+        )
+        for gameweek in gameweeks
+    }
     
     best_squad = squad
     best_squad_evaluation = evaluate_squad(squad, positions, gameweeks, gameweek_predictions)
@@ -192,7 +201,7 @@ def make_best_transfer(squad: set, gameweeks: list, budget: int, elements: pd.Da
     return best_squad
 
 
-def get_future_gameweeks(next_gameweek, last_gameweek=38, wildcard_gameweeks=[], future_gameweeks_evaluated=FUTURE_GAMEWEEKS_EVALUATED):
+def get_future_gameweeks(next_gameweek: int, last_gameweek: int = 38, wildcard_gameweeks: list[int] = [], future_gameweeks_evaluated: int = FUTURE_GAMEWEEKS_EVALUATED):
     """List out the gameweeks to optimize over."""
 
     future_gameweeks = list(range(next_gameweek, min(last_gameweek + 1, next_gameweek + future_gameweeks_evaluated)))

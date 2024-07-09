@@ -1,11 +1,9 @@
 import warnings
-from typing import Union, Iterable
 import pickle
 import json
-from collections import abc
+from collections.abc import Iterable
 
 import pandas as pd
-import numpy as np
 
 
 def make_predictions(features: pd.DataFrame, model_path: str, columns_path: str) -> pd.DataFrame:
@@ -44,20 +42,18 @@ def group_predictions_by_gameweek(predictions: pd.DataFrame) -> pd.Series:
     return predictions.groupby(['element', 'round']).sum()['total_points']
 
 
-def sum_player_points(players: list, total_points: pd.Series, weights: Union[None, float, Iterable[float]] = None) -> float:
+def sum_player_points(players: list, total_points: dict, weights: float | Iterable[float] = 1) -> float:
     """
     Add up (and optionally, weight) the total points for a list of players.
     """
-    
+
+    # Note: The following approach is faster than a vectorized approach
     points = 0
 
     # Weights should be an iterable of numeric values
-    if not isinstance(weights, abc.Iterable):
-        if weights is None:
-            weights = [1 for i in range(len(players))]
-        else:
-            weights = [weights for i in range(len(players))]
-    
+    if not isinstance(weights, Iterable):
+        weights = [weights for i in range(len(players))]
+
     # Sum up points for each player
     for i, element in enumerate(players):
         points += total_points.get(element, 0) * weights[i]
@@ -69,6 +65,8 @@ def weight_gameweek_predictions_by_availability(gameweek_predictions: pd.Series,
     """
     Scale points predictions by a player's chance of playing.
     """
+
+    gameweek_predictions = gameweek_predictions.copy()
 
     next_gameweek_availability = elements.set_index('id')['chance_of_playing_next_round'].fillna(100) / 100
     future_gameweek_availability = elements.set_index('id')['status'].replace({
