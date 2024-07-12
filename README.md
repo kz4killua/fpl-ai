@@ -8,4 +8,4 @@ Dep La is an AI trained to predict fantasy football points, and optimize Fantasy
 - No training data was collected for events before the 2016-17 Premier League season. 
 
 # Related
-- [soccer-data](https://github.com/kz4killua/soccer-data) - Training data for Dep La
+- [fpl-ai-data](https://github.com/kz4killua/fpl-ai-data) - Training data for Dep La
