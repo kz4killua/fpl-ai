@@ -1,22 +1,16 @@
-import json
-
 import pandas as pd
 import numpy as np
 
-from datautil.pipeline import load_players_and_teams
-from datautil.utilities import get_previous_seasons
-from datautil.constants import LOCAL_DATA_PATH
-from features.features import engineer_features
 from optimize.utilities import make_best_transfer, suggest_squad_roles, get_future_gameweeks, calculate_points, calculate_budget, sum_player_points
 from predictions import make_predictions, group_predictions_by_gameweek, weight_gameweek_predictions_by_availability
 from simulation.utilities import make_automatic_substitutions, get_selling_prices, update_purchase_prices, update_selling_prices
 from optimize.greedy import run_greedy_optimization
+from simulation.utilities import make_automatic_substitutions, get_selling_prices, update_purchase_prices, update_selling_prices
+from simulation.loaders import load_simulation_purchase_prices, load_simulation_bootstrap_elements, load_simulation_features, load_simulation_true_results
 
 
 def get_full_name(player_id: int, elements: pd.DataFrame):
-    """
-    Returns a player's full name, formatted as `first second (web)`.
-    """
+    """Returns a player's full name, formatted as `first second (web)`."""
     first_name = elements.loc[player_id, 'first_name']
     second_name = elements.loc[player_id, 'second_name']
     web_name = elements.loc[player_id, 'web_name']
@@ -24,9 +18,7 @@ def get_full_name(player_id: int, elements: pd.DataFrame):
 
 
 def get_currency_representation(amount: int):
-    """
-    Formats game currency as a string.
-    """
+    """Formats game currency as a string."""
     return f"${round(amount / 10, 1)}"
 
 
@@ -44,9 +36,7 @@ def print_simulated_gameweek_report(
         positions: pd.Series, 
         elements: pd.DataFrame
     ):
-    """
-    Print a detailed summary of activity in a simulated gameweek.
-    """
+    """Print a detailed summary of activity in a simulated gameweek."""
 
     position_names = {1: 'GKP', 2: 'DEF', 3: 'MID', 4: 'FWD'}
 
@@ -128,38 +118,20 @@ def get_initial_team_and_budget(season: str):
     return initial_squad, initial_budget
 
 
-def get_player_costs(season: str, squad: set, gameweek: int):
-    """
-    Returns the `now_cost` of all players in the squad.
-    """
-    elements = load_gameweek_elements(season, gameweek)
-    purchase_prices = elements['now_cost'].loc[list(squad)]
-    return purchase_prices
-
-
-def load_gameweek_elements(season: str, next_gameweek: int):
-    """
-    Load player data for the next gameweek.
-    """
-
-    with open(LOCAL_DATA_PATH / f"api/{season}/bootstrap/after_gameweek_{next_gameweek-1}.json") as f:
-        bootstrap = json.load(f)
-    elements = pd.DataFrame(bootstrap['elements'])
-    elements.set_index('id', inplace=True, drop=False)
-    elements['chance_of_playing_next_round'].fillna(100, inplace=True)
-
-    return elements
-
-
-def _run_simulation(
-        season, initial_squad, initial_budget, 
-        predictions, true_minutes, true_total_points,
-        wildcard_gameweeks=[11, 26], first_gameweek=1, last_gameweek=38, log=False
-    ):
+def run_simulation(season: str, log=False, use_cache=True) -> int:
+    """Simulate a season of FPL and return the total points scored."""
     
-    current_squad = initial_squad.copy()
-    current_budget = initial_budget
-    purchase_prices = get_player_costs(season, current_squad, first_gameweek)
+    # Set up initial conditions and load results
+    first_gameweek = 1
+    last_gameweek = 38
+    wildcard_gameweeks = (11, 26)
+    initial_squad, initial_budget = get_initial_team_and_budget(season)
+    current_squad, current_budget = initial_squad, initial_budget
+    purchase_prices = load_simulation_purchase_prices(season, current_squad, first_gameweek)
+    true_results = load_simulation_true_results(season, use_cache=use_cache)
+    true_total_points = true_results['total_points']
+    true_minutes = true_results['minutes']
+
 
     total_points = 0
     for next_gameweek in range(first_gameweek, last_gameweek + 1):
@@ -169,14 +141,17 @@ def _run_simulation(
             continue
 
         # Load player data for the next gameweek
-        gameweek_elements = load_gameweek_elements(season, next_gameweek)
+        gameweek_elements = load_simulation_bootstrap_elements(season, next_gameweek)
         now_costs = gameweek_elements['now_cost']
         positions = gameweek_elements['element_type']
         selling_prices = get_selling_prices(current_squad, purchase_prices, now_costs)
 
-        # Aggregate and pre-process predictions
+        # Make, aggregate and process predictions
+        features = load_simulation_features(season, next_gameweek, use_cache=use_cache)
+        model_path = f"models/ensemble/excluded-{season}.pkl"
+        columns_path = f"models/ensemble/columns.json"
+        predictions = make_predictions(features, model_path, columns_path)
         gameweek_predictions = group_predictions_by_gameweek(predictions)
-        gameweek_predictions = gameweek_predictions.loc[gameweek_elements['id'].values, :]
         gameweek_predictions = weight_gameweek_predictions_by_availability(gameweek_predictions, gameweek_elements, next_gameweek)
 
         # Check which gameweeks to optimize for.
@@ -244,44 +219,5 @@ def _run_simulation(
         current_budget = best_squad_budget
         purchase_prices = updated_purchase_prices
         selling_prices = updated_selling_prices
-
-    return total_points
-
-
-def run_simulation(season: str, log=False, use_cache=True):
-    """
-    Simulates a season of FPL and returns the total points scored.
-    """
-    
-    fixtures = pd.read_csv(f"data/api/{season}/fixtures.csv")
-    fixtures['kickoff_time'] = pd.to_datetime(fixtures['kickoff_time'])
-
-    # Load predictions and features
-    if use_cache:
-        local_players = pd.read_pickle(f'cache/local_players-{season}.pkl')
-        features = pd.read_pickle(f'cache/features-{season}.pkl')
-        predictions = pd.read_pickle(f'cache/predictions-{season}.pkl')
-    else:
-        previous_seasons = get_previous_seasons(season)
-        local_players, local_teams = load_players_and_teams(previous_seasons)
-        features, columns = engineer_features(local_players, local_teams)
-        model_path = f"models/ensemble/excluded-{season}.pkl"
-        columns_path = f"models/ensemble/columns.json"
-        predictions = make_predictions(features, model_path, columns_path)
-
-    # Get true points and minutes
-    season_players = local_players[local_players['season'] == season]
-    true_total_points = season_players[
-        ['element', 'round', 'total_points']
-    ].groupby(['element', 'round']).sum()['total_points']
-    true_minutes = season_players[
-        ['element', 'round', 'minutes']
-    ].groupby(['element', 'round']).sum()['minutes']
-
-    initial_squad, initial_budget = get_initial_team_and_budget(season)
-    total_points = _run_simulation(
-        season, initial_squad, initial_budget, predictions, 
-        true_minutes, true_total_points, log=log
-    )
 
     return total_points
