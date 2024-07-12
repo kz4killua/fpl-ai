@@ -3,6 +3,7 @@ import unittest
 import pandas as pd
 from optimize.utilities import GKP, MID, DEF, FWD
 from simulation.utilities import make_automatic_substitutions, calculate_selling_price, get_selling_prices, update_purchase_prices, update_selling_prices
+from simulation.loaders import load_simulation_true_results, load_simulation_players_and_teams, load_simulation_purchase_prices
 
 
 class TestMakeAutomaticSubstitutions(unittest.TestCase):
@@ -196,3 +197,41 @@ class TestSellingAndPurchasePrices(unittest.TestCase):
                 test_case['new_squad']
             )
             self.assertTrue((result == test_case['expected']).all())
+
+
+class TestLoaders(unittest.TestCase):
+
+    def test_load_simulation_true_results(self):
+        true_results = load_simulation_true_results('2023-24', use_cache=False)
+        self.assertEqual(true_results['total_points'].loc[353, 38], 15)
+        self.assertEqual(true_results['total_points'].loc[353, 37], 11)
+        self.assertEqual(true_results['minutes'].loc[353, 37], 171)
+
+
+    def test_load_simulation_purchase_prices(self):
+        purchase_prices = load_simulation_purchase_prices('2023-24', {415, 6}, 1)
+        self.assertEqual(purchase_prices.loc[415], 75)
+        self.assertEqual(purchase_prices.loc[6], 75)
+        
+        purchase_prices = load_simulation_purchase_prices('2023-24', {415, 6}, 35)
+        self.assertEqual(purchase_prices.loc[415], 82)
+        self.assertEqual(purchase_prices.loc[6], 74)
+
+    
+    def test_load_simulation_players_and_teams(self):
+
+        local_players, local_teams = load_simulation_players_and_teams('2017-18', 1)
+        self.assertSequenceEqual(local_players['season'].max(), '2016-17')
+        self.assertSequenceEqual(local_teams['fpl_season'].max(), '2016-17')
+        self.assertEqual(local_players[local_players['season'] == '2016-17']['round'].max(), 38)
+        self.assertEqual(len(local_teams[local_teams['fpl_season'] == '2017-18']), 0)
+        self.assertEqual(len(local_teams[local_teams['fpl_season'] == '2017-18']), 0)
+        self.assertEqual(len(local_teams[local_teams['fpl_season'] == '2016-17']), 38 * 20)
+
+        local_players, local_teams = load_simulation_players_and_teams('2017-18', 10)
+        self.assertSequenceEqual(local_players['season'].max(), '2017-18')
+        self.assertSequenceEqual(local_teams['fpl_season'].max(), '2017-18')
+        self.assertEqual(local_players[local_players['season'] == '2016-17']['round'].max(), 38)
+        self.assertEqual(local_players[local_players['season'] == '2017-18']['round'].max(), 9)
+        self.assertEqual(len(local_teams[local_teams['fpl_season'] == '2017-18']), 9 * 20)
+        self.assertEqual(len(local_teams[local_teams['fpl_season'] == '2016-17']), 38 * 20)
