@@ -108,7 +108,7 @@ def load_simulation_players_and_teams(season: str, next_gameweek: int):
 def load_simulation_features(season: str, next_gameweek: int, use_cache=True):
     """Get prediction features for the next gameweek."""
 
-    cache_path = Path(f'cache/simulation/predictions-{season}-{next_gameweek}.pkl')
+    cache_path = Path(f'cache/simulation/features-{season}-{next_gameweek}.pkl')
 
     # Load predictions from cache (if available)
     if use_cache and cache_path.exists():
