@@ -39,6 +39,7 @@ def get_player_matchups(season, elements, teams, fixture):
     records = pd.DataFrame({'code': codes})
 
     # Fill in feature values
+    records['season'] = season
     records['element'] = records['code'].map(elements['id'])
     records['element_type'] = records['code'].map(elements['element_type'])
     records['team'] = records['code'].map(elements['team'])
@@ -46,10 +47,9 @@ def get_player_matchups(season, elements, teams, fixture):
     records['fixture'] = fixture['id']
     records['kickoff_time'] = fixture['kickoff_time']
     records['round'] = fixture['event']
-    records['was_home'] = fixture['team_h'] == records['team']
-    records['season'] = season
-    records.loc[records['was_home'] == True, 'opponent_team'] = fixture['team_a']
-    records.loc[records['was_home'] == False, 'opponent_team'] = fixture['team_h']
+    records['was_home'] = (fixture['team_h'] == records['team']).astype(int)
+    records.loc[records['was_home'] == 1, 'opponent_team'] = fixture['team_a']
+    records.loc[records['was_home'] == 0, 'opponent_team'] = fixture['team_h']
     records['opponent_team_code'] = records['opponent_team'].map(teams['code'])
 
     return records
