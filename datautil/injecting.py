@@ -4,19 +4,17 @@ import numpy as np
 import pandas as pd
 
 
-def insert_fixture_records(fixtures, local_players, local_teams, season, elements, teams):
+def insert_fixture_records(season, next_gameweek, fixtures, local_players, local_teams, bootstrap_elements, bootstrap_teams):
     """Add records for predicting future fixtures."""
 
-    last_gameweek = local_players[local_players['season'] == season]['round'].max()
-
-    for _, fixture in fixtures[fixtures['event'] > last_gameweek].iterrows():
+    for _, fixture in fixtures[fixtures['event'] >= next_gameweek].iterrows():
 
         # Add player records
-        player_matchups = get_player_matchups(season, elements, teams, fixture)
+        player_matchups = get_player_matchups(season, bootstrap_elements, bootstrap_teams, fixture)
         local_players = pd.concat([local_players, player_matchups])
 
         # Add team records
-        team_matchups = get_team_matchups(season, teams, fixture)
+        team_matchups = get_team_matchups(season, bootstrap_teams, fixture)
         local_teams = pd.concat([local_teams, team_matchups])
 
     local_players.reset_index(inplace=True, drop=True)

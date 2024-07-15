@@ -120,9 +120,10 @@ def load_simulation_features(season: str, next_gameweek: int, use_cache=True):
     bootstrap_teams = load_simulation_bootstrap_teams(season, next_gameweek)
     local_players, local_teams = load_simulation_players_and_teams(season, next_gameweek)
     local_players, local_teams = insert_fixture_records(
-        fixtures, local_players, local_teams, season, bootstrap_elements, bootstrap_teams
+        season, next_gameweek, fixtures, local_players, local_teams, bootstrap_elements, bootstrap_teams
     )
     features, _ = engineer_features(local_players, local_teams)
+    features = features[features['season'] == season]
 
     # Save features to cache (if requested)
     if use_cache:
