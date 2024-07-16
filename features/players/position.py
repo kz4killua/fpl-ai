@@ -1,13 +1,17 @@
+import itertools
 import pandas as pd
 import numpy as np
 
 from ..base import FeatureEngineeringStep
-from ..utilities import iter_players, exponential_rolling
+from ..utilities import exponential_rolling
 
 
 class PositionAveragesAgainstOpponent(FeatureEngineeringStep):
     """
     Calculate how well players in each position perform against the next opponent.
+
+    For each player, this answers the question: 
+    "How well do other players in my position perform against this opponent, on average?"
     """
 
     HALFLIFES = {
@@ -33,82 +37,93 @@ class PositionAveragesAgainstOpponent(FeatureEngineeringStep):
         'understat_xGBuildup': 390,
     }
 
-    def engineer_features(self, players):
+
+    def engineer_features(self, players: pd.DataFrame) -> pd.DataFrame:
+
+        if not players['kickoff_time'].is_monotonic_increasing:
+            raise ValueError("Kickoff times must be in increasing order.")
 
         output = pd.DataFrame(
-            columns=list(self.HALFLIFES.keys()), dtype=float, index=players.index
+            columns=list(self.HALFLIFES.keys()), 
+            dtype=float, 
+            index=players.index
         )
 
-        # Sum up each position's performance against each opponent
+        # Sum up each position's performance against each opponent (per fixture)
         grouped = players.groupby(
-            ['season', 'fixture', 'opponent_team_code', 'understat_position']
+            ['season', 'fixture', 'opponent_team_code', 'understat_position'],
+            sort=False
         )[list(self.HALFLIFES.keys())].sum()
 
-        # Get all season-fixture combinations (in order of kickoff time)
+        # Store the kickoff times for each season-fixture combination
+        kickoff_times = players.set_index(['season', 'fixture'])['kickoff_time']
+        kickoff_times = kickoff_times[~kickoff_times.index.duplicated()]
+
+        # Get all season-fixture combinations
         indices = pd.MultiIndex.from_product(
-            [players['season'].unique(), players['fixture'].unique()], names=['season', 'fixture']
+            [players['season'].unique(), players['fixture'].unique()], 
+            names=['season', 'fixture']
         )
+
+        features = dict()
+
 
         for column, halflife in self.HALFLIFES.items():
 
-            averages = {}
+            for opponent, position in itertools.product(
+                players['opponent_team_code'].unique(),
+                players['understat_position'].unique()
+            ):
+                
+                # Ignore players with no understat.com records
+                if (position is np.nan):
+                    continue
 
-            # Compute each opponent's average performance vs each position
-            for opponent in players['opponent_team_code'].unique():
-                for position in players['understat_position'].unique():
+                # Ignore invalid (opponent, position) combinations
+                try:
+                    series = grouped.loc[:, :, opponent, position][column]
+                except KeyError:
+                    continue
 
-                    if position is np.nan:
-                        continue
+                # Get kickoff times for (opponent, position) combination
+                times = kickoff_times.loc[series.index]
 
-                    # Get data for relevant players
-                    try:
-                        series = grouped.loc[:, :, opponent, position][column]
-
-                    # Skip opponents without previous fixtures
-                    except KeyError:
-                        continue
-
-                    # Get kickoff times of all relevant players
-                    times = players[
-                        (players['opponent_team_code'] == opponent)
-                        & (players['understat_position'] == position)
-                    ]['kickoff_time'].drop_duplicates()
-
-                    # Compute weighted averages over previous games
-                    averages[opponent, position] = exponential_rolling(
-                        series=series, times=times, halflife=pd.Timedelta(days=halflife), shift=0
-                    )
-
-                    # Re-index to cover all (season, fixture) combinations
-                    averages[opponent, position] = averages[opponent, position].reindex(
-                        indices
-                    )
-
-                    # Shift values by 1
-                    averages[opponent, position] = averages[opponent, position].shift(1, fill_value=0)
-
-                    # Fill in the gaps
-                    averages[opponent, position] = averages[opponent, position].fillna(method='ffill').fillna(0)
-
-
-            for opponent, position in averages.keys():
-            
-                # Pick out the relevant players (playing against opponent)
-                subset = players[
-                    (players['opponent_team_code'] == opponent) & (players['last_position'] == position)
-                ]
-        
-                # Map in opponent position-specific performances
-                output.loc[subset.index, column] = subset.set_index(['season', 'fixture']).index.map(
-                    averages[opponent, position]
+                # Compute weighted averages, indexed by (season, fixture)
+                averages = exponential_rolling(
+                    series=series, times=times, halflife=pd.Timedelta(days=halflife), shift=0
                 )
+                averages = averages.reindex(indices)
+                averages = averages.shift(1, fill_value=0)
+                averages = averages.ffill()
+                averages = averages.fillna(0)
+                averages = averages.to_dict()
 
-        # Fill in missing values
-        output = output.fillna(0)
+                features[column, opponent, position] = averages
+
+
+        def mapper(row: pd.Series, column: str) -> float:
+            """Retrieve a specific average from the features dictionary."""
+            opponent = row['opponent_team_code']
+            position = row['last_position']
+            season = row['season']
+            fixture = row['fixture']
+
+            # Return 0 if the average does not exist
+            try:
+                averages = features[column, opponent, position]
+            except KeyError:
+                return 0
+
+            return averages[season, fixture]
+        
+
+        # Finally, map the averages to the appropriate players
+        for column, halflife in self.HALFLIFES.items():
+            output[column] = players.apply(lambda row: mapper(row, column), axis=1)
 
         # Rename columns of the output dataframe
         output = output.rename(
-            lambda c: f"opponent_position_average_{c}_{halflife}", axis=1
+            lambda c: f"opponent_position_average_{c}_{self.HALFLIFES[c]}", axis=1
         )
 
         return output
