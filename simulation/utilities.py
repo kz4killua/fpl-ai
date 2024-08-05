@@ -5,6 +5,14 @@ from copy import deepcopy
 from optimize.utilities import GKP, DEF, MID, FWD, calculate_points
 
 
+def get_player_name(player_id: int, elements: pd.DataFrame):
+    """Returns a player's full name, formatted as `first second (web)`."""
+    first_name = elements.loc[player_id, 'first_name']
+    second_name = elements.loc[player_id, 'second_name']
+    web_name = elements.loc[player_id, 'web_name']
+    return f"{first_name} {second_name} ({web_name})"
+
+
 def make_automatic_substitutions(roles: set, minutes: pd.Series, positions: pd.Series) -> dict:
     """Returns squad roles after making automatic substitutions."""
 
