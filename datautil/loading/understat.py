@@ -3,6 +3,8 @@
 import os
 
 import pandas as pd
+from pathlib import Path
+from datautil.utilities import convert_season_to_year, convert_year_to_season
 
 
 def load_understat_players():
@@ -13,20 +15,15 @@ def load_understat_players():
     for item in os.scandir('data/understat/player/matches'):
         if item.name.endswith('.csv'):
             
-            # Read each player's data
             player = pd.read_csv(item.path)
-
-            # Add general player information
             player['player_id'] = int(item.name[:-4])
 
-            # Save to the list
             players.append(player)
 
-    # Concatenate all players
     players = pd.concat(players)
 
     # Add a column for the FPL season format
-    players['fpl_season'] = players['season'].apply(understat_season_to_fpl_season)
+    players['fpl_season'] = players['season'].apply(convert_year_to_season)
     
     return players
 
@@ -37,21 +34,19 @@ def load_understat_teams(seasons):
     teams = []
 
     for season in seasons:
-        season = season[:4]
+        understat_season = convert_season_to_year(season)
 
-        for item in os.scandir(f'data/understat/season/{season}/teams'):
+        path = Path(f'data/understat/season/{understat_season}/teams')
+        if not path.exists():
+            continue
+
+        for item in os.scandir(path):
             if item.name.endswith('.csv'):
 
-                # Read each team's data
                 team = pd.read_csv(item.path)
-
-                # Add general information
-                team['fpl_season'] = understat_season_to_fpl_season(season)
-
-                # Add to the list
+                team['fpl_season'] = season
                 teams.append(team)
 
-    # Concatenate all teams
     teams = pd.concat(teams, ignore_index=True)
 
     return teams
@@ -63,10 +58,14 @@ def load_understat_fixtures(seasons):
     fixtures = []
 
     for season in seasons:
-        dates = pd.read_csv(f'data/understat/season/{season[:4]}/dates.csv')
+        understat_season = convert_season_to_year(season)
 
+        path = Path(f'data/understat/season/{understat_season}/dates.csv')
+        if not path.exists():
+            continue
+
+        dates = pd.read_csv(path)
         dates['fpl_season'] = season
-        
         fixtures.append(dates)
 
     fixtures = pd.concat(fixtures, ignore_index=True)
@@ -85,13 +84,13 @@ def load_fixture_ids(seasons):
     fixture_ids = []
 
     for season in seasons:
+        understat_season = convert_season_to_year(season)
 
-        understat_season = int(season[:4])
-        
-        # Load each season's fixture ID mappings
-        df = pd.read_csv(f'data/understat/season/{understat_season}/fixture_ids.csv')
+        path = Path(f'data/understat/season/{understat_season}/fixture_ids.csv')
+        if not path.exists():
+            continue
 
-        # Add extra helpful information
+        df = pd.read_csv(path)
         df['fpl_season'] = season
         df['understat_season'] = understat_season
 
@@ -100,8 +99,3 @@ def load_fixture_ids(seasons):
     fixture_ids = pd.concat(fixture_ids, ignore_index=True)
 
     return fixture_ids
-
-
-def understat_season_to_fpl_season(season):
-    """Format a season as yyyy-yy."""
-    return  str(season) + '-' + str(int(season) + 1)[-2:]

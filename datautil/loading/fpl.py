@@ -28,7 +28,10 @@ def load_fpl_players(seasons):
             if item.name.endswith('.csv'):
 
                 # Read each player's data
-                player = pd.read_csv(item.path)
+                try:
+                    player = pd.read_csv(item.path)
+                except pd.errors.EmptyDataError:
+                    continue
 
                 # Add season information
                 player['season'] = season

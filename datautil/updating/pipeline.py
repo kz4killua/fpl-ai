@@ -1,4 +1,5 @@
 import json
+import numpy as np
 
 from .understat.localdata import save_understat_league_dates_data
 from .understat.localdata import save_understat_league_teams_data
@@ -12,7 +13,11 @@ from datautil.constants import LOCAL_DATA_PATH
 def update_local_data(season, elements, events, teams):
     """Update local data if it is out of date."""
 
-    last_updated_gameweek = int(events[events['data_checked'] == True]['id'].max())
+    checked_gameweeks = events[events['data_checked'] == True]['id']
+    if checked_gameweeks.empty:
+        last_updated_gameweek = 0
+    else:
+        last_updated_gameweek = int(checked_gameweeks.max())
 
     # Check if the local data is already up to date
     checkpoint = LOCAL_DATA_PATH / f"api/{season}/local_players_last_update.json"
@@ -26,12 +31,14 @@ def update_local_data(season, elements, events, teams):
     update_local_teams(season, teams)
     update_local_fixtures(season)
     update_bootstrap_data(season)
-    save_understat_league_dates_data(season)
-    save_understat_league_teams_data(season)
-    save_understat_player_matches_data(season)
-    update_player_ids(season)
-    update_team_ids(season)
-    update_fixture_ids(season)
+
+    if last_updated_gameweek != 0:
+        save_understat_league_dates_data(season)
+        save_understat_league_teams_data(season)
+        save_understat_player_matches_data(season)
+        update_player_ids(season)
+        update_team_ids(season)
+        update_fixture_ids(season)
 
     # Keep track of the last updated gameweek
     checkpoint.parent.mkdir(parents=True, exist_ok=True)
