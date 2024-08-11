@@ -1,7 +1,6 @@
 import pandas as pd
 
-from optimize.utilities import get_valid_transfers, make_best_transfer, calculate_budget
-from simulation.utilities import update_selling_prices
+from optimize.utilities import get_valid_transfers, make_best_transfer, calculate_budget, update_selling_prices
 
 
 def run_greedy_optimization(

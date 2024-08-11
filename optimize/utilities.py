@@ -1,13 +1,27 @@
+from typing import Iterable
+
 import pandas as pd
 import numpy as np
 
-from predictions import sum_player_points
 from optimize.parameters import CAPTAIN_MULTIPLIER, RESERVE_GKP_MULTIPLIER, RESERVE_OUT_MULTIPLIER, STARTING_XI_MULTIPLER, SQUAD_EVALUATION_ROUND_FACTOR, FUTURE_GAMEWEEKS_EVALUATED
+from datautil.utilities import GKP, DEF, MID, FWD
 
-GKP = 1
-DEF = 2
-MID = 3
-FWD = 4
+
+def sum_player_points(players: list, total_points: dict, weights: float | Iterable[float] = 1) -> float:
+    """Add up (and optionally, weight) the total points for a list of players."""
+
+    # Note: The following approach is faster than a vectorized approach
+    points = 0
+
+    # Weights should be an iterable of numeric values
+    if not isinstance(weights, Iterable):
+        weights = [weights for i in range(len(players))]
+
+    # Sum up points for each player
+    for i, element in enumerate(players):
+        points += total_points.get(element, 0) * weights[i]
+
+    return points
 
 
 def suggest_squad_roles(squad: set, positions: dict, total_points: dict) -> dict:
@@ -112,6 +126,9 @@ def evaluate_squad(squad: set, positions: dict, gameweeks: list[int], gameweek_p
     """
 
     scores = []
+
+    if not isinstance(gameweek_predictions, dict):
+        raise ValueError("gameweek_predictions should be a dictionary.")
 
     # Sum up the predicted points haul for each gameweek.
     for gameweek in gameweeks:
@@ -222,3 +239,29 @@ def calculate_budget(initial_squad: set, final_squad: set, initial_budget: int, 
     transfers_out = initial_squad - final_squad
     final_budget = initial_budget + selling_prices.loc[list(transfers_out)].sum() - now_costs.loc[list(transfers_in)].sum()
     return final_budget
+
+
+def update_purchase_prices(purchase_prices: pd.Series, now_costs: pd.Series, old_squad: set, new_squad: set) -> pd.Series:
+    """Returns an updated record of purchase prices after a squad change."""
+
+    purchase_prices = purchase_prices.copy()
+
+    for player in new_squad - old_squad:
+        purchase_prices.loc[player] = now_costs[player]
+    for player in old_squad - new_squad:
+        purchase_prices.drop(labels=player, inplace=True)
+
+    return purchase_prices
+
+
+def update_selling_prices(selling_prices: pd.Series, now_costs: pd.Series, old_squad: set, new_squad: set) -> pd.Series:
+    """Returns an updated record of selling prices after a squad change."""
+
+    selling_prices = selling_prices.copy()
+
+    for player in new_squad - old_squad:
+        selling_prices.loc[player] = now_costs[player]
+    for player in old_squad - new_squad:
+        selling_prices.drop(labels=player, inplace=True)
+
+    return selling_prices

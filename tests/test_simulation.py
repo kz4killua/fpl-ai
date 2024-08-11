@@ -1,8 +1,9 @@
 import unittest
 
 import pandas as pd
-from optimize.utilities import GKP, MID, DEF, FWD
-from simulation.utilities import make_automatic_substitutions, calculate_selling_price, get_selling_prices, update_purchase_prices, update_selling_prices
+from datautil.utilities import GKP, MID, DEF, FWD
+from simulation.utilities import make_automatic_substitutions, calculate_selling_price, get_selling_prices
+from optimize.utilities import update_purchase_prices, update_selling_prices
 from simulation.loaders import load_simulation_true_results, load_simulation_players_and_teams, load_simulation_purchase_prices
 
 

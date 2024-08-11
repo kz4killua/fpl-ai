@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 from copy import deepcopy
 
-from optimize.utilities import GKP, DEF, MID, FWD, calculate_points
+from datautil.utilities import GKP, DEF, MID, FWD
 
 
 def get_player_name(player_id: int, elements: pd.DataFrame):
@@ -80,35 +80,5 @@ def get_selling_prices(players: list, purchase_prices: pd.Series, now_costs: pd.
             purchase_price=purchase_prices.loc[player],
             current_cost=now_costs.loc[player]
         )
-
-    return selling_prices
-
-
-def update_purchase_prices(purchase_prices: pd.Series, now_costs: pd.Series, old_squad: set, new_squad: set) -> pd.Series:
-    """
-    Returns an updated record of purchase prices after a squad change.
-    """
-
-    purchase_prices = purchase_prices.copy()
-
-    for player in new_squad - old_squad:
-        purchase_prices.loc[player] = now_costs[player]
-    for player in old_squad - new_squad:
-        purchase_prices.drop(labels=player, inplace=True)
-
-    return purchase_prices
-
-
-def update_selling_prices(selling_prices: pd.Series, now_costs: pd.Series, old_squad: set, new_squad: set) -> pd.Series:
-    """
-    Returns an updated record of selling prices after a squad change.
-    """
-
-    selling_prices = selling_prices.copy()
-
-    for player in new_squad - old_squad:
-        selling_prices.loc[player] = now_costs[player]
-    for player in old_squad - new_squad:
-        selling_prices.drop(labels=player, inplace=True)
 
     return selling_prices

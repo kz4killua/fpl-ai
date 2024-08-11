@@ -1,21 +1,77 @@
 import warnings
 import pickle
 import json
-from collections.abc import Iterable
+from copy import deepcopy
 
 import pandas as pd
+import numpy as np
+from sklearn.base import BaseEstimator
+
+from datautil.utilities import GKP, DEF, MID, FWD
+
+
+class PositionSplitEstimator(BaseEstimator):
+    """Uses different estimators for different player positions."""
+
+    def __init__(self, estimator):
+        self.position_column = 'element_type'
+        self.gkp_estimator = deepcopy(estimator)
+        self.def_estimator = deepcopy(estimator)
+        self.mid_estimator = deepcopy(estimator)
+        self.fwd_estimator = deepcopy(estimator)
+
+
+    def _get_position_masks(self, x):
+        """Returns masks for the different player positions."""
+
+        gkps = x[self.position_column] == GKP
+        defs = x[self.position_column] == DEF
+        mids = x[self.position_column] == MID
+        fwds = x[self.position_column] == FWD
+
+        if (gkps.sum() + defs.sum() + mids.sum() + fwds.sum()) != len(x):
+            raise ValueError("The input data does not contain the correct number of player types.")
+
+        return gkps, defs, mids, fwds
+
+
+    def _remove_position_column(self, x):
+        """Removes the position column from the data."""
+        return x.drop(columns=self.position_column)
+
+
+    def fit(self, x, y):
+        gkps, defs, mids, fwds = self._get_position_masks(x)
+        x = self._remove_position_column(x)
+        self.gkp_estimator.fit(x[gkps], y[gkps])
+        self.def_estimator.fit(x[defs], y[defs])
+        self.mid_estimator.fit(x[mids], y[mids])
+        self.fwd_estimator.fit(x[fwds], y[fwds])
+        return self
+    
+
+    def predict(self, x):
+        y = np.zeros(len(x))
+        gkps, defs, mids, fwds = self._get_position_masks(x)
+        x = self._remove_position_column(x)
+        y[gkps] = self.gkp_estimator.predict(x[gkps])
+        y[defs] = self.def_estimator.predict(x[defs])
+        y[mids] = self.mid_estimator.predict(x[mids])
+        y[fwds] = self.fwd_estimator.predict(x[fwds])
+        return y
 
 
 def make_predictions(features: pd.DataFrame, model_path: str, columns_path: str) -> pd.DataFrame:
-    """
-    Returns a dataframe mapping player IDs and fixture details to predicted points.
-    """
+    """Returns a dataframe mapping player IDs and fixture details to predicted points."""
 
     # Load the model and prediction columns
     with open(model_path, 'rb') as f:
         model = pickle.load(f)
     with open(columns_path, 'r') as f:
         columns = json.load(f)
+
+    if 'total_points' in columns:
+        columns.remove('total_points')
 
     X = features[columns]
 
@@ -36,35 +92,12 @@ def make_predictions(features: pd.DataFrame, model_path: str, columns_path: str)
 
 
 def group_predictions_by_gameweek(predictions: pd.DataFrame) -> pd.Series:
-    """
-    Sum up the number of points per player in each gameweek.
-    """
+    """Sum up the number of points per player in each gameweek."""
     return predictions.groupby(['element', 'round']).sum()['total_points']
 
 
-def sum_player_points(players: list, total_points: dict, weights: float | Iterable[float] = 1) -> float:
-    """
-    Add up (and optionally, weight) the total points for a list of players.
-    """
-
-    # Note: The following approach is faster than a vectorized approach
-    points = 0
-
-    # Weights should be an iterable of numeric values
-    if not isinstance(weights, Iterable):
-        weights = [weights for i in range(len(players))]
-
-    # Sum up points for each player
-    for i, element in enumerate(players):
-        points += total_points.get(element, 0) * weights[i]
-
-    return points
-
-
 def weight_gameweek_predictions_by_availability(gameweek_predictions: pd.Series, elements: pd.DataFrame, next_gameweek: int):
-    """
-    Scale points predictions by a player's chance of playing.
-    """
+    """Scale points predictions by a player's chance of playing."""
 
     gameweek_predictions = gameweek_predictions.copy()
 

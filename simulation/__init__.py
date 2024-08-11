@@ -1,20 +1,11 @@
 import pandas as pd
 import numpy as np
 
-from optimize.utilities import make_best_transfer, suggest_squad_roles, get_future_gameweeks, calculate_points, calculate_budget, sum_player_points
+from optimize import optimize_squad
+from optimize.utilities import suggest_squad_roles, calculate_points, calculate_budget, sum_player_points, update_purchase_prices, update_selling_prices
 from predictions import make_predictions, group_predictions_by_gameweek, weight_gameweek_predictions_by_availability
-from simulation.utilities import make_automatic_substitutions, get_selling_prices, update_purchase_prices, update_selling_prices
-from optimize.greedy import run_greedy_optimization
-from simulation.utilities import make_automatic_substitutions, get_selling_prices, update_purchase_prices, update_selling_prices
+from simulation.utilities import make_automatic_substitutions, get_selling_prices, get_player_name
 from simulation.loaders import load_simulation_purchase_prices, load_simulation_bootstrap_elements, load_simulation_features, load_simulation_true_results
-
-
-def get_full_name(player_id: int, elements: pd.DataFrame):
-    """Returns a player's full name, formatted as `first second (web)`."""
-    first_name = elements.loc[player_id, 'first_name']
-    second_name = elements.loc[player_id, 'second_name']
-    web_name = elements.loc[player_id, 'web_name']
-    return f"{first_name} {second_name} ({web_name})"
 
 
 def get_currency_representation(amount: int):
@@ -62,7 +53,7 @@ def print_simulated_gameweek_report(
             print("   ", end=" ")
 
         print(f"{position_names[positions.loc[player]]}", end=" ")
-        print(f"{get_full_name(player, elements)}", end=" ")
+        print(f"{get_player_name(player, elements)}", end=" ")
         print(f"[{sum_player_points([player], player_gameweek_points)} pts]", end=" ")
         print()
 
@@ -83,16 +74,16 @@ def print_simulated_gameweek_report(
             print("    ", end=" ")
 
         print(f"{position_names[positions.loc[player]]}", end=" ")
-        print(f"{get_full_name(player, elements)}", end=" ")
+        print(f"{get_player_name(player, elements)}", end=" ")
         print(f"[{sum_player_points([player], player_gameweek_points)} pts]", end=" ")
         print()
 
     # Print transfer information
     print("\nTransfers")
     for player in (final_squad - initial_squad):
-        print(f"-> {get_full_name(player, elements)} ({get_currency_representation(final_squad_purchase_prices.loc[player])})")
+        print(f"-> {get_player_name(player, elements)} ({get_currency_representation(final_squad_purchase_prices.loc[player])})")
     for player in (initial_squad - final_squad):
-        print(f"<- {get_full_name(player, elements)} ({get_currency_representation(initial_squad_selling_prices.loc[player])})")
+        print(f"<- {get_player_name(player, elements)} ({get_currency_representation(initial_squad_selling_prices.loc[player])})")
 
     # Print budget and squad value
     value = final_squad_selling_prices.loc[list(final_squad)].sum()
@@ -148,28 +139,19 @@ def run_simulation(season: str, log=False, use_cache=True) -> int:
 
         # Make, aggregate and process predictions
         features = load_simulation_features(season, next_gameweek, use_cache=use_cache)
-        model_path = f"models/ensemble/excluded-{season}.pkl"
-        columns_path = f"models/ensemble/columns.json"
+        model_path = f"cache/simulation/excluded-{season}-model.pkl"
+        columns_path = f"cache/simulation/columns.json"
         predictions = make_predictions(features, model_path, columns_path)
         gameweek_predictions = group_predictions_by_gameweek(predictions)
         gameweek_predictions = weight_gameweek_predictions_by_availability(gameweek_predictions, gameweek_elements, next_gameweek)
 
-        # Check which gameweeks to optimize for.
-        future_gameweeks = get_future_gameweeks(next_gameweek, last_gameweek, wildcard_gameweeks)
-        if (season == '2022-23') and (7 in future_gameweeks):
-            future_gameweeks.remove(7)
-
-        # Make transfers and substitutions
-        if (next_gameweek == 1) or (next_gameweek in wildcard_gameweeks):
-            best_squad = run_greedy_optimization(
-                current_squad, current_budget, future_gameweeks, 
-                now_costs, gameweek_elements, selling_prices, gameweek_predictions,
-            )
-        else:
-            best_squad = make_best_transfer(
-                current_squad, future_gameweeks, current_budget, 
-                gameweek_elements, selling_prices, gameweek_predictions,
-            )
+        # Optimize the squad for the next gameweek
+        best_squad = optimize_squad(
+            season, current_squad, current_budget, 
+            next_gameweek, wildcard_gameweeks,
+            now_costs, selling_prices,
+            gameweek_elements, gameweek_predictions
+        )
 
         # Update budgets and prices
         best_squad_budget = calculate_budget(

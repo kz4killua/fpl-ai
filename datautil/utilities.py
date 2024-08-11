@@ -1,5 +1,9 @@
 import pandas as pd
 
+GKP = 1
+DEF = 2
+MID = 3
+FWD = 4
 
 def convert_year_to_season(year: int):
     """

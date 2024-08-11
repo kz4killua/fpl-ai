@@ -3,7 +3,8 @@ import unittest
 import pandas as pd
 import numpy as np
 
-from predictions import group_predictions_by_gameweek, sum_player_points, weight_gameweek_predictions_by_availability
+from predictions import group_predictions_by_gameweek, weight_gameweek_predictions_by_availability
+from optimize.utilities import sum_player_points
 
 
 class TestPredictions(unittest.TestCase):
