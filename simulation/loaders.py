@@ -110,7 +110,7 @@ def load_simulation_features(season: str, next_gameweek: int, use_cache=True):
 
     cache_path = Path(f'cache/simulation/features-{season}-{next_gameweek}.pkl')
 
-    # Load predictions from cache (if available)
+    # Load features from cache (if available)
     if use_cache and cache_path.exists():
         return pd.read_pickle(cache_path)
     
