@@ -169,6 +169,8 @@ cython_debug/
 *.ipynb
 *.md
 
+cache
+
 # saved files and models
 models/
 catboost_info/
