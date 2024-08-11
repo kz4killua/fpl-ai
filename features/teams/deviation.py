@@ -26,4 +26,4 @@ class TeamStandardDeviation(StandardDeviation):
     }
 
     def get_feature_name(self, column, window):
-        return f'average_std_{column}_{window}'
+        return f'std_{column}_{window}'

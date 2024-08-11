@@ -21,7 +21,6 @@ class PlayerFeaturePipeline(FeaturePipeline):
         UnderstatXGI(),
         PredictedPlayerPosition(),
         PositionAveragesAgainstOpponent(),
-        PlayerOneHotEncode(),
         PlayerExponentialAverages(),
         PlayerConditionExponentialAverages(),
         PlayerStandardDeviation(),
@@ -41,28 +40,20 @@ class TeamFeaturePipeline(FeaturePipeline):
 
 def engineer_features(players, teams):
 
-    # Engineer features for players
+    # Engineer features for both players and teams
     players, player_features = PlayerFeaturePipeline().apply(players)
-
-    # Engineer features for teams
     teams, team_features = TeamFeaturePipeline().apply(teams)
 
-    # Merge players and teams
+    # Merge player and team features
     merged = merge_players_and_teams(players, teams, team_features)
 
-    # Identify columns to be used for prediction
+    # Gather columns to be used for prediction
     columns = [
-
-        'round', 'was_home',
-
+        'round', 'was_home', 'element_type',
         *player_features,
-
         *[f"team_{column}" for column in team_features],
-
         *[f"opponent_team_{column}" for column in team_features],
-        
         'total_points'
-
     ]
 
     return merged, columns
