@@ -1,11 +1,18 @@
 import numpy as np
 
+parameters = {
+    'squad_evaluation_round_factor': 0.45666334171014294,
+    'captain_multiplier': 2,
+    'starting_xi_multiplier': 1,
+    'reserve_gkp_multiplier': 0.768046237286912,
+    'reserve_out_multiplier': 0.9513395545369758 ** np.arange(1, 4),
+    'future_gameweeks_evaluated': 8
+}
 
-SQUAD_EVALUATION_ROUND_FACTOR = 1.0
 
-CAPTAIN_MULTIPLIER = 2
-STARTING_XI_MULTIPLER = 1
-RESERVE_GKP_MULTIPLIER = 0
-RESERVE_OUT_MULTIPLIER = 0.0 ** np.arange(1, 4)
+def get_parameter(name: str):
+    return parameters[name]
 
-FUTURE_GAMEWEEKS_EVALUATED = 1
+
+def set_parameter(name: str, value):
+    parameters[name] = value

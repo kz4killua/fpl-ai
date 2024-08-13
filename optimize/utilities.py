@@ -1,9 +1,9 @@
-from typing import Iterable
+from typing import Iterable, Optional
 
 import pandas as pd
 import numpy as np
 
-from optimize.parameters import CAPTAIN_MULTIPLIER, RESERVE_GKP_MULTIPLIER, RESERVE_OUT_MULTIPLIER, STARTING_XI_MULTIPLER, SQUAD_EVALUATION_ROUND_FACTOR, FUTURE_GAMEWEEKS_EVALUATED
+from optimize.parameters import get_parameter
 from datautil.utilities import GKP, DEF, MID, FWD
 
 
@@ -120,10 +120,21 @@ def calculate_points(roles: dict, total_points: dict, captain_multiplier: float,
     return points
 
 
-def evaluate_squad(squad: set, positions: dict, gameweeks: list[int], gameweek_predictions: dict[int, dict[int, float]], squad_evaluation_round_factor: float = SQUAD_EVALUATION_ROUND_FACTOR, captain_multiplier: float = CAPTAIN_MULTIPLIER, starting_xi_multiplier: float = STARTING_XI_MULTIPLER, reserve_gkp_multiplier: float = RESERVE_GKP_MULTIPLIER, reserve_out_multiplier: np.ndarray = RESERVE_OUT_MULTIPLIER):
+def evaluate_squad(squad: set, positions: dict, gameweeks: list[int], gameweek_predictions: dict[int, dict[int, float]], squad_evaluation_round_factor: Optional[float] = None, captain_multiplier: Optional[float] = None, starting_xi_multiplier: Optional[float] = None, reserve_gkp_multiplier: Optional[float] = None, reserve_out_multiplier: Optional[np.ndarray] = None) -> float:
     """
     Returns a score representing the 'goodness' of a squad for upcoming 'gameweeks'.
     """
+
+    if squad_evaluation_round_factor is None:
+        squad_evaluation_round_factor = get_parameter('squad_evaluation_round_factor')
+    if captain_multiplier is None:
+        captain_multiplier = get_parameter('captain_multiplier')
+    if starting_xi_multiplier is None:
+        starting_xi_multiplier = get_parameter('starting_xi_multiplier')
+    if reserve_gkp_multiplier is None:
+        reserve_gkp_multiplier = get_parameter('reserve_gkp_multiplier')
+    if reserve_out_multiplier is None:
+        reserve_out_multiplier = get_parameter('reserve_out_multiplier')
 
     scores = []
 
@@ -218,8 +229,11 @@ def make_best_transfer(squad: set, gameweeks: list, budget: int, elements: pd.Da
     return best_squad
 
 
-def get_future_gameweeks(next_gameweek: int, last_gameweek: int = 38, wildcard_gameweeks: list[int] = [], future_gameweeks_evaluated: int = FUTURE_GAMEWEEKS_EVALUATED):
+def get_future_gameweeks(next_gameweek: int, last_gameweek: int = 38, wildcard_gameweeks: list[int] = [], future_gameweeks_evaluated: Optional[int] = None) -> list[int]:
     """List out the gameweeks to optimize over."""
+
+    if future_gameweeks_evaluated is None:
+        future_gameweeks_evaluated = get_parameter('future_gameweeks_evaluated')
 
     future_gameweeks = list(range(next_gameweek, min(last_gameweek + 1, next_gameweek + future_gameweeks_evaluated)))
 
