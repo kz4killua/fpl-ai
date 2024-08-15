@@ -41,7 +41,7 @@ def run_greedy_optimization(
     while True:
         new_squad = make_best_transfer(
             current_squad, gameweeks, current_budget,
-            elements, selling_prices, gameweek_predictions
+            elements, selling_prices, now_costs, gameweek_predictions
         )
         new_budget = calculate_budget(
             current_squad, new_squad, 

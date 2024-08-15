@@ -120,7 +120,7 @@ def calculate_points(roles: dict, total_points: dict, captain_multiplier: float,
     return points
 
 
-def evaluate_squad(squad: set, positions: dict, gameweeks: list[int], gameweek_predictions: dict[int, dict[int, float]], squad_evaluation_round_factor: Optional[float] = None, captain_multiplier: Optional[float] = None, starting_xi_multiplier: Optional[float] = None, reserve_gkp_multiplier: Optional[float] = None, reserve_out_multiplier: Optional[np.ndarray] = None) -> float:
+def evaluate_squad(squad: set, budget: int, positions: dict, gameweeks: list[int], gameweek_predictions: dict[int, dict[int, float]], squad_evaluation_round_factor: Optional[float] = None, captain_multiplier: Optional[float] = None, starting_xi_multiplier: Optional[float] = None, reserve_gkp_multiplier: Optional[float] = None, reserve_out_multiplier: Optional[np.ndarray] = None, budget_importance: Optional[float] = None) -> float:
     """
     Returns a score representing the 'goodness' of a squad for upcoming 'gameweeks'.
     """
@@ -135,6 +135,8 @@ def evaluate_squad(squad: set, positions: dict, gameweeks: list[int], gameweek_p
         reserve_gkp_multiplier = get_parameter('reserve_gkp_multiplier')
     if reserve_out_multiplier is None:
         reserve_out_multiplier = get_parameter('reserve_out_multiplier')
+    if budget_importance is None:
+        budget_importance = get_parameter('budget_importance')
 
     scores = []
 
@@ -161,9 +163,12 @@ def evaluate_squad(squad: set, positions: dict, gameweeks: list[int], gameweek_p
     # Apply weights to the score for each gameweek. 
     weights = (squad_evaluation_round_factor ** np.arange(len(scores)))
     weights /= weights.sum()
-    scores *= weights
+    evaluation = (scores * weights).sum()
 
-    return scores.sum()
+    # Apply budget importance to the evaluation
+    evaluation += budget_importance * budget
+
+    return evaluation
 
 
 def get_valid_transfers(squad: set, player_out: int, elements: pd.DataFrame, selling_prices: pd.Series, budget: int) -> set:
@@ -193,7 +198,7 @@ def get_valid_transfers(squad: set, player_out: int, elements: pd.DataFrame, sel
     return set(valid_transfers['id']) | {player_out}
 
 
-def make_best_transfer(squad: set, gameweeks: list, budget: int, elements: pd.DataFrame, selling_prices: pd.Series, gameweek_predictions: pd.DataFrame) -> set:
+def make_best_transfer(squad: set, gameweeks: list, budget: int, elements: pd.DataFrame, selling_prices: pd.Series, now_costs: pd.Series, gameweek_predictions: pd.DataFrame) -> set:
     """
     Find the best single transfer that can be made.
     """
@@ -211,7 +216,7 @@ def make_best_transfer(squad: set, gameweeks: list, budget: int, elements: pd.Da
     }
     
     best_squad = squad
-    best_squad_evaluation = evaluate_squad(squad, positions, gameweeks, gameweek_predictions)
+    best_squad_evaluation = evaluate_squad(squad, budget, positions, gameweeks, gameweek_predictions)
 
     # Try out all valid transfers
     for player_out in squad:
@@ -219,7 +224,8 @@ def make_best_transfer(squad: set, gameweeks: list, budget: int, elements: pd.Da
             
             # Evaluate the new squad
             new_squad = squad - {player_out} | {player_in}
-            new_squad_evaluation = evaluate_squad(new_squad, positions, gameweeks, gameweek_predictions)
+            new_squad_budget = calculate_budget(squad, new_squad, budget, selling_prices, now_costs)
+            new_squad_evaluation = evaluate_squad(new_squad, new_squad_budget, positions, gameweeks, gameweek_predictions)
 
             # Keep only the best squad
             if new_squad_evaluation > best_squad_evaluation:
@@ -248,10 +254,16 @@ def get_future_gameweeks(next_gameweek: int, last_gameweek: int = 38, wildcard_g
 
 
 def calculate_budget(initial_squad: set, final_squad: set, initial_budget: int, selling_prices: pd.Series, now_costs: pd.Series) -> int:
-    """Calculate the budget change after moving from an initial to a final squad."""    
+    """Calculate the new budget after moving from an initial to a final squad."""    
     transfers_in = final_squad - initial_squad
     transfers_out = initial_squad - final_squad
-    final_budget = initial_budget + selling_prices.loc[list(transfers_out)].sum() - now_costs.loc[list(transfers_in)].sum()
+
+    final_budget = initial_budget
+    for player_out in transfers_out:
+        final_budget += selling_prices[player_out]
+    for player_in in transfers_in:
+        final_budget -= now_costs[player_in]
+
     return final_budget
 
 

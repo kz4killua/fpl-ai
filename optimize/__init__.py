@@ -27,7 +27,7 @@ def optimize_squad(
     else:
         best_squad = make_best_transfer(
             current_squad, future_gameweeks, current_budget, 
-            gameweek_elements, selling_prices, gameweek_predictions,
+            gameweek_elements, selling_prices, now_costs, gameweek_predictions,
         )
 
     return best_squad
