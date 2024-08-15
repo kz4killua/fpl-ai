@@ -17,4 +17,6 @@ def get_parameter(name: str):
 
 
 def set_parameter(name: str, value):
+    if name not in parameters:
+        raise ValueError(f"Parameter '{name}' not found.")
     parameters[name] = value
