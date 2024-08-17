@@ -2,13 +2,13 @@ import numpy as np
 
 
 parameters = {
-    'squad_evaluation_round_factor': 0.45666334171014294,
+    'squad_evaluation_round_factor': 0.7915879292906937,
     'captain_multiplier': 2,
     'starting_xi_multiplier': 1,
-    'reserve_gkp_multiplier': 0.768046237286912,
-    'reserve_out_multiplier': 0.9513395545369758 ** np.arange(1, 4),
-    'future_gameweeks_evaluated': 8,
-    'budget_importance': 0.00028173625403722804,
+    'reserve_gkp_multiplier': 0.26780126530565046,
+    'reserve_out_multiplier': 0.3749016858132089 ** np.arange(1, 4),
+    'future_gameweeks_evaluated': 4,
+    'budget_importance': 3.490974459751069e-07,
 }
 
 
