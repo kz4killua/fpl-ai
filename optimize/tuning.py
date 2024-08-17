@@ -6,11 +6,11 @@ from simulation import run_simulation
 from optimize.parameters import set_parameter
 
 
-def evaluate():
+def evaluate(wildcard_gameweeks: list):
     results = []
 
     for season in ['2021-22', '2022-23', '2023-24']:
-        total_points = run_simulation(season)
+        total_points = run_simulation(season, wildcard_gameweeks)
         results.append(total_points)
     
     return np.mean(results)
@@ -23,7 +23,7 @@ def objective(trial: optuna.Trial):
     reserve_out_multiplier = trial.suggest_float('reserve_out_multiplier', 0.0, 1.0)
     reserve_out_multiplier = reserve_out_multiplier ** np.arange(1, 4)
     future_gameweeks_evaluated = trial.suggest_int('future_gameweeks_evaluated', 1, 10)
-    budget_importance = trial.suggest_float('budget_importance', 1e-7, 1.0, log=True)
+    budget_importance = trial.suggest_float('budget_importance', 1e-7, 1e-3, log=True)
 
     set_parameter('squad_evaluation_round_factor', squad_evaluation_round_factor)
     set_parameter('reserve_gkp_multiplier', reserve_gkp_multiplier)
@@ -31,7 +31,10 @@ def objective(trial: optuna.Trial):
     set_parameter('future_gameweeks_evaluated', future_gameweeks_evaluated)
     set_parameter('budget_importance', budget_importance)
 
-    return evaluate()
+    wildcard_1 = trial.suggest_int('wildcard_1', 2, 19)
+    wildcard_2 = trial.suggest_int('wildcard_2', 20, 38)
+
+    return evaluate([wildcard_1, wildcard_2])
 
 
 def tune_optimization_parameters():

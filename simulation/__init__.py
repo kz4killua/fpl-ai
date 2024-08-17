@@ -109,13 +109,12 @@ def get_initial_team_and_budget(season: str):
     return initial_squad, initial_budget
 
 
-def run_simulation(season: str, log=False, use_cache=True) -> int:
+def run_simulation(season: str, wildcard_gameweeks=[14, 25], log=False, use_cache=True) -> int:
     """Simulate a season of FPL and return the total points scored."""
     
     # Set up initial conditions and load results
     first_gameweek = 1
     last_gameweek = 38
-    wildcard_gameweeks = (11, 26)
     initial_squad, initial_budget = get_initial_team_and_budget(season)
     current_squad, current_budget = initial_squad, initial_budget
     purchase_prices = load_simulation_purchase_prices(season, current_squad, first_gameweek)
@@ -139,8 +138,8 @@ def run_simulation(season: str, log=False, use_cache=True) -> int:
 
         # Make, aggregate and process predictions
         features = load_simulation_features(season, next_gameweek, use_cache=use_cache)
-        model_path = f"cache/simulation/excluded-{season}-model.pkl"
-        columns_path = f"cache/simulation/columns.json"
+        model_path = f"models/2024-25/model-excluded-{season}.pkl"
+        columns_path = f"models/2024-25/columns.json"
         predictions = make_predictions(features, model_path, columns_path)
         gameweek_predictions = group_predictions_by_gameweek(predictions)
         gameweek_predictions = weight_gameweek_predictions_by_availability(gameweek_predictions, gameweek_elements, next_gameweek)
