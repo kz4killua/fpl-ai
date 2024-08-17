@@ -162,17 +162,7 @@ cython_debug/
 # vscode stuff
 .vscode/
 
-# soccer data
-.data/
-
-# documents
-*.ipynb
-*.md
-
-cache
-
-# saved files and models
-models/
+# custom additions
 catboost_info/
-*.pkl
-*.zip
+data/
+cache/
