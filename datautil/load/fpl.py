@@ -34,7 +34,7 @@ def load_fpl(seasons: list[str]) -> tuple[pl.LazyFrame, pl.LazyFrame, pl.LazyFra
         .alias("team")
     )
 
-    # Add "team_code" and "opponent_team_code" columns to the elements DataFrame
+    # Add "team_code" and "opponent_team_code" to elements
     elements = elements.join(
         teams.select(
             [
