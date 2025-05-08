@@ -1,0 +1,16 @@
+[project]
+name = "fpl-ai-dev"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "polars>=1.29.0",
+    "requests>=2.32.3",
+]
+
+[dependency-groups]
+dev = [
+    "ipykernel>=6.29.5",
+    "ruff>=0.11.8",
+]
