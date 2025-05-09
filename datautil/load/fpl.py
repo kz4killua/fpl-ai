@@ -62,6 +62,19 @@ def load_fpl(seasons: list[str]) -> tuple[pl.LazyFrame, pl.LazyFrame, pl.LazyFra
     players = elements.filter(pl.col("element_type").is_in([1, 2, 3, 4]))
     managers = elements.filter(pl.col("element_type").is_in([5]))
 
+    # Remove manager specific columns from players
+    players = players.drop(
+        [
+            "mng_win",
+            "mng_draw",
+            "mng_loss",
+            "mng_underdog_win",
+            "mng_underdog_draw",
+            "mng_clean_sheets",
+            "mng_goals_scored",
+        ]
+    )
+
     return players, teams, managers
 
 
@@ -75,7 +88,36 @@ def load_elements(seasons: list[str]) -> pl.LazyFrame:
         ).with_columns(pl.lit(season).alias("season"))
         for season in seasons
     ]
-    return pl.concat(frames, how="diagonal_relaxed")
+    elements = pl.concat(frames, how="diagonal_relaxed")
+    # Remove discontinued features
+    elements = elements.drop(
+        [
+            "attempted_passes",
+            "big_chances_created",
+            "big_chances_missed",
+            "clearances_blocks_interceptions",
+            "completed_passes",
+            "dribbles",
+            "ea_index",
+            "errors_leading_to_goal",
+            "errors_leading_to_goal_attempt",
+            "fouls",
+            "id",
+            "key_passes",
+            "kickoff_time_formatted",
+            "loaned_in",
+            "loaned_out",
+            "offside",
+            "open_play_crosses",
+            "penalties_conceded",
+            "recoveries",
+            "tackled",
+            "tackles",
+            "target_missed",
+            "winning_goals",
+        ]
+    )
+    return elements
 
 
 def load_teams(seasons: list[str]) -> pl.LazyFrame:
