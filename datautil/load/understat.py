@@ -67,7 +67,7 @@ def load_understat(seasons: list[str]):
         .str.extract(pattern, 2)
         .cast(pl.Int32)
         .alias("ppda_allowed_def"),
-    )
+    ).drop(["ppda", "ppda_allowed"])
 
     # Add understat fixture IDs to teams
     teams = teams.join(

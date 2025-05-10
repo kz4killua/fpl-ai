@@ -8,12 +8,12 @@ def load_merged(seasons: list[str]) -> tuple[pl.LazyFrame, pl.LazyFrame, pl.Lazy
     """Load merged player, team, and manager data."""
 
     # Load data from all sources
-    fpl_players, fpl_teams, fpl_managers = load_fpl(seasons)
+    fpl_players, fpl_managers = load_fpl(seasons)
     uds_players, uds_teams = load_understat(seasons)
 
     # Merge data
     players = merge_players(fpl_players, uds_players)
-    teams = merge_teams(fpl_teams, uds_teams)
+    teams = uds_teams
     managers = fpl_managers
 
     # Clean data
@@ -49,7 +49,7 @@ def merge_players(fpl_players: pl.LazyFrame, uds_players: pl.LazyFrame):
     return players
 
 
-def merge_teams(fpl_teams: pl.LazyFrame, uds_teams: pl.LazyFrame):
+def merge_teams(fpl_static_teams: pl.LazyFrame, uds_teams: pl.LazyFrame):
     """Merge team data from FPL and Understat."""
     return uds_teams
 
@@ -80,9 +80,7 @@ def clean_players(players: pl.LazyFrame) -> pl.LazyFrame:
 
 def clean_teams(teams: pl.LazyFrame) -> pl.LazyFrame:
     """Clean team data."""
-
     # Cast was_home to an integer
-    teams = teams.with_columns(
+    return teams.with_columns(
         (pl.col("h_a") == "h").cast(pl.Int8).alias("was_home"),
-    )
-    return teams
+    ).drop(["h_a"])

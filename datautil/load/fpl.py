@@ -8,13 +8,13 @@ def load_fpl(seasons: list[str]) -> tuple[pl.LazyFrame, pl.LazyFrame, pl.LazyFra
 
     # Load local data
     elements = load_elements(seasons)
-    teams = load_teams(seasons)
     fixtures = load_fixtures(seasons)
-    bootstrap_static_elements = load_bootstrap_static_elements(seasons)
+    static_teams = load_static_teams(seasons)
+    static_elements = load_static_elements(seasons)
 
     # Add "element_type" and "code" to elements
     elements = elements.join(
-        bootstrap_static_elements.select(["season", "id", "element_type", "code"]),
+        static_elements.select(["season", "id", "element_type", "code"]),
         how="left",
         left_on=["season", "element"],
         right_on=["season", "id"],
@@ -36,7 +36,7 @@ def load_fpl(seasons: list[str]) -> tuple[pl.LazyFrame, pl.LazyFrame, pl.LazyFra
 
     # Add "team_code" and "opponent_team_code" to elements
     elements = elements.join(
-        teams.select(
+        static_teams.select(
             [
                 pl.col("season"),
                 pl.col("id").alias("team"),
@@ -47,7 +47,7 @@ def load_fpl(seasons: list[str]) -> tuple[pl.LazyFrame, pl.LazyFrame, pl.LazyFra
         on=["season", "team"],
     )
     elements = elements.join(
-        teams.select(
+        static_teams.select(
             [
                 pl.col("season"),
                 pl.col("id").alias("opponent_team"),
@@ -75,7 +75,7 @@ def load_fpl(seasons: list[str]) -> tuple[pl.LazyFrame, pl.LazyFrame, pl.LazyFra
         ]
     )
 
-    return players, teams, managers
+    return players, managers
 
 
 def load_elements(seasons: list[str]) -> pl.LazyFrame:
@@ -120,7 +120,7 @@ def load_elements(seasons: list[str]) -> pl.LazyFrame:
     return elements
 
 
-def load_teams(seasons: list[str]) -> pl.LazyFrame:
+def load_static_teams(seasons: list[str]) -> pl.LazyFrame:
     """Load general teams information."""
     frames = [
         pl.scan_csv(
@@ -146,7 +146,7 @@ def load_fixtures(seasons: list[str]) -> pl.LazyFrame:
     return pl.concat(frames, how="diagonal_relaxed")
 
 
-def load_bootstrap_static_elements(seasons: list[str]) -> pl.LazyFrame:
+def load_static_elements(seasons: list[str]) -> pl.LazyFrame:
     """Load elements information."""
     frames = [
         pl.scan_csv(
