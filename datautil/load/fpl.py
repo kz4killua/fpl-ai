@@ -119,7 +119,8 @@ def load_elements(seasons: list[str]) -> pl.LazyFrame:
             "tackles",
             "target_missed",
             "winning_goals",
-        ]
+        ],
+        strict=False,
     )
     return elements
 
