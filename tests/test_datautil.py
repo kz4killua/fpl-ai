@@ -1,4 +1,5 @@
 import polars as pl
+from polars.testing import assert_frame_equal
 
 from datautil.load.fpl import load_fpl
 
@@ -20,17 +21,19 @@ def test_load_fpl():
             "team_code": [8, 8, 3, 6],
             "opponent_team_code": [21, 21, 14, 11],
         },
-    ).sort(["season", "element", "fixture"])
-    result = (
-        players.join(
-            expected.select(["season", "element", "fixture"]),
-            on=["season", "element", "fixture"],
-            how="inner",
-        )
-        .select(expected.columns)
-        .sort(["season", "element", "fixture"])
     )
-    assert result.equals(expected)
+    result = players.join(
+        expected.select(["season", "element", "fixture"]),
+        on=["season", "element", "fixture"],
+        how="inner",
+    ).select(expected.columns)
+    assert_frame_equal(
+        result,
+        expected,
+        check_row_order=False,
+        check_column_order=False,
+        check_exact=True,
+    )
 
     # Test that mappings leave no null values
     assert (
