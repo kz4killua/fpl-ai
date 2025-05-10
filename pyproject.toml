@@ -5,7 +5,9 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "numpy>=2.2.5",
     "polars>=1.29.0",
+    "pytest>=8.3.5",
     "requests>=2.32.3",
 ]
 
@@ -13,4 +15,19 @@ dependencies = [
 dev = [
     "ipykernel>=6.29.5",
     "ruff>=0.11.8",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle
+    "F",    # Pyflakes
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "SIM",  # flake8-simplify
+    "I",    # isort
+]
+
+[tool.pytest.ini_options]
+pythonpath = [
+  "."
 ]

@@ -3,7 +3,7 @@ import polars as pl
 from datautil.constants import DATA_DIR
 
 
-def load_fpl(seasons: list[str]) -> tuple[pl.LazyFrame, pl.LazyFrame, pl.LazyFrame]:
+def load_fpl(seasons: list[str]) -> tuple[pl.LazyFrame, pl.LazyFrame]:
     """Loads local FPL data for the given seasons."""
 
     # Load local data
@@ -33,6 +33,7 @@ def load_fpl(seasons: list[str]) -> tuple[pl.LazyFrame, pl.LazyFrame, pl.LazyFra
         .otherwise(pl.col("team_a"))
         .alias("team")
     )
+    elements = elements.drop(["team_h", "team_a"])
 
     # Add "team_code" and "opponent_team_code" to elements
     elements = elements.join(
@@ -57,6 +58,7 @@ def load_fpl(seasons: list[str]) -> tuple[pl.LazyFrame, pl.LazyFrame, pl.LazyFra
         how="left",
         on=["season", "opponent_team"],
     )
+    elements = elements.drop(["team"])
 
     # Split elements into players and managers
     players = elements.filter(pl.col("element_type").is_in([1, 2, 3, 4]))
@@ -72,7 +74,9 @@ def load_fpl(seasons: list[str]) -> tuple[pl.LazyFrame, pl.LazyFrame, pl.LazyFra
             "mng_underdog_draw",
             "mng_clean_sheets",
             "mng_goals_scored",
-        ]
+        ],
+        # These columns are only available from the 2024-25 season
+        strict=False,
     )
 
     return players, managers
