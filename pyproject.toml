@@ -9,6 +9,7 @@ dependencies = [
     "polars>=1.29.0",
     "pytest>=8.3.5",
     "requests>=2.32.3",
+    "scikit-learn>=1.6.1",
 ]
 
 [dependency-groups]

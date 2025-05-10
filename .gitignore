@@ -14,3 +14,9 @@ wheels/
 
 # todos
 TODO.md
+
+# models
+models
+
+# notebooks
+*.ipynb
