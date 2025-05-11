@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "numpy>=2.2.5",
+    "ortools>=9.12.4544",
     "polars>=1.29.0",
     "pytest>=8.3.5",
     "requests>=2.32.3",
