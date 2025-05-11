@@ -1,16 +1,23 @@
 import polars as pl
 
 from datautil.constants import DATA_DIR
+from datautil.load.fplcache import load_static_elements, load_static_teams
 
 
 def load_fpl(seasons: list[str]) -> tuple[pl.LazyFrame, pl.LazyFrame]:
-    """Loads local FPL data for the given seasons."""
+    """Load local FPL data for the given seasons."""
 
     # Load local data
     elements = load_elements(seasons)
     fixtures = load_fixtures(seasons)
-    static_teams = load_static_teams(seasons)
-    static_elements = load_static_elements(seasons)
+    static_teams = pl.concat(
+        [load_static_teams(season, latest=True) for season in seasons],
+        how="diagonal_relaxed",
+    )
+    static_elements = pl.concat(
+        [load_static_elements(season, latest=True) for season in seasons],
+        how="diagonal_relaxed",
+    )
 
     # Add "element_type" and "code" to elements
     elements = elements.join(
@@ -125,19 +132,6 @@ def load_elements(seasons: list[str]) -> pl.LazyFrame:
     return elements
 
 
-def load_static_teams(seasons: list[str]) -> pl.LazyFrame:
-    """Load general teams information."""
-    frames = [
-        pl.scan_csv(
-            DATA_DIR / f"api/{season}/teams.csv",
-            try_parse_dates=True,
-            raise_if_empty=False,
-        ).with_columns(pl.lit(season).alias("season"))
-        for season in seasons
-    ]
-    return pl.concat(frames, how="diagonal_relaxed")
-
-
 def load_fixtures(seasons: list[str]) -> pl.LazyFrame:
     """Load fixture information."""
     frames = [
@@ -145,20 +139,6 @@ def load_fixtures(seasons: list[str]) -> pl.LazyFrame:
             DATA_DIR / f"api/{season}/fixtures.csv",
             try_parse_dates=True,
             raise_if_empty=False,
-        ).with_columns(pl.lit(season).alias("season"))
-        for season in seasons
-    ]
-    return pl.concat(frames, how="diagonal_relaxed")
-
-
-def load_static_elements(seasons: list[str]) -> pl.LazyFrame:
-    """Load elements information."""
-    frames = [
-        pl.scan_csv(
-            DATA_DIR / f"api/{season}/elements.csv",
-            try_parse_dates=True,
-            raise_if_empty=False,
-            null_values=["None", "null"],
         ).with_columns(pl.lit(season).alias("season"))
         for season in seasons
     ]
