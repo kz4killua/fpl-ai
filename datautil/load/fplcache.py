@@ -33,7 +33,7 @@ def load_static_elements(
         schema_overrides=schema_overrides,
     )
     static_elements = static_elements.with_columns(
-        pl.lit(season).alias("season"), pl.col("news_added").str.to_datetime()
+        pl.lit(season).alias("season"), 
     )
     return static_elements.lazy()
 
