@@ -9,25 +9,12 @@ def rolling_mean(
     windows: list[int],
     defaults: list[int],
 ) -> pl.LazyFrame:
-    """
-    Calculate rolling means for specified columns and windows.
+    """Calculate rolling means for specified columns and windows."""
 
-    Args:
-        df (pl.LazyFrame): Input DataFrame.
-        order_by (str): Column name to sort by before calculating rolling averages.
-        group_by (str): Column name to group by for rolling averages.
-        columns (list[str]): List of column names to calculate rolling averages for.
-        windows (list[int]): List of window sizes for rolling averages.
-        defaults (list[int]): List of default values for each column.
-
-    Returns:
-        pl.LazyFrame: DataFrame with rolling averages added.
-    """
-
-    # Sort the dataframe in a deterministic order
+    # Sort rows by the specified order (e.g. kickoff_time)
     df = df.sort(order_by)
 
-    # Create a list of expressions for rolling averages
+    # Compute rolling averages for each column
     expressions = [
         pl.col(column)
         .rolling_mean(window, min_samples=1)
@@ -37,8 +24,6 @@ def rolling_mean(
         .alias(f"{column}_rolling_mean_{window}")
         for column, window, default in zip(columns, windows, defaults, strict=True)
     ]
-
-    # Apply the rolling averages to the dataframe
     df = df.with_columns(expressions)
 
     return df
