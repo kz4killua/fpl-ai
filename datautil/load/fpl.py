@@ -65,7 +65,6 @@ def load_fpl(seasons: list[str]) -> tuple[pl.LazyFrame, pl.LazyFrame]:
         how="left",
         on=["season", "opponent_team"],
     )
-    elements = elements.drop(["team"])
 
     # Split elements into players and managers
     players = elements.filter(pl.col("element_type").is_in([1, 2, 3, 4]))
@@ -100,6 +99,7 @@ def load_elements(seasons: list[str]) -> pl.LazyFrame:
         for season in seasons
     ]
     elements = pl.concat(frames, how="diagonal_relaxed")
+
     # Remove discontinued features
     elements = elements.drop(
         [
@@ -142,4 +142,20 @@ def load_fixtures(seasons: list[str]) -> pl.LazyFrame:
         ).with_columns(pl.lit(season).alias("season"))
         for season in seasons
     ]
-    return pl.concat(frames, how="diagonal_relaxed")
+    fixtures = pl.concat(frames, how="diagonal_relaxed")
+
+    # Only load columns that are available to all seasons
+    fixtures = fixtures.select(
+        [
+            "season",
+            "id",
+            "event",
+            "kickoff_time",
+            "team_h",
+            "team_a",
+            "team_h_score",
+            "team_a_score",
+        ]
+    )
+
+    return fixtures
