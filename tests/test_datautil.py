@@ -5,7 +5,7 @@ from datautil.load.fpl import load_fpl
 
 
 def test_load_fpl():
-    # Load data for testing
+    # Load data for the 2016-17 season
     seasons = ["2016-17"]
     players, _ = load_fpl(seasons)
     players = players.collect()
