@@ -13,7 +13,7 @@ def load_merged(seasons: list[str]) -> tuple[pl.LazyFrame, pl.LazyFrame, pl.Lazy
 
     # Merge data
     players = merge_players(fpl_players, uds_players)
-    teams = uds_teams
+    teams = merge_teams(uds_teams)
     managers = fpl_managers
 
     # Clean data
@@ -49,8 +49,46 @@ def merge_players(fpl_players: pl.LazyFrame, uds_players: pl.LazyFrame):
     return players
 
 
-def merge_teams(fpl_static_teams: pl.LazyFrame, uds_teams: pl.LazyFrame):
-    """Merge team data from FPL and Understat."""
+def merge_teams(uds_teams: pl.LazyFrame):
+    """Rename understat columns to avoid confusion with FPL data."""
+
+    # Rename columns to avoid conflicts / confusion with FPL data
+    uds_teams = uds_teams.rename(
+        {
+            "season": "uds_season",
+            "fixture_id": "uds_fixture_id",
+            "id": "uds_id",
+            "title": "uds_title",
+            "fpl_season": "season",
+            "fpl_fixture_id": "fixture_id",
+            "fpl_code": "code",
+        }
+    )
+
+    # Add "uds" prefixes to understats data
+    columns = [
+        "xG",
+        "xGA",
+        "npxG",
+        "npxGA",
+        "deep",
+        "deep_allowed",
+        "scored",
+        "missed",
+        "xpts",
+        "result",
+        "wins",
+        "draws",
+        "loses",
+        "pts",
+        "npxGD",
+        "ppda_att",
+        "ppda_def",
+        "ppda_allowed_att",
+        "ppda_allowed_def",
+    ]
+    uds_teams = uds_teams.rename({col: f"uds_{col}" for col in columns})
+
     return uds_teams
 
 
