@@ -23,3 +23,10 @@ def convert_season_to_year(season: str):
 def convert_season_col_to_year_col(name: str) -> pl.Expr:
     """Same as `convert_season_to_year` but for a Polars column."""
     return pl.col(name).str.slice(0, 4).cast(pl.Int32)
+
+
+def get_seasons(current_season: str, n: int = None) -> list[str]:
+    """Returns a list of seasons up to the current season."""
+    min_year = 2016 if n is None else convert_season_to_year(current_season) - n + 1
+    max_year = convert_season_to_year(current_season)
+    return [convert_year_to_season(year) for year in range(min_year, max_year + 1)]
