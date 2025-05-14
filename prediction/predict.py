@@ -8,10 +8,10 @@ def make_predictions(features: pl.DataFrame, model: BaseEstimator) -> pl.DataFra
     predictions = model.predict(features)
     # Create a DataFrame with the predictions
     df = features.select(["season", "round", "element"]).with_columns(
-        pl.Series("predicted_total_points", predictions),
+        pl.Series("total_points", predictions),
     )
     # Sum up the number of points for each player in each gameweek
     df = df.group_by(["season", "round", "element"]).agg(
-        pl.col("predicted_total_points").sum(),
+        pl.col("total_points").sum(),
     )
     return df
