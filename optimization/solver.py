@@ -1,5 +1,4 @@
 import uuid
-import warnings
 
 from ortools.linear_solver import pywraplp
 
@@ -16,6 +15,7 @@ from optimization.rules import (
     NUM_SQUAD_FWDS,
     NUM_SQUAD_GKPS,
     NUM_SQUAD_MIDS,
+    NUM_SQUAD_PLAYERS,
     NUM_STARTING_XI,
     NUM_STARTING_XI_GKPS,
     TRANSFER_COST,
@@ -36,7 +36,7 @@ def solve(
     total_points: dict[tuple[int, int], float],
     teams: dict[tuple[int, int], int],
     element_types: dict[tuple[int, int], int],
-    purchase_prices: dict[tuple[int, int], int],
+    now_costs: dict[tuple[int, int], int],
     selling_prices: dict[tuple[int, int], int],
     # Optimization parameters
     round_decay: float,
@@ -57,12 +57,19 @@ def solve(
         raise RuntimeError("Solver not found.")
 
     # Check for problematic inputs
-    if 1 in wildcards:
-        warnings.warn("Wildcards are not available in gameweek 1.", stacklevel=2)
-    if gameweeks[0] == 1 and initial_free_transfers != 0:
-        warnings.warn("Free transfers are not available in gameweek 1.", stacklevel=2)
-    if gameweeks != sorted(gameweeks):
-        warnings.warn("Gameweeks should be in sorted order.", stacklevel=2)
+    check_inputs(
+        initial_squad,
+        initial_budget,
+        initial_free_transfers,
+        players,
+        gameweeks,
+        wildcards,
+        total_points,
+        teams,
+        element_types,
+        now_costs,
+        selling_prices,
+    )
 
     # Set up the optimization problem
     variables = create_variables(solver, players, gameweeks)
@@ -76,7 +83,7 @@ def solve(
         gameweeks,
         teams,
         element_types,
-        purchase_prices,
+        now_costs,
         selling_prices,
         wildcards,
     )
@@ -99,7 +106,7 @@ def solve(
     # Solve the optimization problem
     status = solver.Solve()
     if status != pywraplp.Solver.OPTIMAL:
-        raise RuntimeError("Solver did not find an optimal solution.")
+        raise RuntimeError(f"Solver failed with status {status}.")
 
     if log:
         print(f"Solver time: {solver.wall_time():d}ms")
@@ -161,7 +168,7 @@ def create_variables(
 
     # Add variables for transfers
     variables["budget"] = {
-        g: solver.IntVar(0, solver.infinity(), f"budget_{g}") for g in gameweeks
+        g: solver.IntVar(0, 999_999, f"budget_{g}") for g in gameweeks
     }
     variables["free_transfers"] = {
         g: solver.IntVar(0, 15, f"free_transfers_{g}") for g in gameweeks
@@ -199,7 +206,7 @@ def create_constraints(
     # Player attributes
     teams: dict[tuple[int, int], int],
     element_types: dict[tuple[int, int], int],
-    purchase_prices: dict[tuple[int, int], int],
+    now_costs: dict[tuple[int, int], int],
     selling_prices: dict[tuple[int, int], int],
     # Chip usage
     wildcards: list[int],
@@ -377,9 +384,7 @@ def create_constraints(
             initial_budget if i == 0 else variables["budget"][gameweeks[i - 1]]
         )
         income = sum(variables["sales"][p, g] * selling_prices[p, g] for p in players)
-        expenses = sum(
-            variables["purchases"][p, g] * purchase_prices[p, g] for p in players
-        )
+        expenses = sum(variables["purchases"][p, g] * now_costs[p, g] for p in players)
         solver.Add(variables["budget"][g] == prior_budget + income - expenses)
 
     # The squad must be consistent with purchases and sales
@@ -598,17 +603,17 @@ def get_solution(
         ]
         budget = [
             v.solution_value() for g, v in variables["budget"].items() if g == gameweek
-        ][0]
+        ]
         free_transfers = [
             v.solution_value()
             for g, v in variables["free_transfers"].items()
             if g == gameweek
-        ][0]
+        ]
         paid_transfers = [
             v.solution_value()
             for g, v in variables["paid_transfers"].items()
             if g == gameweek
-        ][0]
+        ]
 
         solutions[gameweek] = {
             "squad": squad,
@@ -627,6 +632,56 @@ def get_solution(
         }
 
     return solutions
+
+
+def check_inputs(
+    # Initial conditions
+    initial_squad: set[int],
+    initial_budget: int,
+    initial_free_transfers: int,
+    # Players & gameweeks
+    players: list[int],
+    gameweeks: list[int],
+    # Chip usage
+    wildcards: list[int],
+    # Player attributes
+    total_points: dict[tuple[int, int], float],
+    teams: dict[tuple[int, int], int],
+    element_types: dict[tuple[int, int], int],
+    now_costs: dict[tuple[int, int], int],
+    selling_prices: dict[tuple[int, int], int],
+):
+    """Run sanity checks on the inputs to catch errors."""
+    if gameweeks != sorted(set(gameweeks)):
+        raise ValueError("Gameweeks should be in sorted order.")
+    if not all(p in players for p in initial_squad):
+        raise ValueError("All squad players must be in the player list.")
+    if len(set(initial_squad)) != NUM_SQUAD_PLAYERS:
+        raise ValueError(f"Squad must contain exactly {NUM_SQUAD_PLAYERS} players.")
+    if initial_budget < 0:
+        raise ValueError("Initial budget cannot be negative.")
+    if initial_free_transfers < 0 or initial_free_transfers > MAX_FREE_TRANSFERS:
+        raise ValueError(
+            f"Initial free transfers must be between 0 and {MAX_FREE_TRANSFERS}."
+        )
+    if 1 in wildcards:
+        raise ValueError("Wildcards cannot be activated in gameweek 1.")
+    if gameweeks[0] == 1 and initial_free_transfers != 0:
+        raise ValueError("Free transfers are not available in gameweek 1.")
+    if not all((p, g) in total_points for p in players for g in gameweeks):
+        raise ValueError("Total points must be provided for all players and gameweeks.")
+    if not all((p, g) in teams for p in players for g in gameweeks):
+        raise ValueError("Teams must be provided for all players and gameweeks.")
+    if not all((p, g) in element_types for p in players for g in gameweeks):
+        raise ValueError(
+            "Element types must be provided for all players and gameweeks."
+        )
+    if not all((p, g) in now_costs for p in players for g in gameweeks):
+        raise ValueError("Now costs must be provided for all players and gameweeks.")
+    if not all((p, g) in selling_prices for p in players for g in gameweeks):
+        raise ValueError(
+            "Selling prices must be provided for all players and gameweeks."
+        )
 
 
 def calculate_decayed_sum(
