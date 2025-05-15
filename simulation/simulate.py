@@ -12,14 +12,13 @@ from datautil.upcoming import (
     get_upcoming_player_data,
     get_upcoming_team_data,
 )
-from datautil.utils import get_seasons
+from datautil.utils import get_mapper, get_seasons
 from features.engineer_features import engineer_features
 from optimization.optimize import optimize_squad
 from optimization.parameters import OPTIMIZATION_WINDOW_SIZE
 from optimization.rules import DEF, ELEMENT_TYPES, FWD, GKP, MID, MNG
 from prediction.model import load_model
 from prediction.predict import make_predictions
-from utils.frames import get_mapper
 
 from .utils import (
     calculate_budget,

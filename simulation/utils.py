@@ -5,6 +5,7 @@ from copy import deepcopy
 import polars as pl
 
 from datautil.load.fpl import load_elements
+from datautil.utils import get_mapper
 from optimization.rules import (
     DEF,
     FWD,
@@ -27,7 +28,6 @@ from optimization.rules import (
     STARTING_BUDGET,
     TRANSFER_COST,
 )
-from utils.frames import get_mapper
 
 
 def make_random_squad(static_elements: pl.DataFrame) -> tuple[list[int], int]:
