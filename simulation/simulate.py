@@ -69,7 +69,7 @@ class Simulator:
     def static_elements(self):
         """Load static elements for the current gameweek."""
         return load_static_elements(self.season, self.next_gameweek)
-    
+
     @property
     def static_teams(self):
         """Load static teams for the current gameweek."""

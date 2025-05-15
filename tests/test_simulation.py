@@ -165,7 +165,7 @@ def test_make_automatic_substitutions():
         assert substituted_roles == test_case["expected"]
 
     # Entry 3291882 - 2024-25 season
-    roles =  {
+    roles = {
         "captain": 755,
         "vice_captain": 328,
         "starting_xi": [201, 291, 311, 517, 182, 328, 74, 78, 755, 401, 110],
@@ -189,7 +189,7 @@ def test_make_automatic_substitutions():
         109: 1,
         770: 3,
         517: 2,
-        457: 2
+        457: 2,
     }
     test_cases = [
         # Gameweek 33 - 1 substitution
@@ -209,7 +209,7 @@ def test_make_automatic_substitutions():
                 109: 0,
                 770: 90,
                 517: 0,
-                457: 0
+                457: 0,
             },
             "expected": {
                 "captain": 755,
@@ -219,7 +219,7 @@ def test_make_automatic_substitutions():
                 "reserve_out_1": 770,
                 "reserve_out_2": 517,
                 "reserve_out_3": 457,
-            }
+            },
         }
     ]
 
@@ -242,12 +242,18 @@ def test_remove_upcoming_data():
     # Test removing data from the middle of the season
     filtered_elements = remove_upcoming_data(elements, "2017-18", 20)
     filtered_elements = filtered_elements.collect()
-    assert filtered_elements.filter(
-        pl.col("season") == "2016-17"
-    ).get_column("round").max() == 38
-    assert filtered_elements.filter(
-        pl.col("season") == "2017-18"
-    ).get_column("round").max() == 19
+    assert (
+        filtered_elements.filter(pl.col("season") == "2016-17")
+        .get_column("round")
+        .max()
+        == 38
+    )
+    assert (
+        filtered_elements.filter(pl.col("season") == "2017-18")
+        .get_column("round")
+        .max()
+        == 19
+    )
 
 
 def test_load_results():
@@ -296,6 +302,6 @@ def test_calculate_points():
         12: 12,
         13: 13,
         14: 14,
-        15: 15
+        15: 15,
     }
     assert calculate_points(roles, total_points) == 77

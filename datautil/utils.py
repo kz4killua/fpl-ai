@@ -36,7 +36,7 @@ def get_seasons(current_season: str, n: int = None) -> list[str]:
 
 def get_mapper(df: pl.DataFrame, from_col: str | Iterable[str], to_col: str) -> dict:
     """Returns a dict mapping values in `from_col` to values in `to_col`."""
-    
+
     # Check input types
     if not isinstance(from_col, str | Iterable):
         raise ValueError(
@@ -45,7 +45,7 @@ def get_mapper(df: pl.DataFrame, from_col: str | Iterable[str], to_col: str) -> 
     # Ensure that mappings are unique
     if not df.select(from_col).is_unique().all():
         raise ValueError(f"Column(s): {from_col} must be unique")
-    
+
     mapper = dict()
     if isinstance(from_col, str):
         for row in df.to_dicts():
