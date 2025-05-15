@@ -1,8 +1,13 @@
 import polars as pl
 from polars.testing import assert_frame_equal
 
-from datautil.load.fpl import load_fpl
+from datautil.load.fpl import load_fixtures, load_fpl
 from datautil.load.understat import load_understat
+from datautil.upcoming import (
+    get_upcoming_fixtures,
+    get_upcoming_gameweeks,
+)
+from datautil.utils import get_seasons
 
 
 def test_load_fpl():
@@ -127,3 +132,57 @@ def test_load_understat():
         .item()
         == 0
     )
+
+
+def test_get_seasons():
+    current_season = "2023-24"
+    expected = [
+        "2016-17",
+        "2017-18",
+        "2018-19",
+        "2019-20",
+        "2020-21",
+        "2021-22",
+        "2022-23",
+        "2023-24",
+    ]
+    assert get_seasons(current_season) == expected
+
+    expected = [
+        "2021-22",
+        "2022-23",
+        "2023-24",
+    ]
+    assert get_seasons(current_season, 3) == expected
+
+
+def test_get_upcoming_gameweeks():
+    next_gameweek = 1
+    last_gameweek = 38
+    window_size = 5
+    assert get_upcoming_gameweeks(
+        next_gameweek,
+        window_size,
+        last_gameweek,
+    ) == [1, 2, 3, 4, 5]
+
+    next_gameweek = 38
+    last_gameweek = 38
+    window_size = 5
+    assert get_upcoming_gameweeks(
+        next_gameweek,
+        window_size,
+        last_gameweek,
+    ) == [38]
+
+
+def test_get_upcoming_fixtures():
+    upcoming_gameweeks = [1, 2, 3, 4, 5]
+    season = "2016-17"
+    fixtures = load_fixtures([season])
+    upcoming_fixtures = get_upcoming_fixtures(fixtures, season, upcoming_gameweeks)
+    upcoming_fixtures = upcoming_fixtures.collect()
+    assert upcoming_fixtures.height == 50
+    assert upcoming_fixtures.null_count().sum_horizontal().item() == 0
+    assert upcoming_fixtures.get_column("event").min() == 1
+    assert upcoming_fixtures.get_column("event").max() == 5
