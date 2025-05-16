@@ -276,5 +276,5 @@ def calculate_selling_price(purchase_price: int, now_cost: int) -> int:
     if now_cost <= purchase_price:
         return now_cost
     # Apply a 50% sell-on fee to any profits
-    fee = round((now_cost - purchase_price) * 0.5)
-    return now_cost - fee
+    profit = (now_cost - purchase_price) // 2
+    return purchase_price + profit
