@@ -8,8 +8,8 @@ def engineer_features(df: pl.LazyFrame) -> pl.LazyFrame:
     return df.pipe(
         rolling_mean,
         order_by="kickoff_time",
-        group_by="element",
-        columns=["total_points"],
-        windows=[4],
-        defaults=[0],
+        group_by="code",
+        columns=["total_points", "total_points"],
+        window_sizes=[5, 38],
+        defaults=[0, 0],
     )

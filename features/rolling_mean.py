@@ -6,7 +6,7 @@ def rolling_mean(
     order_by: str,
     group_by: str,
     columns: list[str],
-    windows: list[int],
+    window_sizes: list[int],
     defaults: list[int],
 ) -> pl.LazyFrame:
     """Calculate rolling means for specified columns and windows."""
@@ -17,12 +17,15 @@ def rolling_mean(
     # Compute rolling averages for each column
     expressions = [
         pl.col(column)
-        .rolling_mean(window, min_samples=1)
+        .rolling_mean(window_size, min_samples=1)
         # Important: To avoid data leakage, shift the rolling mean by 1
         .shift(1, fill_value=default)
+        .forward_fill()
         .over(group_by)
-        .alias(f"{column}_rolling_mean_{window}")
-        for column, window, default in zip(columns, windows, defaults, strict=True)
+        .alias(f"{column}_rolling_mean_{window_size}")
+        for column, window_size, default in zip(
+            columns, window_sizes, defaults, strict=True
+        )
     ]
     df = df.with_columns(expressions)
 

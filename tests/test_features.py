@@ -65,7 +65,7 @@ def test_rolling_mean():
         order_by="round",
         group_by="id",
         columns=["total_points", "total_points"],
-        windows=[3, 5],
+        window_sizes=[3, 5],
         defaults=[0, 0],
     )
     assert_frame_equal(
@@ -74,4 +74,39 @@ def test_rolling_mean():
         check_row_order=False,
         check_column_order=False,
         check_exact=False,
+    )
+
+    # Test rolling means with null values
+    players = pl.DataFrame(
+        {
+            "id": [1, 1, 1, 1, 1, 1, 1] + [2, 2, 2, 2, 2, 2, 2],
+            "round": [1, 2, 3, 4, 5, 6, 7] + [1, 2, 3, 4, 5, 6, 7],
+            "total_points": [9, None, 3, 9, None, 6, 5] + [4, None, None, 3, 6, 9, 9],
+        }
+    )
+    players = players.sample(fraction=1.0, shuffle=True, seed=42)
+    expected = pl.DataFrame(
+        {
+            "id": [1, 1, 1, 1, 1, 1, 1] + [2, 2, 2, 2, 2, 2, 2],
+            "round": [1, 2, 3, 4, 5, 6, 7] + [1, 2, 3, 4, 5, 6, 7],
+            "total_points": [9, None, 3, 9, None, 6, 5] + [4, None, None, 3, 6, 9, 9],
+            "total_points_rolling_mean_1": [0, 9, 9, 3, 9, 9, 6]
+            + [0, 4, 4, 4, 3, 6, 9],
+        }
+    )
+    result = rolling_mean(
+        players,
+        order_by="round",
+        group_by="id",
+        columns=["total_points"],
+        window_sizes=[1],
+        defaults=[0],
+    )
+    assert_frame_equal(
+        result,
+        expected,
+        check_row_order=False,
+        check_column_order=False,
+        check_exact=False,
+        check_dtypes=False,
     )
