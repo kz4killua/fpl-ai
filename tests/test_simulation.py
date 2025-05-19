@@ -4,6 +4,8 @@ from datautil.load.fpl import load_elements
 from optimization.rules import DEF, FWD, GKP, MID
 from simulation.utils import (
     calculate_points,
+    calculate_selling_price,
+    calculate_transfer_cost,
     load_results,
     make_automatic_substitutions,
     remove_upcoming_data,
@@ -305,3 +307,57 @@ def test_calculate_points():
         15: 15,
     }
     assert calculate_points(roles, total_points) == 77
+
+
+def test_calculate_selling_price():
+    assert calculate_selling_price(100, 106) == 103
+    assert calculate_selling_price(100, 105) == 102
+    assert calculate_selling_price(50, 54) == 52
+    assert calculate_selling_price(50, 53) == 51
+    assert calculate_selling_price(120, 117) == 117
+
+
+def test_calculate_transfer_cost():
+    free_transfers = 1
+    transfers_made = 3
+    next_gameweek = 15
+    wildcard_gameweeks = [14, 25]
+    assert (
+        calculate_transfer_cost(
+            free_transfers, transfers_made, next_gameweek, wildcard_gameweeks
+        )
+        == 8
+    )
+
+    free_transfers = 1
+    transfers_made = 0
+    next_gameweek = 15
+    wildcard_gameweeks = [14, 25]
+    assert (
+        calculate_transfer_cost(
+            free_transfers, transfers_made, next_gameweek, wildcard_gameweeks
+        )
+        == 0
+    )
+
+    free_transfers = 0
+    transfers_made = 10
+    next_gameweek = 1
+    wildcard_gameweeks = [14, 25]
+    assert (
+        calculate_transfer_cost(
+            free_transfers, transfers_made, next_gameweek, wildcard_gameweeks
+        )
+        == 0
+    )
+
+    free_transfers = 1
+    transfers_made = 3
+    next_gameweek = 14
+    wildcard_gameweeks = [14, 25]
+    assert (
+        calculate_transfer_cost(
+            free_transfers, transfers_made, next_gameweek, wildcard_gameweeks
+        )
+        == 0
+    )
