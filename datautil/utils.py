@@ -50,7 +50,7 @@ def get_mapper(df: pl.DataFrame, from_col: str | Iterable[str], to_col: str) -> 
     if isinstance(from_col, str):
         for row in df.to_dicts():
             key = row[from_col]
-            mapper[row[from_col]] = row[to_col]
+            mapper[key] = row[to_col]
     else:
         for row in df.to_dicts():
             key = tuple(row[col] for col in from_col)
