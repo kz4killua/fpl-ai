@@ -95,10 +95,10 @@ def get_gameweeks(season: str) -> list[int]:
     path = DATA_DIR / f"fplcache/{season}"
     if not path.exists():
         raise FileNotFoundError(f"Data directory for season {season} does not exist.")
-    
+
     gameweeks = []
     for child in path.glob("*.json.xz"):
         gameweek = int(child.name.split(".")[0])
         gameweeks.append(gameweek)
-        
+
     return sorted(gameweeks)
