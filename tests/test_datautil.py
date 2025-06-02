@@ -13,7 +13,7 @@ from datautil.utils import get_seasons
 def test_load_fpl():
     # Load data for the 2016-17 season
     seasons = ["2016-17"]
-    players, _ = load_fpl(seasons)
+    players, _, _ = load_fpl(seasons)
     players = players.collect()
 
     # Test that mappings are correct
@@ -55,6 +55,33 @@ def test_load_fpl():
         .sum_horizontal()
         .item()
         == 0
+    )
+
+    # Test that availability mappings are correct
+    seasons = ["2024-25"]
+    players, _, _ = load_fpl(seasons)
+    players = players.collect()
+
+    # Haaland (351) was injured between gameweeks 30 and 35
+    expected = pl.DataFrame(
+        {
+            "season": ["2024-25", "2024-25", "2024-25", "2024-25"],
+            "element": [351, 351, 351, 351],
+            "round": [29, 30, 31, 36],
+            "status": ["a", "i", "i", "a"],
+        }
+    )
+    result = players.join(
+        expected.select(["season", "element", "round"]),
+        on=["season", "element", "round"],
+        how="inner",
+    ).select(expected.columns)
+    assert_frame_equal(
+        result,
+        expected,
+        check_row_order=False,
+        check_column_order=False,
+        check_exact=True,
     )
 
 

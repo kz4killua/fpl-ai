@@ -1,7 +1,12 @@
 import polars as pl
 
 from datautil.constants import DATA_DIR
-from datautil.load.fplcache import load_static_elements, load_static_teams
+from datautil.load.fplcache import (
+    get_gameweeks,
+    load_static_elements,
+    load_static_teams,
+)
+from game.rules import DEF, FWD, GKP, MID, MNG
 
 
 def load_fpl(seasons: list[str]) -> tuple[pl.LazyFrame, pl.LazyFrame]:
@@ -10,29 +15,48 @@ def load_fpl(seasons: list[str]) -> tuple[pl.LazyFrame, pl.LazyFrame]:
     # Load local data
     elements = load_elements(seasons)
     fixtures = load_fixtures(seasons)
+
+    # Static teams do not change per gameweek, so we can load them once per season
     static_teams = pl.concat(
         [load_static_teams(season, latest=True) for season in seasons],
         how="diagonal_relaxed",
     )
+    # Static elements change per gameweek, so we need to load them for each gameweek
     static_elements = pl.concat(
-        [load_static_elements(season, latest=True) for season in seasons],
+        [
+            load_static_elements(season, gameweek)
+            for season in seasons
+            for gameweek in get_gameweeks(season)
+        ],
         how="diagonal_relaxed",
     )
 
     # Add "element_type" and "code" to elements
     elements = elements.join(
-        static_elements.select(["season", "id", "element_type", "code"]),
+        static_elements.select(
+            [
+                pl.col("season"),
+                pl.col("id").alias("element"),
+                pl.col("element_type"),
+                pl.col("code"),
+            ]
+        ).unique(),
         how="left",
-        left_on=["season", "element"],
-        right_on=["season", "id"],
+        on=["season", "element"],
     )
 
     # Add "team" to elements
     elements = elements.join(
-        fixtures.select(["id", "season", "team_h", "team_a"]),
+        fixtures.select(
+            [
+                pl.col("id").alias("fixture"),
+                pl.col("season"),
+                pl.col("team_h"),
+                pl.col("team_a"),
+            ]
+        ),
         how="left",
-        left_on=["season", "fixture"],
-        right_on=["season", "id"],
+        on=["season", "fixture"],
     )
     elements = elements.with_columns(
         pl.when(pl.col("was_home"))
@@ -67,8 +91,8 @@ def load_fpl(seasons: list[str]) -> tuple[pl.LazyFrame, pl.LazyFrame]:
     )
 
     # Split elements into players and managers
-    players = elements.filter(pl.col("element_type").is_in([1, 2, 3, 4]))
-    managers = elements.filter(pl.col("element_type").is_in([5]))
+    players = elements.filter(pl.col("element_type").is_in([GKP, DEF, MID, FWD]))
+    managers = elements.filter(pl.col("element_type").is_in([MNG]))
 
     # Remove manager specific columns from players
     players = players.drop(
@@ -85,7 +109,38 @@ def load_fpl(seasons: list[str]) -> tuple[pl.LazyFrame, pl.LazyFrame]:
         strict=False,
     )
 
-    return players, managers
+    # Map news and availability information to players
+    players = players.join(
+        static_elements.select(
+            [
+                "season",
+                "round",
+                "code",
+                "chance_of_playing_next_round",
+                "status",
+                "news",
+                "news_added",
+            ]
+        ),
+        on=["season", "round", "code"],
+        how="left",
+    )
+
+    # Load team information
+    teams = fixtures.select(
+        [
+            "season",
+            "id",
+            "event",
+            "kickoff_time",
+            "team_h",
+            "team_a",
+            "team_h_score",
+            "team_a_score",
+        ]
+    )
+
+    return players, teams, managers
 
 
 def load_elements(seasons: list[str]) -> pl.LazyFrame:

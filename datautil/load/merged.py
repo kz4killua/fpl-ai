@@ -8,12 +8,12 @@ def load_merged(seasons: list[str]) -> tuple[pl.LazyFrame, pl.LazyFrame, pl.Lazy
     """Load merged player, team, and manager data."""
 
     # Load data from all sources
-    fpl_players, fpl_managers = load_fpl(seasons)
+    fpl_players, fpl_teams, fpl_managers = load_fpl(seasons)
     uds_players, uds_teams = load_understat(seasons)
 
-    # Merge data
+    # Merge data from all sources
     players = merge_players(fpl_players, uds_players)
-    teams = merge_teams(uds_teams)
+    teams = merge_teams(fpl_teams, uds_teams)
     managers = fpl_managers
 
     # Clean data
@@ -49,8 +49,8 @@ def merge_players(fpl_players: pl.LazyFrame, uds_players: pl.LazyFrame):
     return players
 
 
-def merge_teams(uds_teams: pl.LazyFrame):
-    """Rename understat columns to avoid confusion with FPL data."""
+def merge_teams(fpl_teams: pl.LazyFrame, uds_teams: pl.LazyFrame):
+    """Merge team data from FPL and Understat."""
 
     # Rename columns to avoid conflicts / confusion with FPL data
     uds_teams = uds_teams.rename(
@@ -88,6 +88,18 @@ def merge_teams(uds_teams: pl.LazyFrame):
         "ppda_allowed_def",
     ]
     uds_teams = uds_teams.rename({col: f"uds_{col}" for col in columns})
+
+    # Add event (gameweek) numbers
+    uds_teams = uds_teams.join(
+        fpl_teams.select(
+            [
+                pl.col("season"),
+                pl.col("id").alias("fixture_id"),
+                pl.col("event").alias("round"),
+            ]
+        ),
+        on=["season", "fixture_id"],
+    )
 
     return uds_teams
 
