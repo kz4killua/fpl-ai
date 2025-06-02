@@ -73,7 +73,7 @@ def get_upcoming_team_data(
 
     # Select relevant columns to begin the merge
     df = upcoming_fixtures.select(
-        pl.col("id").alias("fixture"),
+        pl.col("id").alias("fixture_id"),
         pl.col("event").alias("round"),
         pl.col("kickoff_time"),
         pl.col("season"),
