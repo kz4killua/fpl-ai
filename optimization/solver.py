@@ -2,7 +2,7 @@ import uuid
 
 from ortools.linear_solver import pywraplp
 
-from optimization.rules import (
+from game.rules import (
     DEF,
     FWD,
     GKP,

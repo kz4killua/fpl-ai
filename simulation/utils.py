@@ -6,7 +6,7 @@ import polars as pl
 
 from datautil.load.fpl import load_elements
 from datautil.utils import get_mapper
-from optimization.rules import (
+from game.rules import (
     DEF,
     FWD,
     GKP,

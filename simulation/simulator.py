@@ -6,7 +6,7 @@ from datautil.load.fpl import load_fixtures
 from datautil.load.fplcache import load_static_elements, load_static_teams
 from datautil.load.merged import load_merged
 from datautil.utils import get_mapper, get_seasons
-from optimization.rules import DEF, ELEMENT_TYPES, FWD, GKP, MID, MNG
+from game.rules import DEF, ELEMENT_TYPES, FWD, GKP, MID, MNG
 
 from .utils import (
     calculate_budget,

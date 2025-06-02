@@ -1,3 +1,4 @@
+# Element types
 GKP = 1
 DEF = 2
 MID = 3
@@ -12,6 +13,7 @@ ELEMENT_TYPES = {
     MNG: "MNG",
 }
 
+# Squad selection rules
 NUM_SQUAD_GKPS = 2
 NUM_SQUAD_DEFS = 5
 NUM_SQUAD_MIDS = 5
@@ -35,8 +37,10 @@ MAX_STARTING_XI_FWDS = 3
 
 MAX_PLAYERS_PER_TEAM = 3
 
+# Transfer rules
+STARTING_BUDGET = 1000
 TRANSFER_COST = 4
-
 MAX_FREE_TRANSFERS = 5
 
-STARTING_BUDGET = 1000
+# Scoring rules
+CAPTAIN_MULTIPLIER = 2.0

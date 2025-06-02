@@ -1,5 +1,7 @@
-from .parameters import (
+from game.rules import (
     CAPTAIN_MULTIPLIER,
+)
+from optimization.parameters import (
     RESERVE_GKP_MULTIPLIER,
     RESERVE_OUT_1_MULTIPLIER,
     RESERVE_OUT_2_MULTIPLIER,
@@ -8,7 +10,7 @@ from .parameters import (
     STARTING_XI_MULTIPLIER,
     VICE_CAPTAIN_MULTIPLIER,
 )
-from .solver import solve
+from optimization.solver import solve
 
 
 def optimize_squad(
