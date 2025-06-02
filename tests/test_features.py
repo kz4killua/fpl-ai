@@ -1,10 +1,13 @@
+from datetime import datetime
+
 import polars as pl
 from polars.testing import assert_frame_equal
 
-from features.rolling_mean import rolling_mean
+from features.availability import compute_availability
+from features.rolling_mean import compute_rolling_mean
 
 
-def test_rolling_mean():
+def test_compute_rolling_mean():
     # Prepare a dataset of two players and seven gameweeks
     players = pl.DataFrame(
         {
@@ -60,7 +63,7 @@ def test_rolling_mean():
             ],
         }
     )
-    result = rolling_mean(
+    result = compute_rolling_mean(
         players,
         order_by="round",
         group_by="id",
@@ -94,7 +97,7 @@ def test_rolling_mean():
             + [0, 4, 4, 4, 3, 6, 9],
         }
     )
-    result = rolling_mean(
+    result = compute_rolling_mean(
         players,
         order_by="round",
         group_by="id",
@@ -110,3 +113,253 @@ def test_rolling_mean():
         check_exact=False,
         check_dtypes=False,
     )
+
+
+def test_compute_availability():
+    df = pl.DataFrame(
+        {
+            "season": ["2019-20", "2019-20", "2019-20"],
+            "round": [1, 2, 3],
+            "code": [1, 1, 1],
+            "kickoff_time": [
+                datetime(2019, 8, 10, 15, 0),
+                datetime(2019, 8, 17, 15, 0),
+                datetime(2019, 8, 24, 15, 0),
+            ],
+        }
+    )
+
+    # Test with status 'a' (available)
+    df = df.with_columns(
+        [
+            pl.Series("chance_of_playing_next_round", [None, None, None]),
+            pl.Series("status", ["a", None, None]),
+            pl.Series("news", ["", None, None]),
+            pl.Series("news_added", [None, None, None]),
+        ]
+    )
+    expected = pl.DataFrame({"availability": [100, 100, 100]})
+    _test_compute_availability(df, expected)
+
+    df = df.with_columns(
+        [
+            pl.Series("chance_of_playing_next_round", [100, None, None]),
+            pl.Series("status", ["a", None, None]),
+            pl.Series("news", ["", None, None]),
+            pl.Series("news_added", [datetime(2019, 8, 1), None, None]),
+        ]
+    )
+    expected = pl.DataFrame({"availability": [100, 100, 100]})
+    _test_compute_availability(df, expected)
+
+    # Test with status 'i' (injured)
+    df = df.with_columns(
+        [
+            pl.Series("status", ["i", None, None]),
+            pl.Series("news", ["Ankle injury - Expected back 15 Aug", None, None]),
+            pl.Series("news_added", [datetime(2019, 8, 1), None, None]),
+            pl.Series("chance_of_playing_next_round", [None, None, None]),
+        ]
+    )
+    expected = pl.DataFrame({"availability": [0, 100, 100]})
+    _test_compute_availability(df, expected)
+
+    df = df.with_columns(
+        [
+            pl.Series("status", ["i", None, None]),
+            pl.Series("news", ["Ankle injury - Expected back 15 Feb", None, None]),
+            pl.Series("news_added", [datetime(2019, 8, 1), None, None]),
+            pl.Series("chance_of_playing_next_round", [None, None, None]),
+        ]
+    )
+    expected = pl.DataFrame({"availability": [0, 0, 0]})
+    _test_compute_availability(df, expected)
+
+    df = df.with_columns(
+        [
+            pl.Series("status", ["i", None, None]),
+            pl.Series("news", ["Knee injury - Unknown return date", None, None]),
+            pl.Series("news_added", [datetime(2019, 8, 1), None, None]),
+            pl.Series("chance_of_playing_next_round", [None, None, None]),
+        ]
+    )
+    expected = pl.DataFrame({"availability": [0, 0, 0]})
+    _test_compute_availability(df, expected)
+
+    # Test with status 'd' (doubtful)
+    df = df.with_columns(
+        [
+            pl.Series("status", ["d", None, None]),
+            pl.Series("news", ["Knock - 75% chance of playing", None, None]),
+            pl.Series("news_added", [datetime(2019, 8, 1), None, None]),
+            pl.Series("chance_of_playing_next_round", [75, None, None]),
+        ]
+    )
+    expected = pl.DataFrame({"availability": [75, 100, 100]})
+    _test_compute_availability(df, expected)
+
+    # Test with status 's' (suspended)
+    df = df.with_columns(
+        [
+            pl.Series("status", ["s", None, None]),
+            pl.Series("news", ["Suspended until 20 Aug", None, None]),
+            pl.Series("news_added", [datetime(2019, 8, 1), None, None]),
+            pl.Series("chance_of_playing_next_round", [0, None, None]),
+        ]
+    )
+    expected = pl.DataFrame({"availability": [0, 0, 100]})
+    _test_compute_availability(df, expected)
+
+    df = df.with_columns(
+        [
+            pl.Series("status", ["s", None, None]),
+            pl.Series("news", ["Suspended until 20 Feb", None, None]),
+            pl.Series("news_added", [datetime(2019, 8, 1), None, None]),
+            pl.Series("chance_of_playing_next_round", [0, None, None]),
+        ]
+    )
+    expected = pl.DataFrame({"availability": [0, 0, 0]})
+    _test_compute_availability(df, expected)
+
+    # Test with status 'u' (unavailable)
+    df = df.with_columns(
+        [
+            pl.Series("status", ["u", None, None]),
+            pl.Series("news", ["Transferred to Royal Antwerp", None, None]),
+            pl.Series("news_added", [datetime(2019, 8, 1), None, None]),
+            pl.Series("chance_of_playing_next_round", [0, None, None]),
+        ]
+    )
+    expected = pl.DataFrame({"availability": [0, 0, 0]})
+    _test_compute_availability(df, expected)
+
+    df = df.with_columns(
+        [
+            pl.Series("status", ["u", None, None]),
+            pl.Series(
+                "news",
+                [
+                    "Joined Marseille on loan for 2021/22. - Expected back 20 Aug",
+                    None,
+                    None,
+                ],
+            ),
+            pl.Series("news_added", [datetime(2019, 8, 1), None, None]),
+            pl.Series("chance_of_playing_next_round", [0, None, None]),
+        ]
+    )
+    expected = pl.DataFrame({"availability": [0, 0, 100]})
+    _test_compute_availability(df, expected)
+
+    df = df.with_columns(
+        [
+            pl.Series("status", ["u", None, None]),
+            pl.Series(
+                "news",
+                [
+                    "Joined Marseille on loan for 2021/22. - Expected back 20 Feb",
+                    None,
+                    None,
+                ],
+            ),
+            pl.Series("news_added", [datetime(2019, 8, 1), None, None]),
+            pl.Series("chance_of_playing_next_round", [0, None, None]),
+        ]
+    )
+    expected = pl.DataFrame({"availability": [0, 0, 0]})
+    _test_compute_availability(df, expected)
+
+    # Test with status 'n' (not eligible)
+    df = df.with_columns(
+        pl.Series("status", ["n", None, None]),
+        pl.Series(
+            "news",
+            [
+                "Ineligible to face his parent club on 19/5. - Expected back 20 Aug",
+                None,
+                None,
+            ],
+        ),
+        pl.Series("news_added", [datetime(2019, 8, 1), None, None]),
+        pl.Series("chance_of_playing_next_round", [0, None, None]),
+    )
+    expected = pl.DataFrame({"availability": [0, 0, 100]})
+    _test_compute_availability(df, expected)
+
+    df = df.with_columns(
+        pl.Series("status", ["n", None, None]),
+        pl.Series(
+            "news",
+            [
+                "Ineligible to face his parent club on 19/5. - Expected back 20 Feb",
+                None,
+                None,
+            ],
+        ),
+        pl.Series("news_added", [datetime(2019, 8, 1), None, None]),
+        pl.Series("chance_of_playing_next_round", [0, None, None]),
+    )
+    expected = pl.DataFrame({"availability": [0, 0, 0]})
+    _test_compute_availability(df, expected)
+
+    df = df.with_columns(
+        [
+            pl.Series("status", ["n", None, None]),
+            pl.Series(
+                "news", ["Transferred to Udinese - Unknown return date", None, None]
+            ),
+            pl.Series("news_added", [datetime(2019, 8, 1), None, None]),
+            pl.Series("chance_of_playing_next_round", [0, None, None]),
+        ]
+    )
+    expected = pl.DataFrame({"availability": [0, 0, 0]})
+    _test_compute_availability(df, expected)
+
+    # Test with multiple players
+    df = pl.DataFrame(
+        {
+            "season": ["2019-20", "2019-20", "2019-20", "2019-20"],
+            "round": [1, 1, 2, 2],
+            "code": [1, 2, 1, 2],
+            "kickoff_time": [
+                datetime(2019, 8, 10, 15, 0),
+                datetime(2019, 8, 10, 15, 0),
+                datetime(2019, 8, 17, 15, 0),
+                datetime(2019, 8, 17, 15, 0),
+            ],
+        }
+    )
+
+    df = df.with_columns(
+        [
+            pl.Series("chance_of_playing_next_round", [None, 75, None, None]),
+            pl.Series("status", ["a", "u", None, None]),
+            pl.Series(
+                "news",
+                [
+                    "",
+                    "Transferred to Royal Antwerp",
+                    None,
+                    None,
+                ],
+            ),
+            pl.Series(
+                "news_added",
+                [
+                    datetime(2019, 8, 1),
+                    datetime(2019, 8, 1),
+                    None,
+                    None,
+                ],
+            ),
+        ]
+    )
+    expected = pl.DataFrame({"availability": [100, 0, 100, 0]})
+    _test_compute_availability(df, expected)
+
+
+def _test_compute_availability(df: pl.DataFrame, expected: pl.DataFrame):
+    df = df.with_columns(pl.col("news_added").cast(pl.Datetime))
+    result = compute_availability(df)
+    result = result.select(expected.columns)
+    assert_frame_equal(result, expected, check_dtypes=False)

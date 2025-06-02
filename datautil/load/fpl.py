@@ -126,6 +126,16 @@ def load_fpl(seasons: list[str]) -> tuple[pl.LazyFrame, pl.LazyFrame]:
         how="left",
     )
 
+    # Fill in missing statuses for seasons before 2021-22
+    players = players.with_columns(
+        [
+            pl.when((pl.col("season") < "2021-22") & (pl.col("status").is_null()))
+            .then(pl.lit("a"))
+            .otherwise(pl.col("status"))
+            .alias("status"),
+        ]
+    )
+
     # Load team information
     teams = fixtures.select(
         [

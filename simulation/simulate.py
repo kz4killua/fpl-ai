@@ -1,4 +1,3 @@
-
 import polars as pl
 
 from datautil.upcoming import (
@@ -60,11 +59,13 @@ def simulate(season: str, wildcard_gameweeks: list[int], log: bool = False) -> i
         combined_players = pl.concat(
             [historical_players, upcoming_players], how="diagonal_relaxed"
         )
-        _ = pl.concat([historical_teams, upcoming_teams], how="diagonal_relaxed")
+        combined_teams = pl.concat(
+            [historical_teams, upcoming_teams], how="diagonal_relaxed"
+        )
         _ = pl.concat([historical_managers, upcoming_managers], how="diagonal_relaxed")
 
         # Engineer features. Keep only those needed for prediction
-        features = engineer_features(combined_players)
+        features = engineer_features(combined_players, combined_teams)
         features = features.filter(
             (pl.col("season") == season) & (pl.col("round").is_in(upcoming_gameweeks))
         )

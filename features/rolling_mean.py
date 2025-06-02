@@ -1,7 +1,7 @@
 import polars as pl
 
 
-def rolling_mean(
+def compute_rolling_mean(
     df: pl.LazyFrame,
     order_by: str,
     group_by: str,

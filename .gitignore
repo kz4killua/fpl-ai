@@ -13,7 +13,7 @@ wheels/
 .ruff_cache/
 
 # todos
-TODO.md
+*.md
 
 # models
 models
