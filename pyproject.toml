@@ -8,7 +8,6 @@ dependencies = [
     "numpy>=2.2.5",
     "ortools>=9.12.4544",
     "polars>=1.29.0",
-    "pytest>=8.3.5",
     "requests>=2.32.3",
     "scikit-learn>=1.6.1",
 ]
@@ -16,6 +15,7 @@ dependencies = [
 [dependency-groups]
 dev = [
     "ipykernel>=6.29.5",
+    "pytest>=8.4.0",
     "ruff>=0.11.8",
 ]
 
