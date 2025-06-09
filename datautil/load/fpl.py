@@ -18,7 +18,10 @@ def load_fpl(seasons: list[str]) -> tuple[pl.LazyFrame, pl.LazyFrame]:
 
     # Static teams do not change per gameweek, so we can load them once per season
     static_teams = pl.concat(
-        [load_static_teams(season, latest=True) for season in seasons],
+        [
+            load_static_teams(season, (1 if season >= "2021-22" else None))
+            for season in seasons
+        ],
         how="diagonal_relaxed",
     )
     # Static elements change per gameweek, so we need to load them for each gameweek
@@ -26,7 +29,7 @@ def load_fpl(seasons: list[str]) -> tuple[pl.LazyFrame, pl.LazyFrame]:
         [
             load_static_elements(season, gameweek)
             for season in seasons
-            for gameweek in get_gameweeks(season)
+            for gameweek in (get_gameweeks(season) if season >= "2021-22" else [None])
         ],
         how="diagonal_relaxed",
     )
@@ -124,16 +127,6 @@ def load_fpl(seasons: list[str]) -> tuple[pl.LazyFrame, pl.LazyFrame]:
         ),
         on=["season", "round", "code"],
         how="left",
-    )
-
-    # Fill in missing statuses for seasons before 2021-22
-    players = players.with_columns(
-        [
-            pl.when((pl.col("season") < "2021-22") & (pl.col("status").is_null()))
-            .then(pl.lit("a"))
-            .otherwise(pl.col("status"))
-            .alias("status"),
-        ]
     )
 
     # Load team information

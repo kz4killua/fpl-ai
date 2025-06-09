@@ -6,11 +6,8 @@ import polars as pl
 from datautil.constants import DATA_DIR
 
 
-def load_static_elements(
-    season: str, gameweek: int | None = None, *, latest: bool = False
-) -> pl.LazyFrame:
+def load_static_elements(season: str, gameweek: int | None) -> pl.LazyFrame:
     """Load static elements data for the given season and gameweek."""
-    gameweek = _resolve_gameweek(season, gameweek, latest)
     bootstrap_static = load_bootstrap_static(season, gameweek)
     schema_overrides = {
         "ep_next": pl.Float64,
@@ -49,11 +46,8 @@ def load_static_elements(
     return static_elements.lazy()
 
 
-def load_static_teams(
-    season: str, gameweek: int | None = None, *, latest: bool = False
-) -> pl.LazyFrame:
+def load_static_teams(season: str, gameweek: int | None) -> pl.LazyFrame:
     """Load static teams data for the given season and gameweek."""
-    gameweek = _resolve_gameweek(season, gameweek, latest)
     bootstrap_static = load_bootstrap_static(season, gameweek)
     static_teams = pl.from_dicts(bootstrap_static["teams"])
     static_teams = static_teams.with_columns(
@@ -63,34 +57,23 @@ def load_static_teams(
     return static_teams.lazy()
 
 
-def load_bootstrap_static(
-    season: str, gameweek: int | None = None, *, latest: bool = False
-) -> dict:
+def load_bootstrap_static(season: str, gameweek: int | None) -> dict:
     """Load bootstrap static data for the given season and gameweek."""
-    gameweek = _resolve_gameweek(season, gameweek, latest=latest)
-    path = DATA_DIR / f"fplcache/{season}/{gameweek}.json.xz"
+    if season < "2021-22":
+        if gameweek is not None:
+            raise ValueError(
+                "Per-gameweek data is not available for seasons before 2021-22. "
+                "Set `gameweek` to None to load the final data instead."
+            )
+        path = DATA_DIR / f"fplcache/{season}/final.json.xz"
+    else:
+        path = DATA_DIR / f"fplcache/{season}/{gameweek}.json.xz"
     with lzma.open(path, "rt", encoding="utf-8") as f:
         return json.load(f)
 
 
-def _resolve_gameweek(season: str, gameweek: int | None, latest: bool):
-    if (gameweek is None and not latest) or (gameweek is not None and latest):
-        raise ValueError("Either gameweek or latest must be specified, but not both.")
-    if latest:
-        gameweek = get_latest_gameweek(season)
-    return gameweek
-
-
-def get_latest_gameweek(season: str) -> int:
-    """Scan the data directory for the latest gameweek of a given season."""
-    gameweeks = get_gameweeks(season)
-    if not gameweeks:
-        raise FileNotFoundError(f"No gameweeks found for season {season}.")
-    return max(gameweeks)
-
-
 def get_gameweeks(season: str) -> list[int]:
-    """Scan the data directory for all gameweeks of a given season."""
+    """Scan the data directory for all gameweeks with static data."""
 
     path = DATA_DIR / f"fplcache/{season}"
     if not path.exists():
@@ -98,7 +81,9 @@ def get_gameweeks(season: str) -> list[int]:
 
     gameweeks = []
     for child in path.glob("*.json.xz"):
-        gameweek = int(child.name.split(".")[0])
-        gameweeks.append(gameweek)
+        name = child.name.split(".")[0]
+        if not name.isdigit():
+            continue
+        gameweeks.append(int(name))
 
     return sorted(gameweeks)
