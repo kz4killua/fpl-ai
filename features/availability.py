@@ -128,6 +128,8 @@ def compute_availability(df: pl.LazyFrame) -> pl.LazyFrame:
         .then(pl.lit(0))
         .when(pl.col("status") == "d")
         .then(pl.col("chance_of_playing_next_round").fill_null(100))
+        .when(pl.col("status").is_null())
+        .then(pl.lit(None))
         .otherwise(pl.lit(0))
         .alias("availability")
     )

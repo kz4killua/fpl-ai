@@ -357,6 +357,17 @@ def test_compute_availability():
     expected = pl.DataFrame({"availability": [100, 0, 100, 0]})
     _test_compute_availability(df, expected)
 
+    # Test with null availability
+    df = df.with_columns(
+        [
+            pl.Series("chance_of_playing_next_round", [None, None, None, 100]),
+            pl.Series("status", [None, None, None, "a"]),
+            pl.Series("news", [None, None, None, ""]),
+        ]
+    )
+    expected = pl.DataFrame({"availability": [None, None, None, 100]})
+    _test_compute_availability(df, expected)
+
 
 def _test_compute_availability(df: pl.DataFrame, expected: pl.DataFrame):
     df = df.with_columns(pl.col("news_added").cast(pl.Datetime))
