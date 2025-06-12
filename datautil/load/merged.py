@@ -25,34 +25,34 @@ def load_merged(seasons: list[str]) -> tuple[pl.LazyFrame, pl.LazyFrame, pl.Lazy
 
 def merge_players(fpl_players: pl.LazyFrame, uds_players: pl.LazyFrame):
     """Merge player data from FPL and Understat."""
+    columns = [
+        "xG",
+        "xA",
+        "shots",
+        "key_passes",
+        "npg",
+        "npxG",
+        "xGChain",
+        "xGBuildup",
+        "position",
+    ]
     players = fpl_players.join(
         uds_players.select(
             [
-                pl.col("fpl_code"),
-                pl.col("fpl_season"),
-                pl.col("fpl_fixture_id"),
-                pl.col("shots").alias("uds_shots"),
-                pl.col("xG").alias("uds_xG"),
-                pl.col("position").alias("uds_position"),
-                pl.col("xA").alias("uds_xA"),
-                pl.col("key_passes").alias("uds_key_passes"),
-                pl.col("npg").alias("uds_npg"),
-                pl.col("npxG").alias("uds_npxG"),
-                pl.col("xGChain").alias("uds_xGChain"),
-                pl.col("xGBuildup").alias("uds_xGBuildup"),
+                pl.col("fpl_code").alias("code"),
+                pl.col("fpl_season").alias("season"),
+                pl.col("fpl_fixture_id").alias("fixture"),
+                *[pl.col(column).alias(f"uds_{column}") for column in columns],
             ]
         ),
         how="left",
-        left_on=["code", "season", "fixture"],
-        right_on=["fpl_code", "fpl_season", "fpl_fixture_id"],
+        on=["code", "season", "fixture"],
     )
     return players
 
 
 def merge_teams(fpl_teams: pl.LazyFrame, uds_teams: pl.LazyFrame):
     """Merge team data from FPL and Understat."""
-
-    # Add understat columns
     columns = [
         "xG",
         "xGA",
@@ -89,7 +89,7 @@ def merge_teams(fpl_teams: pl.LazyFrame, uds_teams: pl.LazyFrame):
 def clean_players(players: pl.LazyFrame) -> pl.LazyFrame:
     """Clean player data."""
 
-    # Fill in missing values for understat columns (except uds_position)
+    # Fill in missing values for numeric understats
     players = players.with_columns(
         pl.col("uds_shots").fill_null(0),
         pl.col("uds_xG").fill_null(0),
@@ -102,7 +102,7 @@ def clean_players(players: pl.LazyFrame) -> pl.LazyFrame:
     )
 
     # Fill in missing values for uds_position
-    players = players.with_columns(pl.col("uds_position").fill_null("Reserves"))
+    players = players.with_columns(pl.col("uds_position").fill_null("Reserve"))
 
     # Cast was_home to an integer
     players = players.with_columns(pl.col("was_home").cast(pl.Int8))

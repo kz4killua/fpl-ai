@@ -113,6 +113,22 @@ def get_upcoming_team_data(
         how="left",
     )
 
+    # Add team strengths
+    df = df.join(
+        static_teams.select(
+            pl.col("code"),
+            pl.col("strength"),
+            pl.col("strength_overall_home"),
+            pl.col("strength_overall_away"),
+            pl.col("strength_attack_home"),
+            pl.col("strength_attack_away"),
+            pl.col("strength_defence_home"),
+            pl.col("strength_defence_away"),
+        ),
+        on="code",
+        how="left",
+    )
+
     return df
 
 
@@ -133,9 +149,15 @@ def get_upcoming_fixtures(
     fixtures: pl.LazyFrame, season: str, upcoming_gameweeks: list[int]
 ) -> pl.LazyFrame:
     """Get fixtures for the upcoming gameweeks."""
-    return fixtures.filter(
+    df = fixtures.filter(
         (pl.col("event").is_in(upcoming_gameweeks)) & (pl.col("season") == season)
     )
+    # Remove upcoming scores as they should be unknown
+    df = df.with_columns(
+        pl.lit(None).alias("team_a_score"),
+        pl.lit(None).alias("team_h_score"),
+    )
+    return df
 
 
 def get_upcoming_gameweeks(

@@ -40,7 +40,7 @@ def load_static_elements(season: str, gameweek: int) -> pl.LazyFrame:
             pl.lit(None).cast(pl.Int64).alias("chance_of_playing_next_round"),
             pl.lit(None).cast(pl.String).alias("status"),
             pl.lit(None).cast(pl.String).alias("news"),
-            pl.lit(None).cast(pl.Datetime(time_zone="UTC")).alias("news_added")
+            pl.lit(None).cast(pl.Datetime(time_zone="UTC")).alias("news_added"),
         )
     else:
         static_elements = static_elements.with_columns(
