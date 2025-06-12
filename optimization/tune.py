@@ -58,5 +58,5 @@ def tune():
         sampler=optuna.samplers.TPESampler(seed=42),
         pruner=optuna.pruners.HyperbandPruner(),
     )
-    study.optimize(objective, n_jobs=-1)
+    study.optimize(objective)
     return study.best_params
