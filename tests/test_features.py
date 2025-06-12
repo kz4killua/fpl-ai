@@ -4,8 +4,8 @@ import polars as pl
 from polars.testing import assert_frame_equal
 
 from features.availability import compute_availability
+from features.per_90 import compute_per_90
 from features.rolling_mean import compute_rolling_mean
-from features.rolling_sum_over_days import rolling_sum_over_days
 
 
 def test_compute_rolling_mean():
@@ -37,7 +37,7 @@ def test_compute_rolling_mean():
                 11 / 3,
                 11 / 3,
                 18 / 3,
-            ]
+            ],
         ),
         pl.Series(
             "total_points_rolling_mean_5",
@@ -58,8 +58,8 @@ def test_compute_rolling_mean():
                 15 / 4,
                 21 / 5,
                 26 / 5,
-            ]
-        )
+            ],
+        ),
     )
     players = players.sample(fraction=1.0, shuffle=True, seed=42)
     result = compute_rolling_mean(
@@ -89,8 +89,7 @@ def test_compute_rolling_mean():
     )
     expected = players.with_columns(
         pl.Series(
-            "total_points_rolling_mean_1",
-            [0, 9, 9, 3, 9, 9, 6] + [0, 4, 4, 4, 3, 6, 9]
+            "total_points_rolling_mean_1", [0, 9, 9, 3, 9, 9, 6] + [0, 4, 4, 4, 3, 6, 9]
         )
     )
     players = players.sample(fraction=1.0, shuffle=True, seed=42)
@@ -144,6 +143,24 @@ def test_compute_rolling_mean():
     )
 
 
+def test_compute_per_90():
+    players = pl.DataFrame(
+        {
+            "id": [1, 2, 3, 4, 5],
+            "minutes": [0, 90, 90, 45, 90],
+            "goals": [0, 0, 2, 2, 2],
+        }
+    )
+    expected = pl.DataFrame(
+        {
+            "goals_per_90": [0, 0, 2, 4, 2],
+        }
+    )
+    result = compute_per_90(players, ["goals"])
+    result = result.select(expected.columns)
+    assert_frame_equal(result, expected, check_dtypes=False)
+
+
 def test_compute_availability():
     df = pl.DataFrame(
         {
@@ -168,7 +185,7 @@ def test_compute_availability():
         ]
     )
     expected = pl.DataFrame({"availability": [100, 100, 100]})
-    _test_compute_availability(df, expected)
+    _compare_availability(df, expected)
 
     df = df.with_columns(
         [
@@ -179,7 +196,7 @@ def test_compute_availability():
         ]
     )
     expected = pl.DataFrame({"availability": [100, 100, 100]})
-    _test_compute_availability(df, expected)
+    _compare_availability(df, expected)
 
     # Test with status 'i' (injured)
     df = df.with_columns(
@@ -191,7 +208,7 @@ def test_compute_availability():
         ]
     )
     expected = pl.DataFrame({"availability": [0, 100, 100]})
-    _test_compute_availability(df, expected)
+    _compare_availability(df, expected)
 
     df = df.with_columns(
         [
@@ -202,7 +219,7 @@ def test_compute_availability():
         ]
     )
     expected = pl.DataFrame({"availability": [0, 0, 0]})
-    _test_compute_availability(df, expected)
+    _compare_availability(df, expected)
 
     df = df.with_columns(
         [
@@ -213,7 +230,7 @@ def test_compute_availability():
         ]
     )
     expected = pl.DataFrame({"availability": [0, 0, 0]})
-    _test_compute_availability(df, expected)
+    _compare_availability(df, expected)
 
     # Test with status 'd' (doubtful)
     df = df.with_columns(
@@ -225,7 +242,7 @@ def test_compute_availability():
         ]
     )
     expected = pl.DataFrame({"availability": [75, 100, 100]})
-    _test_compute_availability(df, expected)
+    _compare_availability(df, expected)
 
     # Test with status 's' (suspended)
     df = df.with_columns(
@@ -237,7 +254,7 @@ def test_compute_availability():
         ]
     )
     expected = pl.DataFrame({"availability": [0, 0, 100]})
-    _test_compute_availability(df, expected)
+    _compare_availability(df, expected)
 
     df = df.with_columns(
         [
@@ -248,7 +265,7 @@ def test_compute_availability():
         ]
     )
     expected = pl.DataFrame({"availability": [0, 0, 0]})
-    _test_compute_availability(df, expected)
+    _compare_availability(df, expected)
 
     # Test with status 'u' (unavailable)
     df = df.with_columns(
@@ -260,7 +277,7 @@ def test_compute_availability():
         ]
     )
     expected = pl.DataFrame({"availability": [0, 0, 0]})
-    _test_compute_availability(df, expected)
+    _compare_availability(df, expected)
 
     df = df.with_columns(
         [
@@ -278,7 +295,7 @@ def test_compute_availability():
         ]
     )
     expected = pl.DataFrame({"availability": [0, 0, 100]})
-    _test_compute_availability(df, expected)
+    _compare_availability(df, expected)
 
     df = df.with_columns(
         [
@@ -296,7 +313,7 @@ def test_compute_availability():
         ]
     )
     expected = pl.DataFrame({"availability": [0, 0, 0]})
-    _test_compute_availability(df, expected)
+    _compare_availability(df, expected)
 
     # Test with status 'n' (not eligible)
     df = df.with_columns(
@@ -313,7 +330,7 @@ def test_compute_availability():
         pl.Series("chance_of_playing_next_round", [0, None, None]),
     )
     expected = pl.DataFrame({"availability": [0, 0, 100]})
-    _test_compute_availability(df, expected)
+    _compare_availability(df, expected)
 
     df = df.with_columns(
         pl.Series("status", ["n", None, None]),
@@ -329,7 +346,7 @@ def test_compute_availability():
         pl.Series("chance_of_playing_next_round", [0, None, None]),
     )
     expected = pl.DataFrame({"availability": [0, 0, 0]})
-    _test_compute_availability(df, expected)
+    _compare_availability(df, expected)
 
     df = df.with_columns(
         [
@@ -342,7 +359,7 @@ def test_compute_availability():
         ]
     )
     expected = pl.DataFrame({"availability": [0, 0, 0]})
-    _test_compute_availability(df, expected)
+    _compare_availability(df, expected)
 
     # Test with multiple players
     df = pl.DataFrame(
@@ -384,7 +401,7 @@ def test_compute_availability():
         ]
     )
     expected = pl.DataFrame({"availability": [100, 0, 100, 0]})
-    _test_compute_availability(df, expected)
+    _compare_availability(df, expected)
 
     # Test with null availability
     df = df.with_columns(
@@ -395,10 +412,10 @@ def test_compute_availability():
         ]
     )
     expected = pl.DataFrame({"availability": [None, None, None, 100]})
-    _test_compute_availability(df, expected)
+    _compare_availability(df, expected)
 
 
-def _test_compute_availability(df: pl.DataFrame, expected: pl.DataFrame):
+def _compare_availability(df: pl.DataFrame, expected: pl.DataFrame):
     df = df.with_columns(pl.col("news_added").cast(pl.Datetime))
     result = compute_availability(df)
     result = result.select(expected.columns)
