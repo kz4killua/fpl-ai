@@ -1,7 +1,10 @@
+import json
+
 import polars as pl
 
 from datautil.load.fpl import load_elements
-from optimization.rules import DEF, FWD, GKP, MID
+from game.rules import DEF, FWD, GKP, MID
+from simulation.simulate import Simulator
 from simulation.utils import (
     calculate_points,
     calculate_selling_price,
@@ -361,3 +364,80 @@ def test_calculate_transfer_cost():
         )
         == 0
     )
+
+
+def test_simulator():
+    season = "2024-25"
+    entry_id = 3291882
+
+    # Load entry data
+    with open(f"tests/data/simulation/{entry_id}_picks.json") as f:
+        entry_picks = json.load(f)
+    with open(f"tests/data/simulation/{entry_id}_history.json") as f:
+        entry_history = json.load(f)
+    wildcard_gameweeks = [
+        chip["event"] for chip in entry_history["chips"] if chip["name"] == "wildcard"
+    ]
+
+    # Simulate the entry's season
+    simulator = Simulator(season)
+    while simulator.next_gameweek <= simulator.last_gameweek:
+        picks = entry_picks[str(simulator.next_gameweek)]
+        roles = _get_simulator_roles(picks)
+        simulator.update(roles, wildcard_gameweeks, log=True)
+        assert simulator.season_points == picks["entry_history"]["total_points"], (
+            f"Total points mismatch in round {simulator.next_gameweek}. "
+            f"Expected {picks['entry_history']['total_points']}, "
+            f"got {simulator.season_points}."
+        )
+
+
+def _get_simulator_roles(picks: dict):
+    roles = {
+        "captain": None,
+        "vice_captain": None,
+        "starting_xi": [],
+        "reserve_gkp": None,
+        "reserve_out_1": None,
+        "reserve_out_2": None,
+        "reserve_out_3": None,
+    }
+    for item in picks["picks"]:
+        # Set the captain and vice-captain
+        if item["is_captain"]:
+            roles["captain"] = item["element"]
+        elif item["is_vice_captain"]:
+            roles["vice_captain"] = item["element"]
+        # Set the starting XI and reserves
+        if item["position"] >= 1 and item["position"] <= 11:
+            roles["starting_xi"].append(item["element"])
+        elif item["position"] == 12:
+            roles["reserve_gkp"] = item["element"]
+        elif item["position"] == 13:
+            roles["reserve_out_1"] = item["element"]
+        elif item["position"] == 14:
+            roles["reserve_out_2"] = item["element"]
+        elif item["position"] == 15:
+            roles["reserve_out_3"] = item["element"]
+
+    # Undo automatic substitutions
+    for item in picks["automatic_subs"]:
+        element_out = item["element_out"]
+        element_in = item["element_in"]
+        assert element_in in roles["starting_xi"]
+        assert element_out in [
+            roles["reserve_gkp"],
+            roles["reserve_out_1"],
+            roles["reserve_out_2"],
+            roles["reserve_out_3"],
+        ]
+
+        for key in ["reserve_gkp", "reserve_out_1", "reserve_out_2", "reserve_out_3"]:
+            if roles[key] == element_out:
+                roles[key] = element_in
+                idx = roles["starting_xi"].index(element_in)
+                roles["starting_xi"].remove(element_in)
+                roles["starting_xi"].insert(idx, element_out)
+                break
+
+    return roles
