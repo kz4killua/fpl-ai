@@ -21,6 +21,9 @@ MONTH_MAPPING = {
 def compute_availability(df: pl.LazyFrame) -> pl.LazyFrame:
     """Compute the availability of players for each fixture."""
 
+    # Sort by kickoff time (for forward filling)
+    df = df.sort("kickoff_time")
+
     # Forward fill the status, news, and news_added columns for upcoming fixtures
     df = df.with_columns(
         [
