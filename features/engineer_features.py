@@ -6,27 +6,53 @@ from .rolling_mean import compute_rolling_mean
 
 
 def engineer_player_features(players: pl.LazyFrame) -> pl.LazyFrame:
-    return players.pipe(
-        compute_rolling_mean,
-        order_by="kickoff_time",
-        group_by="code",
-        columns=[
-            "minutes",
-            "total_points",
-            "uds_xG",
-            "uds_xA",
-            "clean_sheets",
-            "goals_conceded",
-            "saves",
-            "bonus",
-            "influence",
-            "creativity",
-            "threat",
-            "ict_index",
-        ],
-        window_sizes=[3, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5],
-        defaults=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    ).pipe(compute_availability)
+    return (
+        # Compute short-term form
+        players.pipe(
+            compute_rolling_mean,
+            order_by="kickoff_time",
+            group_by="code",
+            columns=[
+                "minutes",
+                "total_points",
+                "uds_xG",
+                "uds_xA",
+                "clean_sheets",
+                "goals_conceded",
+                "saves",
+                "bonus",
+                "influence",
+                "creativity",
+                "threat",
+                "ict_index",
+            ],
+            window_sizes=[3, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5],
+            defaults=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        )
+        # Compute long-term form
+        .pipe(
+            compute_rolling_mean,
+            order_by="kickoff_time",
+            group_by="code",
+            columns=[
+                "minutes",
+                "total_points",
+                "uds_xG",
+                "uds_xA",
+                "clean_sheets",
+                "goals_conceded",
+                "saves",
+                "bonus",
+                "influence",
+                "creativity",
+                "threat",
+                "ict_index",
+            ],
+            window_sizes=[10, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20],
+            defaults=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        )
+        .pipe(compute_availability)
+    )
 
 
 def engineer_team_features(teams: pl.LazyFrame) -> pl.LazyFrame:
