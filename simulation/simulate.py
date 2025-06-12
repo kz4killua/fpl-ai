@@ -23,20 +23,28 @@ from .simulator import Simulator
 from .utils import get_selling_prices
 
 
-def simulate(season: str, wildcard_gameweeks: list[int], log: bool = False) -> int:
+def simulate(
+    season: str,
+    wildcard_gameweeks: list[int],
+    parameters: dict[str, float] | None = None,
+    log: bool = False,
+) -> int:
     model = load_model(f"simulation_{season}")
     simulator = Simulator(season)
 
     # Simulate each gameweek
     while simulator.next_gameweek <= simulator.last_gameweek:
-        roles = get_gameweek_roles(simulator, model, wildcard_gameweeks)
+        roles = get_gameweek_roles(simulator, model, wildcard_gameweeks, parameters)
         simulator.update(roles, wildcard_gameweeks, log=log)
 
     return simulator.season_points
 
 
 def get_gameweek_roles(
-    simulator: Simulator, model: PredictionModel, wildcard_gameweeks: list[int]
+    simulator: Simulator,
+    model: PredictionModel,
+    wildcard_gameweeks: list[int],
+    parameters: dict[str, float] | None = None,
 ) -> dict:
     """Get the optimal squad roles for the next gameweek."""
     # Unpack data from the simulator
@@ -56,7 +64,7 @@ def get_gameweek_roles(
     historical_managers = simulator.historical_managers
     fixtures = simulator.fixtures
 
-    # NOTE: We collect early (to avoid memory issues)
+    # Collect LazyFrames
     static_elements = static_elements.collect()
     static_players = static_players.collect()
     static_teams = static_teams.collect()
@@ -104,11 +112,6 @@ def get_gameweek_roles(
         (pl.col("season") == season) & (pl.col("round").is_in(upcoming_gameweeks))
     )
 
-    # Collect all LazyFrames
-    static_elements = static_elements
-    match_features = match_features
-    player_features = player_features
-
     # Predict total points
     predictions = make_predictions(model, player_features, match_features)
     predictions = get_mapper(predictions, ["element", "round"], "total_points")
@@ -133,6 +136,7 @@ def get_gameweek_roles(
         predictions,
         element_types,
         teams,
+        parameters,
     )
 
     return roles

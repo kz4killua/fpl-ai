@@ -1,16 +1,20 @@
 from game.rules import (
     CAPTAIN_MULTIPLIER,
 )
-from optimization.parameters import (
+
+from .parameters import (
+    BUDGET_VALUE,
+    FREE_TRANSFER_VALUE,
     RESERVE_GKP_MULTIPLIER,
     RESERVE_OUT_1_MULTIPLIER,
     RESERVE_OUT_2_MULTIPLIER,
     RESERVE_OUT_3_MULTIPLIER,
     ROUND_DECAY,
     STARTING_XI_MULTIPLIER,
+    TRANSFER_COST_MULTIPLIER,
     VICE_CAPTAIN_MULTIPLIER,
 )
-from optimization.solver import solve
+from .solver import solve
 
 
 def optimize_squad(
@@ -24,15 +28,7 @@ def optimize_squad(
     total_points: dict[tuple[int, int], float],
     element_types: dict[int, int],
     teams: dict[int, int],
-    # Optimization parameters
-    round_decay: float = ROUND_DECAY,
-    starting_xi_multiplier: float = STARTING_XI_MULTIPLIER,
-    captain_multiplier: float = CAPTAIN_MULTIPLIER,
-    vice_captain_multiplier: float = VICE_CAPTAIN_MULTIPLIER,
-    reserve_gkp_multiplier: float = RESERVE_GKP_MULTIPLIER,
-    reserve_out_1_multiplier: float = RESERVE_OUT_1_MULTIPLIER,
-    reserve_out_2_multiplier: float = RESERVE_OUT_2_MULTIPLIER,
-    reserve_out_3_multiplier: float = RESERVE_OUT_3_MULTIPLIER,
+    parameters: dict[str, float] | None = None,
 ):
     """Runs optimization and returns the optimal squad roles for the next gameweek."""
 
@@ -54,6 +50,35 @@ def optimize_squad(
             for g in upcoming_gameweeks:
                 selling_prices[(p, g)] = now_costs[(p, g)]
 
+    # Prepare optimization parameters
+    parameters = parameters or {}
+    round_decay = parameters.get("round_decay", ROUND_DECAY)
+    starting_xi_multiplier = parameters.get(
+        "starting_xi_multiplier", STARTING_XI_MULTIPLIER
+    )
+    captain_multiplier = parameters.get("captain_multiplier", CAPTAIN_MULTIPLIER)
+    vice_captain_multiplier = parameters.get(
+        "vice_captain_multiplier", VICE_CAPTAIN_MULTIPLIER
+    )
+    reserve_gkp_multiplier = parameters.get(
+        "reserve_gkp_multiplier", RESERVE_GKP_MULTIPLIER
+    )
+    reserve_out_1_multiplier = parameters.get(
+        "reserve_out_1_multiplier", RESERVE_OUT_1_MULTIPLIER
+    )
+    reserve_out_2_multiplier = parameters.get(
+        "reserve_out_2_multiplier", RESERVE_OUT_2_MULTIPLIER
+    )
+    reserve_out_3_multiplier = parameters.get(
+        "reserve_out_3_multiplier", RESERVE_OUT_3_MULTIPLIER
+    )
+    budget_value = parameters.get("budget_value", BUDGET_VALUE)
+    free_transfer_value = parameters.get("free_transfer_value", FREE_TRANSFER_VALUE)
+    transfer_cost_multiplier = parameters.get(
+        "transfer_cost_multiplier", TRANSFER_COST_MULTIPLIER
+    )
+
+    # Solve the optimization problem
     solution = solve(
         initial_squad=initial_squad,
         initial_budget=initial_budget,
@@ -74,6 +99,9 @@ def optimize_squad(
         reserve_out_1_multiplier=reserve_out_1_multiplier,
         reserve_out_2_multiplier=reserve_out_2_multiplier,
         reserve_out_3_multiplier=reserve_out_3_multiplier,
+        budget_value=budget_value,
+        free_transfer_value=free_transfer_value,
+        transfer_cost_multiplier=transfer_cost_multiplier,
     )
 
     # Prepare roles for the next gameweek

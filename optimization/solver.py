@@ -47,6 +47,9 @@ def solve(
     reserve_out_1_multiplier: float,
     reserve_out_2_multiplier: float,
     reserve_out_3_multiplier: float,
+    budget_value: float,
+    free_transfer_value: float,
+    transfer_cost_multiplier: float,
     # Logging
     log: bool = False,
 ):
@@ -101,6 +104,9 @@ def solve(
         reserve_out_1_multiplier,
         reserve_out_2_multiplier,
         reserve_out_3_multiplier,
+        budget_value,
+        free_transfer_value,
+        transfer_cost_multiplier,
     )
 
     # Solve the optimization problem
@@ -478,6 +484,9 @@ def create_objective(
     reserve_out_1_multiplier: float,
     reserve_out_2_multiplier: float,
     reserve_out_3_multiplier: float,
+    budget_value: float,
+    free_transfer_value: float,
+    transfer_cost_multiplier: float,
 ):
     """Create the objective function for the optimization problem."""
 
@@ -532,7 +541,15 @@ def create_objective(
         )
 
         # Add transfer costs
-        score -= variables["paid_transfers"][g] * TRANSFER_COST
+        score -= (
+            variables["paid_transfers"][g] * TRANSFER_COST * transfer_cost_multiplier
+        )
+
+        # Add the budget value
+        score += variables["budget"][g] * budget_value
+
+        # Add the free transfer value
+        score += variables["free_transfers"][g] * free_transfer_value
 
         scores.append(score)
 
