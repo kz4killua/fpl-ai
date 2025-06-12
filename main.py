@@ -12,6 +12,7 @@ def main():
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="command", help="Commands")
     simulate_parser = subparsers.add_parser("simulate", help="Simulate seasons")
+    _ = subparsers.add_parser("tune", help="Tune hyperparameters")
     simulate_parser.add_argument(
         "--seasons",
         nargs="+",
