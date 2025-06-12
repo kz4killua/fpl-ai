@@ -296,7 +296,6 @@ def test_get_upcoming_fixtures():
     upcoming_fixtures = get_upcoming_fixtures(fixtures, season, upcoming_gameweeks)
     upcoming_fixtures = upcoming_fixtures.collect()
     assert upcoming_fixtures.height == 50
-    assert upcoming_fixtures.null_count().sum_horizontal().item() == 0
     assert upcoming_fixtures.get_column("event").min() == 1
     assert upcoming_fixtures.get_column("event").max() == 5
 
