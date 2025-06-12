@@ -64,16 +64,6 @@ def get_gameweek_roles(
     historical_managers = simulator.historical_managers
     fixtures = simulator.fixtures
 
-    # Collect LazyFrames
-    static_elements = static_elements.collect()
-    static_players = static_players.collect()
-    static_teams = static_teams.collect()
-    static_managers = static_managers.collect()
-    historical_players = historical_players.collect()
-    historical_teams = historical_teams.collect()
-    historical_managers = historical_managers.collect()
-    fixtures = fixtures.collect()
-
     # Get upcoming data
     upcoming_gameweeks = get_upcoming_gameweeks(
         next_gameweek, OPTIMIZATION_WINDOW_SIZE, last_gameweek

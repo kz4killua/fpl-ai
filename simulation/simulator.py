@@ -1,3 +1,4 @@
+import functools
 from collections import defaultdict
 
 import polars as pl
@@ -36,71 +37,58 @@ class Simulator:
 
     def initialize_data(self):
         """Load data, fixtures, and results for the season."""
-        seasons = get_seasons(self.season, 5)
-        self.unfiltered_players, self.unfiltered_teams, self.unfiltered_managers = (
-            load_merged(seasons)
+        self._unfiltered_players, self._unfiltered_teams, self._unfiltered_managers = (
+            _get_unfiltered_history(self.season)
         )
-        self.fixtures = load_fixtures([self.season])
-        self.results = load_results(self.season).collect()
+        self.fixtures = _get_fixtures(self.season)
+        self.results = _get_results(self.season)
 
     def initialize_team(self):
         """Create a random squad for the season."""
-        # Use data from the first gameweek to construct the initial squad
-        static_elements = load_static_elements(
-            self.season, self.first_gameweek
-        ).collect()
-        self.free_transfers = 0
+        static_elements = _get_static_elements(self.season, self.first_gameweek)
         self.squad, self.budget = make_random_squad(static_elements)
         self.purchase_prices = get_purchase_prices(self.squad, static_elements)
+        self.free_transfers = 0
 
     @property
     def static_elements(self):
         """Load static elements for the current gameweek."""
-        return load_static_elements(self.season, self.next_gameweek)
+        return _get_static_elements(self.season, self.next_gameweek)
 
     @property
     def static_teams(self):
         """Load static teams for the current gameweek."""
-        return load_static_teams(self.season, self.next_gameweek)
+        return _get_static_teams(self.season, self.next_gameweek)
 
     @property
     def static_players(self):
         """Load static players for the current gameweek."""
-        return self.static_elements.filter(
-            pl.col("element_type").is_in([GKP, DEF, MID, FWD])
-        )
+        return _get_static_players(self.season, self.next_gameweek)
 
     @property
     def static_managers(self):
         """Load static managers for the current gameweek."""
-        return self.static_elements.filter(pl.col("element_type") == MNG)
+        return _get_static_managers(self.season, self.next_gameweek)
 
     @property
     def historical_players(self):
         """Load historical players data up to the current gameweek."""
-        return remove_upcoming_data(
-            self.unfiltered_players, self.season, self.next_gameweek
-        )
+        return _get_historical_players(self.season, self.next_gameweek)
 
     @property
     def historical_teams(self):
         """Load historical teams data up to the current gameweek."""
-        return remove_upcoming_data(
-            self.unfiltered_teams, self.season, self.next_gameweek
-        )
+        return _get_historical_teams(self.season, self.next_gameweek)
 
     @property
     def historical_managers(self):
         """Load historical managers data up to the current gameweek."""
-        return remove_upcoming_data(
-            self.unfiltered_managers, self.season, self.next_gameweek
-        )
+        return _get_historical_managers(self.season, self.next_gameweek)
 
     @property
     def selling_prices(self):
         """Calculate the selling prices for the current squad."""
-        static_elements_df = self.static_elements.collect()
-        now_costs = get_mapper(static_elements_df, "id", "now_cost")
+        now_costs = get_mapper(self.static_elements, "id", "now_cost")
         return get_selling_prices(self.squad, self.purchase_prices, now_costs)
 
     def update(self, roles: dict, wildcard_gameweeks: list[int], log: bool = False):
@@ -110,10 +98,9 @@ class Simulator:
         gameweek_results = self.results.filter(pl.col("round") == self.next_gameweek)
         minutes = get_mapper(gameweek_results, "element", "minutes")
         total_points = get_mapper(gameweek_results, "element", "total_points")
-        static_elements_df = self.static_elements.collect()
-        element_types = get_mapper(static_elements_df, "id", "element_type")
-        now_costs = get_mapper(static_elements_df, "id", "now_cost")
-        web_names = get_mapper(static_elements_df, "id", "web_name")
+        element_types = get_mapper(self.static_elements, "id", "element_type")
+        now_costs = get_mapper(self.static_elements, "id", "now_cost")
+        web_names = get_mapper(self.static_elements, "id", "web_name")
 
         # Calculate points scored by the squad
         substituted_roles = make_automatic_substitutions(roles, minutes, element_types)
@@ -307,3 +294,70 @@ def print_table(data, headers=None):
                 for item, width in zip(row, column_widths, strict=False)
             )
         )
+
+
+@functools.lru_cache
+def _get_unfiltered_history(season: str):
+    """Load unfiltered historical data for the given season."""
+    seasons = get_seasons(season, 3)
+    players, teams, managers = load_merged(seasons)
+    return players.collect(), teams.collect(), managers.collect()
+
+
+@functools.lru_cache
+def _get_fixtures(season: str):
+    """Load fixtures for the given season."""
+    return load_fixtures([season]).collect()
+
+
+@functools.lru_cache
+def _get_results(season: str):
+    """Load results for the given season."""
+    return load_results(season).collect()
+
+
+@functools.lru_cache
+def _get_static_elements(season: str, gameweek: int):
+    """Load static elements for the given season and gameweek."""
+    return load_static_elements(season, gameweek).collect()
+
+
+@functools.lru_cache
+def _get_static_teams(season: str, gameweek: int):
+    """Load static teams for the given season and gameweek."""
+    return load_static_teams(season, gameweek).collect()
+
+
+@functools.lru_cache
+def _get_static_players(season: str, gameweek: int):
+    """Load static players for the given season and gameweek."""
+    static_elements = _get_static_elements(season, gameweek)
+    return static_elements.filter(pl.col("element_type").is_in([GKP, DEF, MID, FWD]))
+
+
+@functools.lru_cache
+def _get_static_managers(season: str, gameweek: int):
+    """Load static managers for the given season and gameweek."""
+    static_elements = _get_static_elements(season, gameweek)
+    return static_elements.filter(pl.col("element_type") == MNG)
+
+
+@functools.lru_cache
+def _get_historical_players(season: str, gameweek: int):
+    """Load historical players data up to the given season and gameweek."""
+    players, _, _ = _get_unfiltered_history(season)
+    return remove_upcoming_data(players, season, gameweek)
+
+
+@functools.lru_cache
+def _get_historical_teams(season: str, gameweek: int):
+    """Load historical teams data up to the given season and gameweek."""
+    _, teams, _ = _get_unfiltered_history(season)
+    return remove_upcoming_data(teams, season, gameweek)
+
+
+@functools.lru_cache
+def _get_historical_managers(season: str, gameweek: int):
+    """Load historical managers data up to the given season and gameweek."""
+    _, _, managers = _get_unfiltered_history(season)
+    return remove_upcoming_data(managers, season, gameweek)
