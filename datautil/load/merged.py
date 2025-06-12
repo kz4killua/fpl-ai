@@ -7,11 +7,11 @@ from datautil.load.understat import load_understat
 def load_merged(seasons: list[str]) -> tuple[pl.LazyFrame, pl.LazyFrame, pl.LazyFrame]:
     """Load merged player, team, and manager data."""
 
-    # Load data from all sources
+    # Load data
     fpl_players, fpl_teams, fpl_managers = load_fpl(seasons)
     uds_players, uds_teams = load_understat(seasons)
 
-    # Merge data from all sources
+    # Merge data
     players = merge_players(fpl_players, uds_players)
     teams = merge_teams(fpl_teams, uds_teams)
     managers = fpl_managers
@@ -52,20 +52,7 @@ def merge_players(fpl_players: pl.LazyFrame, uds_players: pl.LazyFrame):
 def merge_teams(fpl_teams: pl.LazyFrame, uds_teams: pl.LazyFrame):
     """Merge team data from FPL and Understat."""
 
-    # Rename columns to avoid conflicts / confusion with FPL data
-    uds_teams = uds_teams.rename(
-        {
-            "season": "uds_season",
-            "fixture_id": "uds_fixture_id",
-            "id": "uds_id",
-            "title": "uds_title",
-            "fpl_season": "season",
-            "fpl_fixture_id": "fixture_id",
-            "fpl_code": "code",
-        }
-    )
-
-    # Add "uds" prefixes to understats data
+    # Add understat columns
     columns = [
         "xG",
         "xGA",
@@ -73,7 +60,6 @@ def merge_teams(fpl_teams: pl.LazyFrame, uds_teams: pl.LazyFrame):
         "npxGA",
         "deep",
         "deep_allowed",
-        "scored",
         "missed",
         "xpts",
         "result",
@@ -87,21 +73,17 @@ def merge_teams(fpl_teams: pl.LazyFrame, uds_teams: pl.LazyFrame):
         "ppda_allowed_att",
         "ppda_allowed_def",
     ]
-    uds_teams = uds_teams.rename({col: f"uds_{col}" for col in columns})
-
-    # Add event (gameweek) numbers
-    uds_teams = uds_teams.join(
-        fpl_teams.select(
-            [
-                pl.col("season"),
-                pl.col("id").alias("fixture_id"),
-                pl.col("event").alias("round"),
-            ]
+    fpl_teams = fpl_teams.join(
+        uds_teams.select(
+            pl.col("fpl_season").alias("season"),
+            pl.col("fpl_fixture_id").alias("fixture_id"),
+            pl.col("fpl_code").alias("code"),
+            *[pl.col(column).alias(f"uds_{column}") for column in columns],
         ),
-        on=["season", "fixture_id"],
+        how="left",
+        on=["season", "fixture_id", "code"],
     )
-
-    return uds_teams
+    return fpl_teams
 
 
 def clean_players(players: pl.LazyFrame) -> pl.LazyFrame:
@@ -130,7 +112,4 @@ def clean_players(players: pl.LazyFrame) -> pl.LazyFrame:
 
 def clean_teams(teams: pl.LazyFrame) -> pl.LazyFrame:
     """Clean team data."""
-    # Cast was_home to an integer
-    return teams.with_columns(
-        (pl.col("h_a") == "h").cast(pl.Int8).alias("was_home"),
-    ).drop(["h_a"])
+    return teams
