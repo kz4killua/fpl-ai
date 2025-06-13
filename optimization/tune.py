@@ -1,5 +1,6 @@
 import random
 
+import numpy as np
 import optuna
 
 from simulation.simulate import simulate
@@ -35,18 +36,14 @@ def objective(trial: optuna.Trial) -> float:
 
 def evaluate(trial: optuna.Trial, parameters: dict) -> float:
     results = []
-    for i, season in enumerate(["2021-22", "2022-23", "2023-24"]):
+    for season in ["2021-22", "2022-23", "2023-24"]:
         # Simulate the season and get results
         random.seed(trial.number)
         wildcard_gameweeks = [random.randint(3, 19), random.randint(20, 36)]
         points = simulate(season, wildcard_gameweeks, parameters)
         results.append(points)
-        # Handle pruning based on the trial's progress
-        trial.report(points, step=i)
-        if trial.should_prune():
-            raise optuna.TrialPruned()
     # Calculate the average points across all seasons
-    return sum(results) / len(results)
+    return np.mean(results)
 
 
 def tune():
@@ -56,7 +53,7 @@ def tune():
         study_name="optimization_tuning",
         load_if_exists=True,
         sampler=optuna.samplers.TPESampler(seed=42),
-        pruner=optuna.pruners.HyperbandPruner(),
+        pruner=None,
     )
     study.optimize(objective)
     return study.best_params
