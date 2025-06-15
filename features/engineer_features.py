@@ -15,6 +15,8 @@ def engineer_player_features(players: pl.LazyFrame) -> pl.LazyFrame:
             columns=[
                 "minutes",
                 "total_points",
+                "goals_scored",
+                "assists",
                 "uds_xG",
                 "uds_xA",
                 "clean_sheets",
@@ -26,8 +28,8 @@ def engineer_player_features(players: pl.LazyFrame) -> pl.LazyFrame:
                 "threat",
                 "ict_index",
             ],
-            window_sizes=[3, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5],
-            defaults=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            window_sizes=[3, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5],
+            defaults=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
         )
         # Compute long-term form
         .pipe(
@@ -37,6 +39,8 @@ def engineer_player_features(players: pl.LazyFrame) -> pl.LazyFrame:
             columns=[
                 "minutes",
                 "total_points",
+                "goals_scored",
+                "assists",
                 "uds_xG",
                 "uds_xA",
                 "clean_sheets",
@@ -48,8 +52,8 @@ def engineer_player_features(players: pl.LazyFrame) -> pl.LazyFrame:
                 "threat",
                 "ict_index",
             ],
-            window_sizes=[10, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20],
-            defaults=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            window_sizes=[10, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20],
+            defaults=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
         )
         .pipe(compute_availability)
     )
