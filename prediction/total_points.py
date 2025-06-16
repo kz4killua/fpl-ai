@@ -1,6 +1,7 @@
-from sklearn.linear_model import LinearRegression
+from sklearn.feature_selection import SelectKBest, VarianceThreshold
+from sklearn.linear_model import Ridge
 from sklearn.pipeline import make_pipeline
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import PolynomialFeatures, StandardScaler
 
 from prediction.utils import ElementTypeSplitEstimator, feature_selector
 
@@ -20,6 +21,10 @@ def make_total_points_predictor():
                 "minutes_rolling_mean_10",
                 "total_points_rolling_mean_5",
                 "total_points_rolling_mean_20",
+                "goals_scored_rolling_mean_5",
+                "goals_scored_rolling_mean_20",
+                "assists_rolling_mean_5",
+                "assists_rolling_mean_20",
                 "uds_xG_rolling_mean_5",
                 "uds_xG_rolling_mean_20",
                 "uds_xA_rolling_mean_5",
@@ -40,9 +45,14 @@ def make_total_points_predictor():
                 "threat_rolling_mean_20",
                 "ict_index_rolling_mean_5",
                 "ict_index_rolling_mean_20",
+                # Match features
+                "was_home",
             ]
         ),
+        PolynomialFeatures(degree=2),
+        VarianceThreshold(threshold=0),
+        SelectKBest(k=60),
         StandardScaler(),
-        LinearRegression(),
+        Ridge(alpha=10),
     )
     return ElementTypeSplitEstimator(pipeline)
