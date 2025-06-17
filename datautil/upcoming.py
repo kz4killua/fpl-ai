@@ -62,6 +62,21 @@ def get_upcoming_player_data(
         how="inner",
     )
 
+    # Add known availability information
+    df = df.join(
+        static_players.select(
+            pl.col("season"),
+            pl.col("round"),
+            pl.col("code"),
+            pl.col("status"),
+            pl.col("news"),
+            pl.col("news_added"),
+            pl.col("chance_of_playing_next_round"),
+        ),
+        on=["season", "round", "code"],
+        how="left"
+    )
+
     return df
 
 

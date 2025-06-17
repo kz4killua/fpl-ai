@@ -329,6 +329,8 @@ def test_get_upcoming_player_data():
             "opponent_team": [6, 10, 19, 4],
             "opponent_team_code": [8, 40, 21, 94],
             "was_home": [False, True, False, True],
+            # Availability should be filled for (only) the next gameweek
+            "status": ["a", None, None, None],
         }
     )
     assert_mappings_correct(
@@ -336,9 +338,6 @@ def test_get_upcoming_player_data():
         expected,
         on=["season", "element", "round"],
     )
-
-    # Perform null checks
-    assert upcoming_players.null_count().sum_horizontal().item() == 0
 
 
 def test_get_upcoming_manager_data():
@@ -378,9 +377,6 @@ def test_get_upcoming_manager_data():
         expected,
         on=["season", "element", "round"],
     )
-
-    # Perform null checks
-    assert upcoming_managers.null_count().sum_horizontal().item() == 0
 
 
 def test_get_upcoming_team_data():
