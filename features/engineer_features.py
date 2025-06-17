@@ -2,6 +2,7 @@ import polars as pl
 
 from .availability import compute_availability
 from .previous_season_mean import compute_previous_season_mean
+from .record_count import compute_record_count
 from .relative_strength import compute_relative_strength
 from .rolling_mean import compute_rolling_mean
 
@@ -12,6 +13,7 @@ def engineer_player_features(players: pl.LazyFrame) -> pl.LazyFrame:
             compute_previous_season_mean,
             columns=[
                 "total_points",
+                "starts",
                 "minutes",
                 "goals_scored",
                 "assists",
@@ -32,6 +34,7 @@ def engineer_player_features(players: pl.LazyFrame) -> pl.LazyFrame:
             compute_rolling_mean,
             columns=[
                 "minutes",
+                "starts",
                 "total_points",
                 "goals_scored",
                 "assists",
@@ -46,13 +49,14 @@ def engineer_player_features(players: pl.LazyFrame) -> pl.LazyFrame:
                 "threat",
                 "ict_index",
             ],
-            window_sizes=[3, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5],
+            window_sizes=[3, 3, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5],
         )
         # Compute long-term form
         .pipe(
             compute_rolling_mean,
             columns=[
                 "minutes",
+                "starts",
                 "total_points",
                 "goals_scored",
                 "assists",
@@ -67,9 +71,10 @@ def engineer_player_features(players: pl.LazyFrame) -> pl.LazyFrame:
                 "threat",
                 "ict_index",
             ],
-            window_sizes=[10, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20],
+            window_sizes=[10, 10, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20],
         )
         .pipe(compute_availability)
+        .pipe(compute_record_count)
     )
 
 

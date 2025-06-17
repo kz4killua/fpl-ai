@@ -6,7 +6,86 @@ from polars.testing import assert_frame_equal
 from features.availability import compute_availability
 from features.per_90 import compute_per_90
 from features.previous_season_mean import compute_previous_season_mean
+from features.record_count import compute_record_count
 from features.rolling_mean import compute_rolling_mean
+
+
+def test_compute_record_count():
+    # Test with a single player (no null values)
+    df = pl.DataFrame(
+        {
+            "season": ["2021-22"] * 5,
+            "kickoff_time": [1, 2, 3, 4, 5],
+            "code": [1, 1, 1, 1, 1],
+            "total_points": [0, 0, 0, 0, 0],
+        }
+    )
+    expected = df.with_columns(pl.Series("record_count", [0, 1, 2, 3, 4]))
+    result = compute_record_count(df)
+    assert_frame_equal(
+        result,
+        expected,
+        check_row_order=False,
+        check_column_order=False,
+        check_dtypes=False,
+    )
+
+    # Test with null values
+    df = pl.DataFrame(
+        {
+            "season": ["2021-22"] * 5,
+            "kickoff_time": [1, 2, 3, 4, 5],
+            "code": [1, 1, 1, 1, 1],
+            "total_points": [0, 0, 0, None, None],
+        }
+    )
+    expected = df.with_columns(pl.Series("record_count", [0, 1, 2, 3, 3]))
+    result = compute_record_count(df)
+    assert_frame_equal(
+        result,
+        expected,
+        check_row_order=False,
+        check_column_order=False,
+        check_dtypes=False,
+    )
+
+    # Test over multiple seasons
+    df = pl.DataFrame(
+        {
+            "season": ["2021-22"] * 3 + ["2022-23"] * 3,
+            "kickoff_time": [1, 2, 3, 4, 5, 6],
+            "code": [1, 1, 1, 1, 1, 1],
+            "total_points": [2, 2, 2, 2, 2, 2],
+        }
+    )
+    expected = df.with_columns(pl.Series("record_count", [0, 1, 2, 0, 1, 2]))
+    result = compute_record_count(df)
+    assert_frame_equal(
+        result,
+        expected,
+        check_row_order=False,
+        check_column_order=False,
+        check_dtypes=False,
+    )
+
+    # Test with multiple players
+    df = pl.DataFrame(
+        {
+            "season": ["2021-22"] * 6,
+            "kickoff_time": [1, 1, 2, 2, 3, 3],
+            "code": [1, 2, 1, 2, 1, 2],
+            "total_points": [2, 2, 2, 2, None, None],
+        }
+    )
+    expected = df.with_columns(pl.Series("record_count", [0, 0, 1, 1, 2, 2]))
+    result = compute_record_count(df)
+    assert_frame_equal(
+        result,
+        expected,
+        check_row_order=False,
+        check_column_order=False,
+        check_dtypes=False,
+    )
 
 
 def test_compute_rolling_mean():
