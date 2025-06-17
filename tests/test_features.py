@@ -5,6 +5,7 @@ from polars.testing import assert_frame_equal
 
 from features.availability import compute_availability
 from features.per_90 import compute_per_90
+from features.previous_season_mean import compute_previous_season_mean
 from features.rolling_mean import compute_rolling_mean
 
 
@@ -12,8 +13,9 @@ def test_compute_rolling_mean():
     # Test rolling means with multiple players
     players = pl.DataFrame(
         {
-            "id": [1, 1, 1, 1, 1, 1, 1] + [2, 2, 2, 2, 2, 2, 2],
-            "round": [1, 2, 3, 4, 5, 6, 7] + [1, 2, 3, 4, 5, 6, 7],
+            "season": ["2021-22"] * 14,
+            "code": [1, 1, 1, 1, 1, 1, 1] + [2, 2, 2, 2, 2, 2, 2],
+            "kickoff_time": [1, 2, 3, 4, 5, 6, 7] + [1, 2, 3, 4, 5, 6, 7],
             "total_points": [9, 5, 3, 9, 8, 6, 5] + [4, 6, 2, 3, 6, 9, 9],
         }
     )
@@ -21,7 +23,7 @@ def test_compute_rolling_mean():
         pl.Series(
             "total_points_rolling_mean_3",
             [
-                0.0,
+                None,
                 9.0,
                 7.0,
                 17 / 3,
@@ -30,7 +32,7 @@ def test_compute_rolling_mean():
                 23 / 3,
             ]
             + [
-                0.0,
+                None,
                 4.0,
                 5.0,
                 4.0,
@@ -42,7 +44,7 @@ def test_compute_rolling_mean():
         pl.Series(
             "total_points_rolling_mean_5",
             [
-                0.0,
+                None,
                 9.0,
                 7.0,
                 17 / 3,
@@ -51,7 +53,7 @@ def test_compute_rolling_mean():
                 31 / 5,
             ]
             + [
-                0.0,
+                None,
                 4.0,
                 5.0,
                 4.0,
@@ -64,11 +66,8 @@ def test_compute_rolling_mean():
     players = players.sample(fraction=1.0, shuffle=True, seed=42)
     result = compute_rolling_mean(
         players,
-        order_by="round",
-        group_by="id",
         columns=["total_points", "total_points"],
         window_sizes=[3, 5],
-        defaults=[0, 0],
     )
     assert_frame_equal(
         result,
@@ -82,24 +81,23 @@ def test_compute_rolling_mean():
     # Test rolling means with intermediate null values
     players = pl.DataFrame(
         {
-            "id": [1, 1, 1, 1, 1, 1, 1] + [2, 2, 2, 2, 2, 2, 2],
-            "round": [1, 2, 3, 4, 5, 6, 7] + [1, 2, 3, 4, 5, 6, 7],
+            "season": ["2021-22"] * 14,
+            "code": [1, 1, 1, 1, 1, 1, 1] + [2, 2, 2, 2, 2, 2, 2],
+            "kickoff_time": [1, 2, 3, 4, 5, 6, 7] + [1, 2, 3, 4, 5, 6, 7],
             "total_points": [9, None, 3, 9, None, 6, 5] + [4, None, None, 3, 6, 9, 9],
         }
     )
     expected = players.with_columns(
         pl.Series(
-            "total_points_rolling_mean_1", [0, 9, 9, 3, 9, 9, 6] + [0, 4, 4, 4, 3, 6, 9]
+            "total_points_rolling_mean_1",
+            [None, 9, 9, 3, 9, 9, 6] + [None, 4, 4, 4, 3, 6, 9],
         )
     )
     players = players.sample(fraction=1.0, shuffle=True, seed=42)
     result = compute_rolling_mean(
         players,
-        order_by="round",
-        group_by="id",
         columns=["total_points"],
         window_sizes=[1],
-        defaults=[0],
     )
     assert_frame_equal(
         result,
@@ -113,26 +111,107 @@ def test_compute_rolling_mean():
     # Test rolling means with final null values
     players = pl.DataFrame(
         {
-            "id": [1, 1, 1, 1, 1, 1, 1],
-            "round": [1, 2, 3, 4, 5, 6, 7],
+            "season": ["2021-22"] * 7,
+            "code": [1, 1, 1, 1, 1, 1, 1],
+            "kickoff_time": [1, 2, 3, 4, 5, 6, 7],
             "total_points": [9, 3, 3, None, None, None, None],
         }
     )
     expected = players.with_columns(
         pl.Series(
             "total_points_rolling_mean_3",
-            [0, 9, 6, 5, 5, 5, 5],
+            [None, 9, 6, 5, 5, 5, 5],
         )
     )
     players = players.sample(fraction=1.0, shuffle=True, seed=42)
     result = compute_rolling_mean(
         players,
-        order_by="round",
-        group_by="id",
         columns=["total_points"],
         window_sizes=[3],
-        defaults=[0],
     )
+    assert_frame_equal(
+        result,
+        expected,
+        check_row_order=False,
+        check_column_order=False,
+        check_exact=False,
+        check_dtypes=False,
+    )
+
+    # Test rolling means across multiple seasons
+    players = pl.DataFrame(
+        {
+            "season": ["2021-22"] * 3 + ["2022-23"] * 3,
+            "code": [1, 1, 1, 1, 1, 1],
+            "kickoff_time": [1, 2, 3, 4, 5, 6],
+            "total_points": [9, 3, 3, 1, 3, 2],
+        }
+    )
+    expected = players.with_columns(
+        pl.Series(
+            "total_points_rolling_mean_3",
+            [None, 9, 6, None, 1, 2],
+        )
+    )
+    players = players.sample(fraction=1.0, shuffle=True, seed=42)
+    result = compute_rolling_mean(
+        players,
+        columns=["total_points"],
+        window_sizes=[3],
+    )
+    assert_frame_equal(
+        result,
+        expected,
+        check_row_order=False,
+        check_column_order=False,
+        check_exact=False,
+        check_dtypes=False,
+    )
+
+
+def test_compute_previous_season_mean():
+    # Test with a single player
+    players = pl.DataFrame(
+        {
+            "code": [1, 1, 1, 1],
+            "round": [1, 2, 1, 2],
+            "season": ["2021-22", "2021-22", "2022-23", "2022-23"],
+            "total_points": [9, 1, None, None],
+        }
+    )
+    expected = players.with_columns(
+        pl.Series(
+            "previous_season_mean_total_points",
+            [None, None, 5, 5],
+        )
+    )
+    players = players.sample(fraction=1.0, shuffle=True, seed=42)
+    result = compute_previous_season_mean(players, ["total_points"])
+    assert_frame_equal(
+        result,
+        expected,
+        check_row_order=False,
+        check_column_order=False,
+        check_exact=False,
+        check_dtypes=False,
+    )
+    # Test with multiple players
+    players = pl.DataFrame(
+        {
+            "code": [1, 2, 1, 2],
+            "round": [1, 1, 1, 1],
+            "season": ["2021-22", "2021-22", "2022-23", "2022-23"],
+            "total_points": [2, 5, 3, 7],
+        }
+    )
+    expected = players.with_columns(
+        pl.Series(
+            "previous_season_mean_total_points",
+            [None, None, 2, 5],
+        )
+    )
+    players = players.sample(fraction=1.0, shuffle=True, seed=42)
+    result = compute_previous_season_mean(players, ["total_points"])
     assert_frame_equal(
         result,
         expected,
