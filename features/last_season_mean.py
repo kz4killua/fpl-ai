@@ -6,13 +6,13 @@ from datautil.utils import (
 )
 
 
-def compute_previous_season_mean(df: pl.LazyFrame, columns: list[str]):
+def compute_last_season_mean(df: pl.LazyFrame, columns: list[str]):
     """Compute average stats over the each player's previous season."""
     # Compute player means for each season
     mapping = (
         df.select(["season", "code", *columns])
         .group_by(["season", "code"])
-        .agg([pl.col(c).mean().alias(f"previous_season_mean_{c}") for c in columns])
+        .agg([pl.col(c).mean().alias(f"{c}_mean_last_season") for c in columns])
     )
     # Increment the season column
     mapping = (
