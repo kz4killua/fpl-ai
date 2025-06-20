@@ -8,21 +8,20 @@ from prediction.utils import feature_selector
 
 
 def make_match_predictor():
+    columns = [
+        "team_h_relative_attack_strength",
+        "team_a_relative_attack_strength",
+        "team_h_relative_uds_xG_rolling_mean_10",
+        "team_a_relative_uds_xG_rolling_mean_10",
+        "team_h_relative_uds_xG_rolling_mean_30",
+        "team_a_relative_uds_xG_rolling_mean_30",
+        "team_h_relative_scored_rolling_mean_10",
+        "team_a_relative_scored_rolling_mean_10",
+        "team_h_relative_scored_rolling_mean_30",
+        "team_a_relative_scored_rolling_mean_30",
+    ]
     return make_pipeline(
-        feature_selector(
-            [
-                "team_h_relative_attack_strength",
-                "team_a_relative_attack_strength",
-                "team_h_relative_uds_xG_rolling_mean_10",
-                "team_a_relative_uds_xG_rolling_mean_10",
-                "team_h_relative_uds_xG_rolling_mean_30",
-                "team_a_relative_uds_xG_rolling_mean_30",
-                "team_h_relative_scored_rolling_mean_10",
-                "team_a_relative_scored_rolling_mean_10",
-                "team_h_relative_scored_rolling_mean_30",
-                "team_a_relative_scored_rolling_mean_30",
-            ]
-        ),
+        feature_selector(columns),
         KNNImputer(n_neighbors=5),
         StandardScaler(),
         MultiOutputRegressor(
