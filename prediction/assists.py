@@ -1,0 +1,26 @@
+from lightgbm import LGBMRegressor
+from sklearn.pipeline import make_pipeline
+
+from prediction.utils import feature_selector
+
+
+def make_assists_predictor():
+    columns = [
+        "value",
+        "record_count",
+        "predicted_minutes",
+        "predicted_team_scored",
+        "assists_rolling_mean_5",
+        "assists_rolling_mean_20",
+        "assists_mean_last_season",
+    ]
+    return make_pipeline(
+        feature_selector(columns=columns),
+        LGBMRegressor(
+            random_state=42,
+            min_child_samples=512,
+            num_leaves=7,
+            reg_alpha=10,
+            reg_lambda=0,
+        ),
+    )
