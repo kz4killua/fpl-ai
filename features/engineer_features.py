@@ -1,7 +1,7 @@
 import polars as pl
 
 from .availability import compute_availability
-from .previous_season_mean import compute_previous_season_mean
+from .last_season_mean import compute_last_season_mean
 from .record_count import compute_record_count
 from .relative_strength import compute_relative_strength
 from .rolling_mean import compute_rolling_mean
@@ -9,12 +9,14 @@ from .rolling_mean import compute_rolling_mean
 
 def engineer_player_features(players: pl.LazyFrame) -> pl.LazyFrame:
     return (
-        players.pipe(
-            compute_previous_season_mean,
+        players.pipe(compute_availability)
+        .pipe(compute_record_count, on="total_points")
+        .pipe(
+            compute_last_season_mean,
             columns=[
-                "total_points",
-                "starts",
                 "minutes",
+                "starts",
+                "total_points",
                 "goals_scored",
                 "assists",
                 "uds_xG",
@@ -23,6 +25,7 @@ def engineer_player_features(players: pl.LazyFrame) -> pl.LazyFrame:
                 "goals_conceded",
                 "saves",
                 "bonus",
+                "bps",
                 "influence",
                 "creativity",
                 "threat",
@@ -44,12 +47,15 @@ def engineer_player_features(players: pl.LazyFrame) -> pl.LazyFrame:
                 "goals_conceded",
                 "saves",
                 "bonus",
+                "bps",
                 "influence",
                 "creativity",
                 "threat",
                 "ict_index",
             ],
-            window_sizes=[3, 3, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5],
+            window_sizes=[3, 3, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5],
+            # Compute player averages over seasons and codes
+            over=["season", "code"],
         )
         # Compute long-term form
         .pipe(
@@ -66,15 +72,33 @@ def engineer_player_features(players: pl.LazyFrame) -> pl.LazyFrame:
                 "goals_conceded",
                 "saves",
                 "bonus",
+                "bps",
                 "influence",
                 "creativity",
                 "threat",
                 "ict_index",
             ],
-            window_sizes=[10, 10, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20],
+            window_sizes=[
+                10,
+                10,
+                20,
+                20,
+                20,
+                20,
+                20,
+                20,
+                20,
+                20,
+                20,
+                20,
+                20,
+                20,
+                20,
+                20,
+            ],
+            # Compute player averages over seasons and codes
+            over=["season", "code"],
         )
-        .pipe(compute_availability)
-        .pipe(compute_record_count)
     )
 
 
@@ -92,6 +116,8 @@ def engineer_team_features(teams: pl.LazyFrame) -> pl.LazyFrame:
             "uds_xGA",
         ],
         window_sizes=[10, 30, 10, 30, 10, 30, 10, 30],
+        # Compute team averages over just codes
+        over=["code"],
     )
 
 
