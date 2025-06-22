@@ -22,5 +22,6 @@ def make_goals_scored_predictor():
             num_leaves=7,
             reg_alpha=10,
             reg_lambda=0,
+            verbosity=-1,
         ),
     )
