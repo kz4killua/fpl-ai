@@ -1,58 +1,38 @@
-from sklearn.feature_selection import SelectKBest, VarianceThreshold
-from sklearn.linear_model import Ridge
+from sklearn.ensemble import HistGradientBoostingRegressor
 from sklearn.pipeline import make_pipeline
-from sklearn.preprocessing import PolynomialFeatures, StandardScaler
 
-from prediction.utils import ElementTypeSplitEstimator, feature_selector
+from prediction.utils import feature_selector
 
 
 def make_total_points_predictor():
+    columns = [
+        "element_type",
+        "predicted_minutes",
+        "predicted_team_scored",
+        "predicted_opponent_scored",
+        "predicted_team_clean_sheets",
+        "predicted_opponent_clean_sheets",
+        "predicted_goals_scored",
+        "predicted_assists",
+        "predicted_saves",
+        "predicted_bps",
+        "predicted_bps_rank",
+    ]
+    categorical_columns = [
+        "element_type",
+    ]
+    categorical_features = [column in categorical_columns for column in columns]
     pipeline = make_pipeline(
-        feature_selector(
-            [
-                # Intermediate predictions
-                "predicted_minutes",
-                "predicted_team_scored",
-                "predicted_opponent_scored",
-                "predicted_team_clean_sheets",
-                "predicted_opponent_clean_sheets",
-                # Player features
-                "minutes_rolling_mean_3",
-                "minutes_rolling_mean_10",
-                "total_points_rolling_mean_5",
-                "total_points_rolling_mean_20",
-                "goals_scored_rolling_mean_5",
-                "goals_scored_rolling_mean_20",
-                "assists_rolling_mean_5",
-                "assists_rolling_mean_20",
-                "uds_xG_rolling_mean_5",
-                "uds_xG_rolling_mean_20",
-                "uds_xA_rolling_mean_5",
-                "uds_xA_rolling_mean_20",
-                "clean_sheets_rolling_mean_5",
-                "clean_sheets_rolling_mean_20",
-                "goals_conceded_rolling_mean_5",
-                "goals_conceded_rolling_mean_20",
-                "saves_rolling_mean_5",
-                "saves_rolling_mean_20",
-                "bonus_rolling_mean_5",
-                "bonus_rolling_mean_20",
-                "influence_rolling_mean_5",
-                "influence_rolling_mean_20",
-                "creativity_rolling_mean_5",
-                "creativity_rolling_mean_20",
-                "threat_rolling_mean_5",
-                "threat_rolling_mean_20",
-                "ict_index_rolling_mean_5",
-                "ict_index_rolling_mean_20",
-                # Match features
-                "was_home",
-            ]
-        ),
-        PolynomialFeatures(degree=2),
-        VarianceThreshold(threshold=0),
-        SelectKBest(k=60),
-        StandardScaler(),
-        Ridge(alpha=10),
+        feature_selector(columns=columns),
+        HistGradientBoostingRegressor(
+            categorical_features=categorical_features,
+            random_state=42,
+            max_iter=1000,
+            early_stopping=True,
+            validation_fraction=0.2,
+            l2_regularization=1.0,
+            max_leaf_nodes=7,
+            min_samples_leaf=256,
+        )
     )
-    return ElementTypeSplitEstimator(pipeline)
+    return pipeline
