@@ -5,11 +5,13 @@ description = "AI for Fantasy Premier League"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "lightgbm>=4.6.0",
     "numpy>=2.2.5",
     "ortools>=9.12.4544",
     "polars>=1.29.0",
     "requests>=2.32.3",
     "scikit-learn>=1.6.1",
+    "xgboost>=3.0.2",
 ]
 
 [dependency-groups]
