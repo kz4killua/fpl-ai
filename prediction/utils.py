@@ -3,11 +3,9 @@ from pathlib import Path
 
 import numpy as np
 import polars as pl
-from sklearn.base import BaseEstimator, clone
+from sklearn.base import BaseEstimator, RegressorMixin, clone
 from sklearn.compose import ColumnTransformer
 from sklearn.model_selection import BaseCrossValidator
-
-from game.rules import DEF, FWD, GKP, MID
 
 MODELS_DIR = Path("models")
 
@@ -66,69 +64,70 @@ class SeasonSplit(BaseCrossValidator):
         return len(self.seasons) - 1
 
 
-class ElementTypeSplitEstimator(BaseEstimator):
-    """Uses different estimators for different element types."""
+class RoutingEstimator(BaseEstimator):
+    """Uses a different estimator for each unique value in a column."""
 
-    def __init__(self, estimator: BaseEstimator):
-        self.estimator = estimator
-        self.element_type_column = "element_type"
+    def __init__(self, base: BaseEstimator, column: str):
+        self.base = base
+        self.column = column
+        self.estimators = {}
 
-    def fit(self, x: pl.DataFrame, y: pl.Series):
-        # Create a copy of the estimator for each element type
-        self.gkp_estimator = clone(self.estimator)
-        self.def_estimator = clone(self.estimator)
-        self.mid_estimator = clone(self.estimator)
-        self.fwd_estimator = clone(self.estimator)
+    def fit(self, X: pl.DataFrame, y: pl.Series):
+        """Fit the base estimator for each unique value in the column."""
+        # Get all unique values in the specified column
+        unique = X.get_column(self.column).unique().to_list()
+        if len(unique) > 10:
+            raise ValueError(
+                f"Too many unique values in column '{self.column}': {len(unique)}"
+            )
+        # Fit a separate estimator for each unique value
+        for value in unique:
+            mask = X[self.column] == value
+            X_value = X.filter(mask)
+            y_value = y.filter(mask)
+            estimator = clone(self.base)
+            estimator.fit(X_value, y_value)
+            self.estimators[value] = estimator
 
-        # Create masks for each element type
-        gkps, defs, mids, fwds = self._get_element_type_masks(x)
-        x = self._remove_element_type_column(x)
-
-        # Fit each estimator on the corresponding element type
-        self.gkp_estimator.fit(x.filter(gkps), y.filter(gkps))
-        self.def_estimator.fit(x.filter(defs), y.filter(defs))
-        self.mid_estimator.fit(x.filter(mids), y.filter(mids))
-        self.fwd_estimator.fit(x.filter(fwds), y.filter(fwds))
-
-        return self
-
-    def predict(self, x: pl.DataFrame) -> np.ndarray:
-        # Create an empty array to store the predictions
-        y = np.zeros(len(x))
-
-        # Create masks for each element type
-        gkps, defs, mids, fwds = self._get_element_type_masks(x)
-        x = self._remove_element_type_column(x)
-
-        # Make predictions for each element type
-        y[gkps.to_numpy()] = self.gkp_estimator.predict(x.filter(gkps))
-        y[defs.to_numpy()] = self.def_estimator.predict(x.filter(defs))
-        y[mids.to_numpy()] = self.mid_estimator.predict(x.filter(mids))
-        y[fwds.to_numpy()] = self.fwd_estimator.predict(x.filter(fwds))
-
+    def predict(self, X: pl.DataFrame) -> np.ndarray:
+        """Predict using the appropriate estimator for each row."""
+        y = np.zeros(len(X))
+        for value, estimator in self.estimators.items():
+            mask = X[self.column] == value
+            if mask.any():
+                X_value = X.filter(mask)
+                y[mask.to_numpy()] = estimator.predict(X_value)
         return y
 
-    def _get_element_type_masks(self, x: pl.DataFrame):
-        """Returns masks for the different element types."""
 
-        gkps = x[self.element_type_column] == GKP
-        defs = x[self.element_type_column] == DEF
-        mids = x[self.element_type_column] == MID
-        fwds = x[self.element_type_column] == FWD
+class ConditionalRegressor(BaseEstimator, RegressorMixin):
+    """
+    Returns the prediction of an estimator if a condition is met,
+    otherwise returns a default value.
+    """
 
-        if (gkps.sum() + defs.sum() + mids.sum() + fwds.sum()) != len(x):
-            raise ValueError(
-                "The input data does not contain the correct number of element types."
-            )
+    def __init__(self, estimator: BaseEstimator, condition: pl.Expr, default: float):
+        self.estimator = estimator
+        self.condition = condition
+        self.default = default
 
-        return gkps, defs, mids, fwds
+    def fit(self, X: pl.DataFrame, y: pl.Series):
+        """Fit the estimator only on the rows where the condition is met."""
+        mask = X.select(self.condition).to_series()
+        if not mask.any():
+            raise ValueError("No rows match the condition for fitting.")
+        print(f"Fitting estimator on {mask.sum()}/{len(mask)} rows.")
 
-    def _remove_element_type_column(self, x: pl.DataFrame) -> pl.DataFrame:
-        """Removes the element type column from the data."""
-        return x.drop(self.element_type_column)
+        X_condition = X.filter(mask)
+        y_condition = y.filter(mask)
+        self.estimator.fit(X_condition, y_condition)
+        return self
 
-    def __str__(self):
-        return self.__class__.__name__
-
-    def __repr__(self):
-        return self.__class__.__name__
+    def predict(self, X: pl.DataFrame) -> np.ndarray:
+        """Predict using the estimator only where the condition is met."""
+        mask = X.select(self.condition).to_series()
+        print(f"Predicting on {mask.sum()}/{len(mask)} rows.")
+        predictions = np.full(X.height, self.default, dtype=np.float64)
+        X_condition = X.filter(mask)
+        predictions[mask.to_numpy()] = self.estimator.predict(X_condition)
+        return predictions

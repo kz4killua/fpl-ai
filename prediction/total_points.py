@@ -1,7 +1,7 @@
-from sklearn.ensemble import HistGradientBoostingRegressor
+from sklearn.linear_model import Ridge
 from sklearn.pipeline import make_pipeline
 
-from prediction.utils import feature_selector
+from prediction.utils import RoutingEstimator, feature_selector
 
 
 def make_total_points_predictor():
@@ -18,21 +18,11 @@ def make_total_points_predictor():
         "predicted_bps",
         "predicted_bps_rank",
     ]
-    categorical_columns = [
-        "element_type",
-    ]
-    categorical_features = [column in categorical_columns for column in columns]
     pipeline = make_pipeline(
         feature_selector(columns=columns),
-        HistGradientBoostingRegressor(
-            categorical_features=categorical_features,
+        Ridge(
+            alpha=10.0,
             random_state=42,
-            max_iter=1000,
-            early_stopping=True,
-            validation_fraction=0.2,
-            l2_regularization=1.0,
-            max_leaf_nodes=7,
-            min_samples_leaf=256,
-        )
+        ),
     )
-    return pipeline
+    return RoutingEstimator(pipeline, "element_type")
