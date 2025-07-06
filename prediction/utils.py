@@ -106,17 +106,25 @@ class ConditionalRegressor(BaseEstimator, RegressorMixin):
     otherwise returns a default value.
     """
 
-    def __init__(self, estimator: BaseEstimator, condition: pl.Expr, default: float):
+    def __init__(
+        self,
+        estimator: BaseEstimator,
+        condition: pl.Expr,
+        default: float,
+        verbose: bool = False,
+    ):
         self.estimator = estimator
         self.condition = condition
         self.default = default
+        self.verbose = verbose
 
     def fit(self, X: pl.DataFrame, y: pl.Series):
         """Fit the estimator only on the rows where the condition is met."""
         mask = X.select(self.condition).to_series()
         if not mask.any():
             raise ValueError("No rows match the condition for fitting.")
-        print(f"Fitting estimator on {mask.sum()}/{len(mask)} rows.")
+        if self.verbose:
+            print(f"Fitting estimator on {mask.sum()}/{len(mask)} rows.")
 
         X_condition = X.filter(mask)
         y_condition = y.filter(mask)
@@ -126,7 +134,8 @@ class ConditionalRegressor(BaseEstimator, RegressorMixin):
     def predict(self, X: pl.DataFrame) -> np.ndarray:
         """Predict using the estimator only where the condition is met."""
         mask = X.select(self.condition).to_series()
-        print(f"Predicting on {mask.sum()}/{len(mask)} rows.")
+        if self.verbose:
+            print(f"Predicting on {mask.sum()}/{len(mask)} rows.")
         predictions = np.full(X.height, self.default, dtype=np.float64)
         X_condition = X.filter(mask)
         predictions[mask.to_numpy()] = self.estimator.predict(X_condition)
