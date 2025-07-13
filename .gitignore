@@ -23,3 +23,7 @@ models
 
 # .vscode
 .vscode/
+
+# temp
+.data_cache/
+results/
