@@ -12,7 +12,6 @@ from prediction.utils import save_model
 
 
 def train():
-
     # Load player and match data
     seasons = get_seasons("2023-24")
     players, teams, managers = load_merged(seasons)

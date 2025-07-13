@@ -6,10 +6,11 @@ import polars as pl
 from sklearn.base import BaseEstimator
 
 from .assists import make_assists_predictor
+from .bonus import predict_bonus
 from .bps import make_bps_predictor
 from .goals_scored import make_goals_scored_predictor
 from .match import make_match_predictor
-from .minutes import make_minutes_predictor
+from .minutes import compute_predicted_minute_probabilities, make_minutes_predictor
 from .saves import make_saves_predictor
 from .total_points import make_total_points_predictor
 
@@ -103,7 +104,10 @@ class PredictionModel:
         return model.fit(X, y)
 
     def _merge_minutes(self, players: pl.DataFrame, predicted_minutes: pl.Series):
-        return players.with_columns(predicted_minutes)
+        players = players.with_columns(predicted_minutes)
+        # Add predicted minute probabilities
+        players = compute_predicted_minute_probabilities(players)
+        return players
 
     def _merge_matches(
         self,
@@ -156,6 +160,19 @@ class PredictionModel:
                 "predicted_team_a_clean_sheets",
             ]
         )
+        # Add predicted player clean sheets
+        players = players.with_columns(
+            (
+                pl.col("predicted_team_clean_sheets")
+                * pl.col("predicted_probability_60_plus_minutes")
+            ).alias("predicted_player_clean_sheets")
+        )
+        # Add predicted player goals conceded
+        players = players.with_columns(
+            (
+                pl.col("predicted_opponent_scored") * pl.col("predicted_minutes") / 90.0
+            ).alias("predicted_player_goals_conceded")
+        )
         # Check that the merge was successful
         if (
             players.filter(
@@ -185,12 +202,9 @@ class PredictionModel:
 
     def _merge_bps(self, players: pl.DataFrame, predicted_bps: pl.Series):
         players = players.with_columns(predicted_bps)
-        # Add BPS ranks
+        # Add predicted bonus points
         players = players.with_columns(
-            pl.col("predicted_bps")
-            .rank(method="dense", descending=True)
-            .over(["season", "fixture"])
-            .alias("predicted_bps_rank")
+            pl.Series("predicted_bonus", predict_bonus(players), dtype=pl.Float64)
         )
         return players
 
