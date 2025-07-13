@@ -186,9 +186,7 @@ def load_elements(seasons: list[str]) -> pl.LazyFrame:
 
     # Add the "starts" column when unavailable
     if all(season < "2022-23" for season in seasons):
-        elements = elements.with_columns(
-            pl.lit(None).cast(pl.Int64).alias("starts")
-        )
+        elements = elements.with_columns(pl.lit(None).cast(pl.Int64).alias("starts"))
 
     # Remove discontinued features
     elements = elements.drop(

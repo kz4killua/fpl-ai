@@ -31,7 +31,7 @@ def engineer_player_features(players: pl.LazyFrame) -> pl.LazyFrame:
                 "creativity",
                 "threat",
                 "ict_index",
-            ]
+            ],
         )
         .pipe(
             compute_last_season_mean,
