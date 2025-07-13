@@ -2,6 +2,7 @@ import polars as pl
 
 from .availability import compute_availability
 from .last_season_mean import compute_last_season_mean
+from .per_90 import compute_per_90
 from .record_count import compute_record_count
 from .relative_strength import compute_relative_strength
 from .rolling_mean import compute_rolling_mean
@@ -11,6 +12,27 @@ def engineer_player_features(players: pl.LazyFrame) -> pl.LazyFrame:
     return (
         players.pipe(compute_availability)
         .pipe(compute_record_count, on="total_points")
+        .pipe(
+            compute_per_90,
+            columns=[
+                "minutes",
+                "starts",
+                "total_points",
+                "goals_scored",
+                "assists",
+                "uds_xG",
+                "uds_xA",
+                "clean_sheets",
+                "goals_conceded",
+                "saves",
+                "bonus",
+                "bps",
+                "influence",
+                "creativity",
+                "threat",
+                "ict_index",
+            ]
+        )
         .pipe(
             compute_last_season_mean,
             columns=[
@@ -30,6 +52,7 @@ def engineer_player_features(players: pl.LazyFrame) -> pl.LazyFrame:
                 "creativity",
                 "threat",
                 "ict_index",
+                "uds_xG_per_90",
             ],
         )
         # Compute short-term form
@@ -52,8 +75,9 @@ def engineer_player_features(players: pl.LazyFrame) -> pl.LazyFrame:
                 "creativity",
                 "threat",
                 "ict_index",
+                "uds_xG_per_90",
             ],
-            window_sizes=[3, 3, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5],
+            window_sizes=[3, 3, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5],
             # Compute player averages over seasons and codes
             over=["season", "code"],
         )
@@ -77,10 +101,12 @@ def engineer_player_features(players: pl.LazyFrame) -> pl.LazyFrame:
                 "creativity",
                 "threat",
                 "ict_index",
+                "uds_xG_per_90",
             ],
             window_sizes=[
                 10,
                 10,
+                20,
                 20,
                 20,
                 20,
