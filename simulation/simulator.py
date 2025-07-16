@@ -129,6 +129,12 @@ class Simulator:
         new_purchase_prices = update_purchase_prices(
             new_squad, self.purchase_prices, now_costs
         )
+        new_selling_prices = get_selling_prices(
+            new_squad, new_purchase_prices, now_costs
+        )
+        new_team_value = calculate_team_value(
+            new_squad, new_selling_prices, new_budget
+        )
         new_free_transfers = update_free_transfers(
             self.free_transfers,
             transfers_made,
@@ -148,6 +154,7 @@ class Simulator:
                 self.squad,
                 new_squad,
                 new_budget,
+                new_team_value,
                 transfer_cost,
                 self.free_transfers,
                 element_types,
@@ -179,6 +186,7 @@ def print_gameweek_summary(
     initial_squad: set,
     final_squad: set,
     final_budget: int,
+    final_team_value: int,
     transfer_cost: int,
     free_transfers: int,
     element_types: dict,
@@ -262,8 +270,7 @@ def print_gameweek_summary(
         print(f"<- {web_names[player]} ({format_currency(selling_prices[player])})")
 
     print(f"Bank: {format_currency(final_budget)}")
-    team_value = calculate_team_value(final_squad, selling_prices, final_budget)
-    print(f"Team value: {format_currency(team_value)}")
+    print(f"Team value: {format_currency(final_team_value)}")
 
 
 def format_currency(amount: int):
