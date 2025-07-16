@@ -278,3 +278,8 @@ def calculate_selling_price(purchase_price: int, now_cost: int) -> int:
     # Apply a 50% sell-on fee to any profits
     profit = (now_cost - purchase_price) // 2
     return purchase_price + profit
+
+
+def calculate_team_value(squad: Iterable[int], selling_prices: dict, budget: int):
+    """Returns the overall worth of the team (including budget)."""
+    return budget + sum(selling_prices[player] for player in squad)

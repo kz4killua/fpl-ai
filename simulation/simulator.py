@@ -12,6 +12,7 @@ from game.rules import DEF, ELEMENT_TYPES, FWD, GKP, MID, MNG
 from .utils import (
     calculate_budget,
     calculate_points,
+    calculate_team_value,
     calculate_transfer_cost,
     count_transfers,
     get_purchase_prices,
@@ -261,6 +262,8 @@ def print_gameweek_summary(
         print(f"<- {web_names[player]} ({format_currency(selling_prices[player])})")
 
     print(f"Bank: {format_currency(final_budget)}")
+    team_value = calculate_team_value(final_squad, selling_prices, final_budget)
+    print(f"Team value: {format_currency(team_value)}")
 
 
 def format_currency(amount: int):
