@@ -20,9 +20,7 @@ def compute_balanced_rolling_mean(
         columns, window_sizes, defaults, strict=True
     ):
         # Weight the values for the previous and current season
-        last_season_value = last_season_weight * pl.col(
-            f"{column}_mean_last_season"
-        )
+        last_season_value = last_season_weight * pl.col(f"{column}_mean_last_season")
         this_season_value = this_season_weight * pl.col(
             f"{column}_rolling_mean_{window_size}"
         )

@@ -132,9 +132,7 @@ class Simulator:
         new_selling_prices = get_selling_prices(
             new_squad, new_purchase_prices, now_costs
         )
-        new_team_value = calculate_team_value(
-            new_squad, new_selling_prices, new_budget
-        )
+        new_team_value = calculate_team_value(new_squad, new_selling_prices, new_budget)
         new_free_transfers = update_free_transfers(
             self.free_transfers,
             transfers_made,
