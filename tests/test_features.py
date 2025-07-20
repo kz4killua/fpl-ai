@@ -4,10 +4,35 @@ import polars as pl
 from polars.testing import assert_frame_equal
 
 from features.availability import compute_availability
+from features.balanced_rolling_mean import compute_balanced_rolling_mean
+from features.contribution import compute_contribution
+from features.last_season_mean import compute_last_season_mean
+from features.minutes_category import compute_minutes_category
 from features.per_90 import compute_per_90
-from features.previous_season_mean import compute_previous_season_mean
 from features.record_count import compute_record_count
 from features.rolling_mean import compute_rolling_mean
+
+
+def test_compute_minutes_category():
+    df = pl.DataFrame(
+        {
+            "minutes": [0, 1, 59, 60, 90],
+        }
+    )
+    expected = df.with_columns(
+        pl.Series(
+            "minutes_category",
+            [
+                "0_minutes",
+                "1_to_59_minutes",
+                "1_to_59_minutes",
+                "60_plus_minutes",
+                "60_plus_minutes",
+            ],
+        )
+    )
+    result = compute_minutes_category(df)
+    assert_frame_equal(result, expected)
 
 
 def test_compute_record_count():
@@ -21,7 +46,7 @@ def test_compute_record_count():
         }
     )
     expected = df.with_columns(pl.Series("record_count", [0, 1, 2, 3, 4]))
-    result = compute_record_count(df)
+    result = compute_record_count(df, "total_points")
     assert_frame_equal(
         result,
         expected,
@@ -40,7 +65,7 @@ def test_compute_record_count():
         }
     )
     expected = df.with_columns(pl.Series("record_count", [0, 1, 2, 3, 3]))
-    result = compute_record_count(df)
+    result = compute_record_count(df, "total_points")
     assert_frame_equal(
         result,
         expected,
@@ -59,7 +84,7 @@ def test_compute_record_count():
         }
     )
     expected = df.with_columns(pl.Series("record_count", [0, 1, 2, 0, 1, 2]))
-    result = compute_record_count(df)
+    result = compute_record_count(df, "total_points")
     assert_frame_equal(
         result,
         expected,
@@ -78,13 +103,87 @@ def test_compute_record_count():
         }
     )
     expected = df.with_columns(pl.Series("record_count", [0, 0, 1, 1, 2, 2]))
-    result = compute_record_count(df)
+    result = compute_record_count(df, "total_points")
     assert_frame_equal(
         result,
         expected,
         check_row_order=False,
         check_column_order=False,
         check_dtypes=False,
+    )
+
+
+def test_compute_contribution():
+    # Test with a single team and fixture
+    players = pl.DataFrame(
+        {
+            "season": ["2021-22"] * 5,
+            "team_code": [1] * 5,
+            "fixture": [1] * 5,
+            "code": [1, 2, 3, 4, 5],
+            "total_points": [6, 2, 5, 0, 9],
+        }
+    )
+    expected = players.with_columns(
+        pl.Series("total_points_contribution", [0.2727, 0.0909, 0.2273, 0.0, 0.4091])
+    )
+    result = compute_contribution(players, ["total_points"])
+    assert_frame_equal(
+        result,
+        expected,
+        check_row_order=False,
+        check_column_order=False,
+        check_exact=False,
+        check_dtypes=False,
+        atol=1e-3,
+    )
+
+    # Test with multiple fixtures
+    players = pl.DataFrame(
+        {
+            "season": ["2021-22"] * 4,
+            "team_code": [1, 1, 1, 1],
+            "fixture": [1, 1, 2, 2],
+            "code": [1, 2, 1, 2],
+            "total_points": [6, 2, 5, 0],
+        }
+    )
+    expected = players.with_columns(
+        pl.Series("total_points_contribution", [0.75, 0.25, 1.0, 0.0])
+    )
+    result = compute_contribution(players, ["total_points"])
+    assert_frame_equal(
+        result,
+        expected,
+        check_row_order=False,
+        check_column_order=False,
+        check_exact=False,
+        check_dtypes=False,
+        atol=1e-3,
+    )
+
+    # Test zero division
+    players = pl.DataFrame(
+        {
+            "season": ["2021-22"] * 5,
+            "team_code": [1] * 5,
+            "fixture": [1] * 5,
+            "code": [1, 2, 3, 4, 5],
+            "total_points": [0, 0, 0, 0, 0],
+        }
+    )
+    expected = players.with_columns(
+        pl.Series("total_points_contribution", [0.0, 0.0, 0.0, 0.0, 0.0])
+    )
+    result = compute_contribution(players, ["total_points"])
+    assert_frame_equal(
+        result,
+        expected,
+        check_row_order=False,
+        check_column_order=False,
+        check_exact=False,
+        check_dtypes=False,
+        atol=1e-3,
     )
 
 
@@ -248,7 +347,7 @@ def test_compute_rolling_mean():
     )
 
 
-def test_compute_previous_season_mean():
+def test_compute_last_season_mean():
     # Test with a single player
     players = pl.DataFrame(
         {
@@ -260,12 +359,12 @@ def test_compute_previous_season_mean():
     )
     expected = players.with_columns(
         pl.Series(
-            "previous_season_mean_total_points",
+            "total_points_mean_last_season",
             [None, None, 5, 5],
         )
     )
     players = players.sample(fraction=1.0, shuffle=True, seed=42)
-    result = compute_previous_season_mean(players, ["total_points"])
+    result = compute_last_season_mean(players, ["total_points"])
     assert_frame_equal(
         result,
         expected,
@@ -285,12 +384,56 @@ def test_compute_previous_season_mean():
     )
     expected = players.with_columns(
         pl.Series(
-            "previous_season_mean_total_points",
+            "total_points_mean_last_season",
             [None, None, 2, 5],
         )
     )
     players = players.sample(fraction=1.0, shuffle=True, seed=42)
-    result = compute_previous_season_mean(players, ["total_points"])
+    result = compute_last_season_mean(players, ["total_points"])
+    assert_frame_equal(
+        result,
+        expected,
+        check_row_order=False,
+        check_column_order=False,
+        check_exact=False,
+        check_dtypes=False,
+    )
+
+
+def test_compute_balanced_rolling_mean():
+    # Test without null values
+    players = pl.DataFrame(
+        {
+            "total_points_rolling_mean_5": [2, 8, 5],
+            "total_points_mean_last_season": [4, 4, 4],
+            "record_count": [0, 1, 2],
+        }
+    )
+    expected = players.with_columns(
+        pl.Series("total_points_balanced_rolling_mean_5", [4.0, 6.0, 4.75])
+    )
+    result = compute_balanced_rolling_mean(players, ["total_points"], [None], [5], 0.5)
+    assert_frame_equal(
+        result,
+        expected,
+        check_row_order=False,
+        check_column_order=False,
+        check_exact=False,
+        check_dtypes=False,
+    )
+
+    # Test with null values
+    players = pl.DataFrame(
+        {
+            "total_points_rolling_mean_5": [None, 12, 2],
+            "total_points_mean_last_season": [None, None, None],
+            "record_count": [0, 1, 2],
+        }
+    )
+    expected = players.with_columns(
+        pl.Series("total_points_balanced_rolling_mean_5", [0.0, 6.0, 1.5])
+    )
+    result = compute_balanced_rolling_mean(players, ["total_points"], [0], [5], 0.5)
     assert_frame_equal(
         result,
         expected,
