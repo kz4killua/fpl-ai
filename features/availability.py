@@ -140,10 +140,6 @@ def compute_availability(df: pl.LazyFrame) -> pl.LazyFrame:
     # Drop the columns we no longer need
     df = df.drop(
         [
-            "news",
-            "news_added",
-            "status",
-            "chance_of_playing_next_round",
             "news_added_year",
             "expected_back_day",
             "expected_back_month",
