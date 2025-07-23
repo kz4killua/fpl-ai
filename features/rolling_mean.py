@@ -6,6 +6,8 @@ def compute_rolling_mean(
     columns: list[str],
     window_sizes: list[int],
     over: list[str] = ("season", "code"),
+    condition: pl.Expr | None = None,
+    suffix: str = "",
 ) -> pl.LazyFrame:
     """Calculate rolling means ignoring null values."""
 
@@ -15,21 +17,24 @@ def compute_rolling_mean(
     # Add a temporary index column (to skip null values)
     df = df.with_row_index("index")
 
+    if condition is None:
+        condition = pl.lit(True)
+
     for column, window_size in zip(columns, window_sizes, strict=True):
-        alias = f"{column}_rolling_mean_{window_size}"
-        # Compute the rolling mean for non-null values
-        non_null = df.select(["index", *over, column]).filter(
-            pl.col(column).is_not_null()
+        alias = f"{column}_rolling_mean_{window_size}{suffix}"
+        # Compute the rolling mean for selected values
+        selected = df.filter(pl.col(column).is_not_null() & condition).select(
+            ["index", *over, column]
         )
-        non_null = non_null.with_columns(
+        selected = selected.with_columns(
             pl.col(column)
             .rolling_mean(window_size, min_samples=1)
             .over(over)
             .alias(alias)
         )
-        # Add the non-null results to the original frame
+        # Add the selected results to the original frame
         df = df.join(
-            non_null.select(["index", alias]),
+            selected.select(["index", alias]),
             on="index",
             how="left",
         )
