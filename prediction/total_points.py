@@ -6,10 +6,10 @@ from prediction.utils import RoutingEstimator, feature_selector
 
 def make_total_points_predictor():
     columns = [
-        "predicted_probability_1_to_60_minutes",
-        "predicted_probability_60_plus_minutes",
-        "predicted_player_clean_sheets",
-        "predicted_player_goals_conceded",
+        "predicted_1_to_59_minutes",
+        "predicted_60_plus_minutes",
+        "predicted_clean_sheets",
+        "predicted_goals_conceded",
         "predicted_goals_scored",
         "predicted_assists",
         "predicted_saves",

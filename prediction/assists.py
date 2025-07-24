@@ -8,7 +8,8 @@ def make_assists_predictor():
     columns = [
         "value",
         "record_count",
-        "predicted_minutes",
+        "predicted_1_to_59_minutes",
+        "predicted_60_plus_minutes",
         "predicted_team_scored",
         "assists_rolling_mean_5",
         "assists_rolling_mean_20",

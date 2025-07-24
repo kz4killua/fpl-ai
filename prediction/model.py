@@ -1,4 +1,3 @@
-import warnings
 from collections.abc import Iterable
 
 import numpy as np
@@ -10,7 +9,7 @@ from .bonus import predict_bonus
 from .bps import make_bps_predictor
 from .goals_scored import make_goals_scored_predictor
 from .match import make_match_predictor
-from .minutes import compute_predicted_minute_probabilities, make_minutes_predictor
+from .minutes import make_minutes_predictor
 from .saves import make_saves_predictor
 from .total_points import make_total_points_predictor
 
@@ -27,28 +26,39 @@ class PredictionModel:
 
     def fit(self, players: pl.DataFrame, matches: pl.DataFrame):
         """Fit the model to predict total points."""
-        # Fit models for minutes and match results
+        X = players
+
+        # Fit model for minute probabilities
         self._fit_minutes(players)
-        self._fit_matches(matches)
         predicted_minutes = self._predict_minutes(players)
+        X = self._merge_minutes(X, predicted_minutes)
+
+        # Fit model for match results
+        self._fit_matches(matches)
         predicted_results = self._predict_matches(matches)
-        X = self._merge_minutes(players, predicted_minutes)
         X = self._merge_matches(X, matches, predicted_results)
-        # Fit models for goals, assists, and saves
+
+        # Fit model for goals scored
         self._fit_goals_scored(X)
-        self._fit_assists(X)
-        self._fit_saves(X)
         predicted_goals_scored = self._predict_goals_scored(X)
-        predicted_assists = self._predict_assists(X)
-        predicted_saves = self._predict_saves(X)
         X = self._merge_goals_scored(X, predicted_goals_scored)
+
+        # Fit model for assists
+        self._fit_assists(X)
+        predicted_assists = self._predict_assists(X)
         X = self._merge_assists(X, predicted_assists)
+
+        # Fit model for saves
+        self._fit_saves(X)
+        predicted_saves = self._predict_saves(X)
         X = self._merge_saves(X, predicted_saves)
-        # Fit the bonus points model
+
+        # Fit model for BPS
         self._fit_bps(X)
         predicted_bps = self._predict_bps(X)
         X = self._merge_bps(X, predicted_bps)
-        # Fit the total points model
+
+        # Fit model for total points
         self._fit_total_points(X)
         return self
 
@@ -73,7 +83,7 @@ class PredictionModel:
         return self._predict_total_points(X)
 
     def _fit_minutes(self, players: pl.DataFrame):
-        return self._fit_model(self.minutes_predictor, players, "minutes")
+        return self._fit_model(self.minutes_predictor, players, "minutes_category")
 
     def _fit_matches(self, matches: pl.DataFrame):
         return self._fit_model(
@@ -103,11 +113,8 @@ class PredictionModel:
         y = df.get_column(target) if isinstance(target, str) else df.select(target)
         return model.fit(X, y)
 
-    def _merge_minutes(self, players: pl.DataFrame, predicted_minutes: pl.Series):
-        players = players.with_columns(predicted_minutes)
-        # Add predicted minute probabilities
-        players = compute_predicted_minute_probabilities(players)
-        return players
+    def _merge_minutes(self, players: pl.DataFrame, predicted_minutes: pl.DataFrame):
+        return pl.concat([players, predicted_minutes], how="horizontal")
 
     def _merge_matches(
         self,
@@ -160,32 +167,20 @@ class PredictionModel:
                 "predicted_team_a_clean_sheets",
             ]
         )
-        # Add predicted player clean sheets
+        # Add predicted (player) clean sheets
         players = players.with_columns(
             (
                 pl.col("predicted_team_clean_sheets")
-                * pl.col("predicted_probability_60_plus_minutes")
-            ).alias("predicted_player_clean_sheets")
+                * pl.col("predicted_60_plus_minutes")
+            ).alias("predicted_clean_sheets")
         )
-        # Add predicted player goals conceded
+        # Add predicted (player) goals conceded
         players = players.with_columns(
             (
-                pl.col("predicted_opponent_scored") * pl.col("predicted_minutes") / 90.0
-            ).alias("predicted_player_goals_conceded")
+                pl.col("predicted_opponent_scored")
+                * pl.col("predicted_60_plus_minutes")
+            ).alias("predicted_goals_conceded")
         )
-        # Check that the merge was successful
-        if (
-            players.filter(
-                pl.col("predicted_team_scored").is_null()
-                | pl.col("predicted_opponent_scored").is_null()
-                | pl.col("predicted_team_clean_sheets").is_null()
-                | pl.col("predicted_opponent_clean_sheets").is_null()
-            ).height
-            > 0
-        ):
-            warnings.warn(
-                "Some players have missing match result predictions.", stacklevel=2
-            )
 
         return players
 
@@ -208,9 +203,11 @@ class PredictionModel:
         )
         return players
 
-    def _predict_minutes(self, players: pl.DataFrame):
-        predictions = self.minutes_predictor.predict(players)
-        return pl.Series("predicted_minutes", predictions, dtype=pl.Float64)
+    def _predict_minutes(self, players: pl.DataFrame) -> pl.DataFrame:
+        predictions = self.minutes_predictor.predict_proba(players)
+        classes = list(self.minutes_predictor.named_steps["predictor"].classes_)
+        classes = [f"predicted_{c}" for c in classes]
+        return pl.DataFrame(predictions, schema=classes)
 
     def _predict_matches(self, matches: pl.DataFrame):
         # Make predictions for home and away goals

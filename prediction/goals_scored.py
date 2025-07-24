@@ -8,7 +8,8 @@ def make_goals_scored_predictor():
     columns = [
         "value",
         "record_count",
-        "predicted_minutes",
+        "predicted_1_to_59_minutes",
+        "predicted_60_plus_minutes",
         "predicted_team_scored",
         "uds_xG_rolling_mean_5",
         "uds_xG_rolling_mean_20",
