@@ -115,7 +115,7 @@ def load_fpl(seasons: list[str]) -> tuple[pl.LazyFrame, pl.LazyFrame, pl.LazyFra
         strict=False,
     )
 
-    # Map news and availability information to players
+    # Map availability and set piece information to players
     players = players.join(
         static_elements.select(
             [
@@ -126,6 +126,9 @@ def load_fpl(seasons: list[str]) -> tuple[pl.LazyFrame, pl.LazyFrame, pl.LazyFra
                 "status",
                 "news",
                 "news_added",
+                "corners_and_indirect_freekicks_order",
+                "direct_freekicks_order",
+                "penalties_order",
             ]
         ),
         on=["season", "round", "code"],
