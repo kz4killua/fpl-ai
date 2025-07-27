@@ -51,7 +51,7 @@ class FeatureSelector(TransformerMixin):
     def fit(self, X: pl.DataFrame, y=None):
         """Fit the transformer (no-op for FeatureSelector)."""
         return self.transformer.fit(X)
-    
+
     def transform(self, X: pl.DataFrame, y=None) -> pl.DataFrame:
         return self.transformer.transform(X)
 
