@@ -1,7 +1,7 @@
 from sklearn.ensemble import HistGradientBoostingRegressor
 from sklearn.pipeline import make_pipeline
 
-from prediction.utils import feature_selector
+from prediction.utils import FeatureSelector
 
 
 def make_saves_predictor():
@@ -22,7 +22,7 @@ def make_saves_predictor():
     ]
     categorical_features = [column in categorical_columns for column in columns]
     return make_pipeline(
-        feature_selector(columns=columns),
+        FeatureSelector(columns),
         HistGradientBoostingRegressor(
             max_iter=1000,
             early_stopping=True,

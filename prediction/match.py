@@ -4,7 +4,7 @@ from sklearn.multioutput import MultiOutputRegressor
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
-from prediction.utils import feature_selector
+from prediction.utils import FeatureSelector
 
 
 def make_match_predictor():
@@ -21,7 +21,7 @@ def make_match_predictor():
         "team_a_relative_scored_rolling_mean_30",
     ]
     return make_pipeline(
-        feature_selector(columns),
+        FeatureSelector(columns),
         KNNImputer(n_neighbors=5),
         StandardScaler(),
         MultiOutputRegressor(

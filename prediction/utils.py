@@ -3,7 +3,7 @@ from pathlib import Path
 
 import numpy as np
 import polars as pl
-from sklearn.base import BaseEstimator, RegressorMixin, clone
+from sklearn.base import BaseEstimator, RegressorMixin, TransformerMixin, clone
 from sklearn.compose import ColumnTransformer
 from sklearn.model_selection import BaseCrossValidator
 
@@ -28,22 +28,32 @@ def load_model(name: str) -> BaseEstimator:
     return model
 
 
-def feature_selector(columns: list[str]) -> ColumnTransformer:
-    """Select features for the model."""
-    return ColumnTransformer(
-        transformers=[
-            ("features", "passthrough", columns),
-        ],
-        remainder="drop",
-        sparse_threshold=0,
-    )
-
-
 def get_season_splits(seasons: list[str]):
     """Get the training and testing seasons for cross-validation."""
     seasons = sorted(set(seasons))
     splits = [(seasons[:i], seasons[i]) for i in range(1, len(seasons))]
     yield from splits
+
+
+class FeatureSelector(TransformerMixin):
+    """Selects a list of columns from a Polars DataFrame."""
+
+    def __init__(self, columns: list[str]):
+        self.columns = columns
+        self.transformer = ColumnTransformer(
+            transformers=[
+                ("features", "passthrough", self.columns),
+            ],
+            remainder="drop",
+            sparse_threshold=0,
+        )
+
+    def fit(self, X: pl.DataFrame, y=None):
+        """Fit the transformer (no-op for FeatureSelector)."""
+        return self.transformer.fit(X)
+    
+    def transform(self, X: pl.DataFrame, y=None) -> pl.DataFrame:
+        return self.transformer.transform(X)
 
 
 class SeasonSplit(BaseCrossValidator):

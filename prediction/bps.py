@@ -2,7 +2,7 @@ from sklearn.impute import SimpleImputer
 from sklearn.linear_model import Ridge
 from sklearn.pipeline import make_pipeline
 
-from prediction.utils import RoutingEstimator, feature_selector
+from prediction.utils import FeatureSelector, RoutingEstimator
 
 
 def make_bps_predictor():
@@ -20,7 +20,7 @@ def make_bps_predictor():
         "predicted_saves",
     ]
     pipeline = make_pipeline(
-        feature_selector(columns=columns),
+        FeatureSelector(columns),
         SimpleImputer(strategy="mean"),
         Ridge(random_state=42),
     )

@@ -1,7 +1,7 @@
 from lightgbm import LGBMClassifier
 from sklearn.pipeline import Pipeline
 
-from prediction.utils import feature_selector
+from prediction.utils import FeatureSelector
 
 
 def make_minutes_predictor():
@@ -105,7 +105,7 @@ def make_minutes_predictor():
     )
     pipeline = Pipeline(
         [
-            ("selector", feature_selector(columns=columns)),
+            ("selector", FeatureSelector(columns)),
             ("predictor", model),
         ]
     )

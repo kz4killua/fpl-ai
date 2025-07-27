@@ -1,7 +1,7 @@
 from sklearn.linear_model import Ridge
 from sklearn.pipeline import make_pipeline
 
-from prediction.utils import RoutingEstimator, feature_selector
+from prediction.utils import FeatureSelector, RoutingEstimator
 
 
 def make_total_points_predictor():
@@ -16,7 +16,7 @@ def make_total_points_predictor():
         "predicted_bonus",
     ]
     pipeline = make_pipeline(
-        feature_selector(columns=columns),
+        FeatureSelector(columns),
         Ridge(alpha=1.0, random_state=42),
     )
     return RoutingEstimator(pipeline, "element_type")
