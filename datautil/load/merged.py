@@ -101,9 +101,6 @@ def clean_players(players: pl.LazyFrame) -> pl.LazyFrame:
         pl.col("uds_xGBuildup").fill_null(0),
     )
 
-    # Fill in missing values for uds_position
-    players = players.with_columns(pl.col("uds_position").fill_null("Reserve"))
-
     # Cast was_home to an integer
     players = players.with_columns(pl.col("was_home").cast(pl.Int8))
 
