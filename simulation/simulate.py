@@ -3,9 +3,9 @@ import polars as pl
 from datautil.upcoming import (
     get_upcoming_fixtures,
     get_upcoming_gameweeks,
-    get_upcoming_manager_data,
-    get_upcoming_player_data,
-    get_upcoming_team_data,
+    get_upcoming_managers,
+    get_upcoming_players,
+    get_upcoming_teams,
 )
 from datautil.utils import get_mapper
 from features.engineer_features import (
@@ -69,13 +69,13 @@ def get_gameweek_roles(
         next_gameweek, OPTIMIZATION_WINDOW_SIZE, last_gameweek
     )
     upcoming_fixtures = get_upcoming_fixtures(fixtures, season, upcoming_gameweeks)
-    upcoming_players = get_upcoming_player_data(
+    upcoming_players = get_upcoming_players(
         upcoming_fixtures, static_players, static_teams
     )
-    upcoming_managers = get_upcoming_manager_data(
+    upcoming_managers = get_upcoming_managers(
         upcoming_fixtures, static_managers, static_teams
     )
-    upcoming_teams = get_upcoming_team_data(upcoming_fixtures, static_teams)
+    upcoming_teams = get_upcoming_teams(upcoming_fixtures, static_teams)
 
     # Combine the data for feature engineering
     combined_players = pl.concat(

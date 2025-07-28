@@ -1,7 +1,7 @@
 import polars as pl
 
 
-def get_upcoming_player_data(
+def get_upcoming_players(
     upcoming_fixtures: pl.LazyFrame,
     static_players: pl.LazyFrame,
     static_teams: pl.LazyFrame,
@@ -117,7 +117,7 @@ def get_upcoming_player_data(
     return df
 
 
-def get_upcoming_team_data(
+def get_upcoming_teams(
     upcoming_fixtures: pl.LazyFrame,
     static_teams: pl.LazyFrame,
 ) -> pl.LazyFrame:
@@ -184,13 +184,13 @@ def get_upcoming_team_data(
     return df
 
 
-def get_upcoming_manager_data(
+def get_upcoming_managers(
     upcoming_fixtures: pl.LazyFrame,
     static_managers: pl.LazyFrame,
     static_teams: pl.LazyFrame,
 ) -> pl.LazyFrame:
-    """Alias of `get_upcoming_player_data`."""
-    return get_upcoming_player_data(
+    """Alias of `get_upcoming_players`."""
+    return get_upcoming_players(
         upcoming_fixtures,
         static_managers,
         static_teams,

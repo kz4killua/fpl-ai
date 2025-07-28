@@ -8,9 +8,9 @@ from datautil.load.understat import load_understat
 from datautil.upcoming import (
     get_upcoming_fixtures,
     get_upcoming_gameweeks,
-    get_upcoming_manager_data,
-    get_upcoming_player_data,
-    get_upcoming_team_data,
+    get_upcoming_managers,
+    get_upcoming_players,
+    get_upcoming_teams,
 )
 from datautil.utils import get_seasons
 from game.rules import DEF, FWD, GKP, MID, MNG
@@ -300,8 +300,7 @@ def test_get_upcoming_fixtures():
     assert upcoming_fixtures.get_column("event").max() == 5
 
 
-def test_get_upcoming_player_data():
-
+def test_get_upcoming_players():
     def load_upcoming_players(season: str, next_gameweek: int) -> pl.DataFrame:
         """Load upcoming player data for a given season and gameweek."""
         upcoming_gameweeks = get_upcoming_gameweeks(next_gameweek, 5, 38)
@@ -312,12 +311,12 @@ def test_get_upcoming_player_data():
             pl.col("element_type").is_in([GKP, DEF, MID, FWD])
         )
         upcoming_fixtures = get_upcoming_fixtures(fixtures, season, upcoming_gameweeks)
-        upcoming_players = get_upcoming_player_data(
+        upcoming_players = get_upcoming_players(
             upcoming_fixtures, static_players, static_teams
         )
         upcoming_players = upcoming_players.collect()
         return upcoming_players
-    
+
     # Test with gameweek 1 of the 2024-25 season
     upcoming_players = load_upcoming_players("2024-25", 1)
     expected = pl.DataFrame(
@@ -361,7 +360,7 @@ def test_get_upcoming_player_data():
     )
 
 
-def test_get_upcoming_manager_data():
+def test_get_upcoming_managers():
     season = "2024-25"
     next_gameweek = 24
     upcoming_gameweeks = get_upcoming_gameweeks(next_gameweek, 5, 38)
@@ -370,7 +369,7 @@ def test_get_upcoming_manager_data():
     static_teams = load_static_teams(season, next_gameweek)
     static_managers = static_elements.filter(pl.col("element_type") == MNG)
     upcoming_fixtures = get_upcoming_fixtures(fixtures, season, upcoming_gameweeks)
-    upcoming_managers = get_upcoming_manager_data(
+    upcoming_managers = get_upcoming_managers(
         upcoming_fixtures, static_managers, static_teams
     )
     upcoming_managers = upcoming_managers.collect()
@@ -400,14 +399,14 @@ def test_get_upcoming_manager_data():
     )
 
 
-def test_get_upcoming_team_data():
+def test_get_upcoming_teams():
     season = "2024-25"
     next_gameweek = 1
     static_teams = load_static_teams(season, next_gameweek)
     fixtures = load_fixtures([season])
     upcoming_gameweeks = get_upcoming_gameweeks(next_gameweek, 5, 38)
     upcoming_fixtures = get_upcoming_fixtures(fixtures, season, upcoming_gameweeks)
-    upcoming_teams = get_upcoming_team_data(upcoming_fixtures, static_teams)
+    upcoming_teams = get_upcoming_teams(upcoming_fixtures, static_teams)
     upcoming_teams = upcoming_teams.collect()
 
     # Test that the correct number of rows is returned
