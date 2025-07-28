@@ -62,9 +62,6 @@ def get_upcoming_player_data(
         how="inner",
     )
 
-    # Sort by kickoff time for forward filling
-    df = df.sort("kickoff_time")
-
     # Add known availability information
     df = df.join(
         static_players.select(
@@ -80,8 +77,23 @@ def get_upcoming_player_data(
         how="left",
     )
 
-    # Add and forward fill other useful metrics e.g. now_cost
-    df = df.join(
+    # Get player values for all (season, round, code) combinations
+    base = pl.concat(
+        [
+            df.select(
+                pl.col("season"),
+                pl.col("round"),
+                pl.col("code"),
+            ),
+            static_players.select(
+                pl.col("season"),
+                pl.col("round"),
+                pl.col("code"),
+            ),
+        ],
+        how="diagonal_relaxed",
+    ).unique()
+    values = base.join(
         static_players.select(
             pl.col("season"),
             pl.col("round"),
@@ -91,7 +103,16 @@ def get_upcoming_player_data(
         on=["season", "round", "code"],
         how="left",
     )
-    df = df.with_columns(pl.col("value").forward_fill().over("code"))
+    # Estimate player values for upcoming gameweeks
+    values = values.sort("season", "round", "code").with_columns(
+        pl.col("value").forward_fill().over("code")
+    )
+    # Join the values back to the main DataFrame
+    df = df.join(
+        values,
+        on=["season", "round", "code"],
+        how="left",
+    )
 
     return df
 

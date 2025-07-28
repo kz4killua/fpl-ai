@@ -301,22 +301,25 @@ def test_get_upcoming_fixtures():
 
 
 def test_get_upcoming_player_data():
-    season = "2024-25"
-    next_gameweek = 1
-    upcoming_gameweeks = get_upcoming_gameweeks(next_gameweek, 5, 38)
-    fixtures = load_fixtures([season])
-    static_elements = load_static_elements(season, next_gameweek)
-    static_teams = load_static_teams(season, next_gameweek)
-    static_players = static_elements.filter(
-        pl.col("element_type").is_in([GKP, DEF, MID, FWD])
-    )
-    upcoming_fixtures = get_upcoming_fixtures(fixtures, season, upcoming_gameweeks)
-    upcoming_players = get_upcoming_player_data(
-        upcoming_fixtures, static_players, static_teams
-    )
-    upcoming_players = upcoming_players.collect()
 
-    # Test that mappings are correct
+    def load_upcoming_players(season: str, next_gameweek: int) -> pl.DataFrame:
+        """Load upcoming player data for a given season and gameweek."""
+        upcoming_gameweeks = get_upcoming_gameweeks(next_gameweek, 5, 38)
+        fixtures = load_fixtures([season])
+        static_elements = load_static_elements(season, next_gameweek)
+        static_teams = load_static_teams(season, next_gameweek)
+        static_players = static_elements.filter(
+            pl.col("element_type").is_in([GKP, DEF, MID, FWD])
+        )
+        upcoming_fixtures = get_upcoming_fixtures(fixtures, season, upcoming_gameweeks)
+        upcoming_players = get_upcoming_player_data(
+            upcoming_fixtures, static_players, static_teams
+        )
+        upcoming_players = upcoming_players.collect()
+        return upcoming_players
+    
+    # Test with gameweek 1 of the 2024-25 season
+    upcoming_players = load_upcoming_players("2024-25", 1)
     expected = pl.DataFrame(
         {
             "season": ["2024-25", "2024-25", "2024-25", "2024-25"],
@@ -331,6 +334,24 @@ def test_get_upcoming_player_data():
             "was_home": [False, True, False, True],
             # Availability should be filled for (only) the next gameweek
             "status": ["a", None, None, None],
+        }
+    )
+    assert_mappings_correct(
+        upcoming_players,
+        expected,
+        on=["season", "element", "round"],
+    )
+
+    # Test with (blank) gameweek 24 of the 2022-23 season
+    upcoming_players = load_upcoming_players("2022-23", 32)
+    expected = pl.DataFrame(
+        {
+            "season": ["2022-23", "2022-23", "2022-23", "2022-23"],
+            "element": [101, 101, 101, 101],
+            "round": [33, 34, 35, 36],
+            "code": [39155, 39155, 39155, 39155],
+            # Values should be filled properly even over blank gameweeks
+            "value": [48, 48, 48, 48],
         }
     )
     assert_mappings_correct(
