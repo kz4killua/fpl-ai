@@ -135,6 +135,84 @@ def load_fpl(seasons: list[str]) -> tuple[pl.LazyFrame, pl.LazyFrame, pl.LazyFra
         how="left",
     )
 
+    # Add team and opponent strength information to players
+    players = players.join(
+        static_teams.select(
+            [
+                pl.col("season"),
+                pl.col("round"),
+                pl.col("id").alias("team"),
+                pl.col("strength").alias("team_strength"),
+                pl.col("strength_attack_home").alias("team_strength_attack_home"),
+                pl.col("strength_attack_away").alias("team_strength_attack_away"),
+                pl.col("strength_defence_home").alias("team_strength_defence_home"),
+                pl.col("strength_defence_away").alias("team_strength_defence_away"),
+                pl.col("strength_overall_home").alias("team_strength_overall_home"),
+                pl.col("strength_overall_away").alias("team_strength_overall_away"),
+            ]
+        ),
+        how="left",
+        on=["season", "round", "team"],
+    )
+    players = players.join(
+        static_teams.select(
+            [
+                pl.col("season"),
+                pl.col("round"),
+                pl.col("id").alias("opponent_team"),
+                pl.col("strength").alias("opponent_team_strength"),
+                pl.col("strength_attack_home").alias(
+                    "opponent_team_strength_attack_home"
+                ),
+                pl.col("strength_attack_away").alias(
+                    "opponent_team_strength_attack_away"
+                ),
+                pl.col("strength_defence_home").alias(
+                    "opponent_team_strength_defence_home"
+                ),
+                pl.col("strength_defence_away").alias(
+                    "opponent_team_strength_defence_away"
+                ),
+                pl.col("strength_overall_home").alias(
+                    "opponent_team_strength_overall_home"
+                ),
+                pl.col("strength_overall_away").alias(
+                    "opponent_team_strength_overall_away"
+                ),
+            ]
+        ),
+        how="left",
+        on=["season", "round", "opponent_team"],
+    )
+    players = players.with_columns(
+        # Select team strengths based on home / away status
+        pl.when(pl.col("was_home"))
+        .then(pl.col("team_strength_attack_home"))
+        .otherwise(pl.col("team_strength_attack_away"))
+        .alias("team_strength_attack_condition"),
+        pl.when(pl.col("was_home"))
+        .then(pl.col("team_strength_defence_home"))
+        .otherwise(pl.col("team_strength_defence_away"))
+        .alias("team_strength_defence_condition"),
+        pl.when(pl.col("was_home"))
+        .then(pl.col("team_strength_overall_home"))
+        .otherwise(pl.col("team_strength_overall_away"))
+        .alias("team_strength_overall_condition"),
+        # Select opponent team strengths based on home / away status
+        pl.when(pl.col("was_home"))
+        .then(pl.col("opponent_team_strength_attack_away"))
+        .otherwise(pl.col("opponent_team_strength_attack_home"))
+        .alias("opponent_team_strength_attack_condition"),
+        pl.when(pl.col("was_home"))
+        .then(pl.col("opponent_team_strength_defence_away"))
+        .otherwise(pl.col("opponent_team_strength_defence_home"))
+        .alias("opponent_team_strength_defence_condition"),
+        pl.when(pl.col("was_home"))
+        .then(pl.col("opponent_team_strength_overall_away"))
+        .otherwise(pl.col("opponent_team_strength_overall_home"))
+        .alias("opponent_team_strength_overall_condition"),
+    )
+
     # Load team information
     teams = transform_fixtures_to_teams(fixtures, static_teams)
 
@@ -152,7 +230,7 @@ def load_fpl(seasons: list[str]) -> tuple[pl.LazyFrame, pl.LazyFrame, pl.LazyFra
         on=["season", "round", "id"],
     )
 
-    # Add team strength information
+    # Add team strength information to teams
     teams = teams.join(
         static_teams.select(
             [
