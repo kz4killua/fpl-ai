@@ -12,12 +12,10 @@ def compute_relative_strength(df: pl.LazyFrame):
 
     # Cross rolling means for xG
     team_h_relative_uds_xG_rolling_mean_5 = (
-        pl.col("team_h_uds_xG_rolling_mean_5")
-        * pl.col("team_a_uds_xGA_rolling_mean_5")
+        pl.col("team_h_uds_xG_rolling_mean_5") * pl.col("team_a_uds_xGA_rolling_mean_5")
     ).alias("team_h_relative_uds_xG_rolling_mean_5")
     team_a_relative_uds_xG_rolling_mean_5 = (
-        pl.col("team_a_uds_xG_rolling_mean_5")
-        * pl.col("team_h_uds_xGA_rolling_mean_5")
+        pl.col("team_a_uds_xG_rolling_mean_5") * pl.col("team_h_uds_xGA_rolling_mean_5")
     ).alias("team_a_relative_uds_xG_rolling_mean_5")
 
     team_h_relative_uds_xG_rolling_mean_10 = (
