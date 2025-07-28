@@ -47,6 +47,7 @@ def make_assists_predictor():
         "corners_and_indirect_freekicks_order_missing",
     ]
     model = Ridge(
+        alpha=10000,
         random_state=42,
     )
     return Pipeline(
