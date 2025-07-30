@@ -166,10 +166,22 @@ def engineer_player_features(players: pl.LazyFrame) -> pl.LazyFrame:
         ("creativity_rolling_mean_5", "imputed_creativity_mean_last_season"),
         ("creativity_rolling_mean_10", "imputed_creativity_mean_last_season"),
         ("creativity_rolling_mean_20", "imputed_creativity_mean_last_season"),
-        ("creativity_per_90_rolling_mean_3", "imputed_creativity_per_90_mean_last_season"),
-        ("creativity_per_90_rolling_mean_5", "imputed_creativity_per_90_mean_last_season"),
-        ("creativity_per_90_rolling_mean_10", "imputed_creativity_per_90_mean_last_season"),
-        ("creativity_per_90_rolling_mean_20", "imputed_creativity_per_90_mean_last_season"),
+        (
+            "creativity_per_90_rolling_mean_3",
+            "imputed_creativity_per_90_mean_last_season",
+        ),
+        (
+            "creativity_per_90_rolling_mean_5",
+            "imputed_creativity_per_90_mean_last_season",
+        ),
+        (
+            "creativity_per_90_rolling_mean_10",
+            "imputed_creativity_per_90_mean_last_season",
+        ),
+        (
+            "creativity_per_90_rolling_mean_20",
+            "imputed_creativity_per_90_mean_last_season",
+        ),
     ]
 
     imputed_last_season_means = [
@@ -393,11 +405,7 @@ def engineer_player_features(players: pl.LazyFrame) -> pl.LazyFrame:
     # Compute balanced means
     for this_season_column, last_season_column in balanced_means:
         df = compute_balanced_mean(
-            df,
-            this_season_column,
-            last_season_column,
-            decay=0.7,
-            default=0.0
+            df, this_season_column, last_season_column, decay=0.7, default=0.0
         )
 
     return df
