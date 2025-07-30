@@ -11,6 +11,7 @@ from features.minutes_category import compute_minutes_category
 from features.one_hot_minutes_category import compute_one_hot_minutes_category
 from features.per_90 import compute_per_90
 from features.rolling_std import compute_rolling_std
+from features.share import compute_share
 
 from .availability import compute_availability
 from .last_season_mean import compute_last_season_mean
@@ -19,7 +20,31 @@ from .relative_strength import compute_relative_strength
 from .rolling_mean import compute_rolling_mean
 
 
-def engineer_player_features(players: pl.LazyFrame) -> pl.LazyFrame:
+def engineer_player_features(df: pl.LazyFrame) -> pl.LazyFrame:
+    per_90 = [
+        # For predicting goals scored
+        "uds_xG",
+        "goals_scored",
+        "threat",
+        # For predicting assists
+        "uds_xA",
+        "assists",
+        "creativity",
+    ]
+    df = compute_per_90(df, columns=per_90)
+
+    share = [
+        # For predicting goals scored
+        "uds_xG",
+        "goals_scored",
+        "threat",
+        # For predicting assists
+        "uds_xA",
+        "assists",
+        "creativity",
+    ]
+    df = compute_share(df, columns=share)
+
     rolling_means = [
         # For predicting minutes
         ("availability", 1),
@@ -45,14 +70,26 @@ def engineer_player_features(players: pl.LazyFrame) -> pl.LazyFrame:
         ("uds_xG", 5),
         ("uds_xG", 10),
         ("uds_xG", 20),
+        ("uds_xG_share", 3),
+        ("uds_xG_share", 5),
+        ("uds_xG_share", 10),
+        ("uds_xG_share", 20),
         ("goals_scored", 3),
         ("goals_scored", 5),
         ("goals_scored", 10),
         ("goals_scored", 20),
+        ("goals_scored_share", 3),
+        ("goals_scored_share", 5),
+        ("goals_scored_share", 10),
+        ("goals_scored_share", 20),
         ("threat", 3),
         ("threat", 5),
         ("threat", 10),
         ("threat", 20),
+        ("threat_share", 3),
+        ("threat_share", 5),
+        ("threat_share", 10),
+        ("threat_share", 20),
         ("uds_xG_per_90", 3),
         ("uds_xG_per_90", 5),
         ("uds_xG_per_90", 10),
@@ -70,14 +107,26 @@ def engineer_player_features(players: pl.LazyFrame) -> pl.LazyFrame:
         ("uds_xA", 5),
         ("uds_xA", 10),
         ("uds_xA", 20),
+        ("uds_xA_share", 3),
+        ("uds_xA_share", 5),
+        ("uds_xA_share", 10),
+        ("uds_xA_share", 20),
         ("assists", 3),
         ("assists", 5),
         ("assists", 10),
         ("assists", 20),
+        ("assists_share", 3),
+        ("assists_share", 5),
+        ("assists_share", 10),
+        ("assists_share", 20),
         ("creativity", 3),
         ("creativity", 5),
         ("creativity", 10),
         ("creativity", 20),
+        ("creativity_share", 3),
+        ("creativity_share", 5),
+        ("creativity_share", 10),
+        ("creativity_share", 20),
         ("uds_xA_per_90", 3),
         ("uds_xA_per_90", 5),
         ("uds_xA_per_90", 10),
@@ -122,17 +171,23 @@ def engineer_player_features(players: pl.LazyFrame) -> pl.LazyFrame:
         # For predicting goals scored
         "uds_xG",
         "uds_xG_per_90",
+        "uds_xG_share",
         "goals_scored",
         "goals_scored_per_90",
+        "goals_scored_share",
         "threat",
         "threat_per_90",
+        "threat_share",
         # For predicting assists
         "uds_xA",
         "uds_xA_per_90",
+        "uds_xA_share",
         "assists",
         "assists_per_90",
+        "assists_share",
         "creativity",
         "creativity_per_90",
+        "creativity_share",
     ]
 
     balanced_means = [
@@ -149,10 +204,54 @@ def engineer_player_features(players: pl.LazyFrame) -> pl.LazyFrame:
         ("threat_rolling_mean_5", "imputed_threat_mean_last_season"),
         ("threat_rolling_mean_10", "imputed_threat_mean_last_season"),
         ("threat_rolling_mean_20", "imputed_threat_mean_last_season"),
+        ("uds_xG_per_90_rolling_mean_3", "imputed_uds_xG_per_90_mean_last_season"),
+        ("uds_xG_per_90_rolling_mean_5", "imputed_uds_xG_per_90_mean_last_season"),
+        ("uds_xG_per_90_rolling_mean_10", "imputed_uds_xG_per_90_mean_last_season"),
+        ("uds_xG_per_90_rolling_mean_20", "imputed_uds_xG_per_90_mean_last_season"),
+        (
+            "goals_scored_per_90_rolling_mean_3",
+            "imputed_goals_scored_per_90_mean_last_season",
+        ),
+        (
+            "goals_scored_per_90_rolling_mean_5",
+            "imputed_goals_scored_per_90_mean_last_season",
+        ),
+        (
+            "goals_scored_per_90_rolling_mean_10",
+            "imputed_goals_scored_per_90_mean_last_season",
+        ),
+        (
+            "goals_scored_per_90_rolling_mean_20",
+            "imputed_goals_scored_per_90_mean_last_season",
+        ),
         ("threat_per_90_rolling_mean_3", "imputed_threat_per_90_mean_last_season"),
         ("threat_per_90_rolling_mean_5", "imputed_threat_per_90_mean_last_season"),
         ("threat_per_90_rolling_mean_10", "imputed_threat_per_90_mean_last_season"),
         ("threat_per_90_rolling_mean_20", "imputed_threat_per_90_mean_last_season"),
+        ("uds_xG_share_rolling_mean_3", "imputed_uds_xG_share_mean_last_season"),
+        ("uds_xG_share_rolling_mean_5", "imputed_uds_xG_share_mean_last_season"),
+        ("uds_xG_share_rolling_mean_10", "imputed_uds_xG_share_mean_last_season"),
+        ("uds_xG_share_rolling_mean_20", "imputed_uds_xG_share_mean_last_season"),
+        (
+            "goals_scored_share_rolling_mean_3",
+            "imputed_goals_scored_share_mean_last_season",
+        ),
+        (
+            "goals_scored_share_rolling_mean_5",
+            "imputed_goals_scored_share_mean_last_season",
+        ),
+        (
+            "goals_scored_share_rolling_mean_10",
+            "imputed_goals_scored_share_mean_last_season",
+        ),
+        (
+            "goals_scored_share_rolling_mean_20",
+            "imputed_goals_scored_share_mean_last_season",
+        ),
+        ("threat_share_rolling_mean_3", "imputed_threat_share_mean_last_season"),
+        ("threat_share_rolling_mean_5", "imputed_threat_share_mean_last_season"),
+        ("threat_share_rolling_mean_10", "imputed_threat_share_mean_last_season"),
+        ("threat_share_rolling_mean_20", "imputed_threat_share_mean_last_season"),
         # For predicting assists
         ("uds_xA_rolling_mean_3", "imputed_uds_xA_mean_last_season"),
         ("uds_xA_rolling_mean_5", "imputed_uds_xA_mean_last_season"),
@@ -182,23 +281,61 @@ def engineer_player_features(players: pl.LazyFrame) -> pl.LazyFrame:
             "creativity_per_90_rolling_mean_20",
             "imputed_creativity_per_90_mean_last_season",
         ),
+        (
+            "uds_xA_per_90_rolling_mean_3",
+            "imputed_uds_xA_per_90_mean_last_season",
+        ),
+        (
+            "uds_xA_per_90_rolling_mean_5",
+            "imputed_uds_xA_per_90_mean_last_season",
+        ),
+        (
+            "uds_xA_per_90_rolling_mean_10",
+            "imputed_uds_xA_per_90_mean_last_season",
+        ),
+        (
+            "uds_xA_per_90_rolling_mean_20",
+            "imputed_uds_xA_per_90_mean_last_season",
+        ),
+        (
+            "assists_per_90_rolling_mean_3",
+            "imputed_assists_per_90_mean_last_season",
+        ),
+        (
+            "assists_per_90_rolling_mean_5",
+            "imputed_assists_per_90_mean_last_season",
+        ),
+        (
+            "assists_per_90_rolling_mean_10",
+            "imputed_assists_per_90_mean_last_season",
+        ),
+        (
+            "assists_per_90_rolling_mean_20",
+            "imputed_assists_per_90_mean_last_season",
+        ),
     ]
 
     imputed_last_season_means = [
         # For predicting goals scored
         "uds_xG_mean_last_season",
         "uds_xG_per_90_mean_last_season",
+        "uds_xG_share_mean_last_season",
         "goals_scored_mean_last_season",
         "goals_scored_per_90_mean_last_season",
+        "goals_scored_share_mean_last_season",
         "threat_mean_last_season",
         "threat_per_90_mean_last_season",
+        "threat_share_mean_last_season",
         # For predicting assists
         "uds_xA_mean_last_season",
         "uds_xA_per_90_mean_last_season",
+        "uds_xA_share_mean_last_season",
         "assists_mean_last_season",
         "assists_per_90_mean_last_season",
+        "assists_share_mean_last_season",
         "creativity_mean_last_season",
         "creativity_per_90_mean_last_season",
+        "creativity_share_mean_last_season",
     ]
 
     last_season_stds = [
@@ -267,27 +404,12 @@ def engineer_player_features(players: pl.LazyFrame) -> pl.LazyFrame:
     last_season_means_when_available = last_season_means
     last_season_stds_when_available = last_season_stds
 
-    per_90 = [
-        # For predicting goals scored
-        "uds_xG",
-        "goals_scored",
-        "threat",
-        # For predicting assists
-        "uds_xA",
-        "assists",
-        "creativity",
-    ]
-
     df = (
-        players.pipe(compute_availability)
+        df.pipe(compute_availability)
         .pipe(compute_record_count, on="total_points")
         .pipe(compute_imputed_set_piece_order)
         .pipe(compute_minutes_category)
         .pipe(compute_one_hot_minutes_category)
-        .pipe(
-            compute_per_90,
-            columns=per_90,
-        )
         .pipe(
             compute_rolling_mean,
             columns=[c for c, _ in rolling_means],
