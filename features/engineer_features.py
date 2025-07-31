@@ -313,6 +313,42 @@ def engineer_player_features(df: pl.LazyFrame) -> pl.LazyFrame:
             "assists_per_90_rolling_mean_20",
             "imputed_assists_per_90_mean_last_season",
         ),
+        ("uds_xA_share_rolling_mean_3", "imputed_uds_xA_share_mean_last_season"),
+        ("uds_xA_share_rolling_mean_5", "imputed_uds_xA_share_mean_last_season"),
+        ("uds_xA_share_rolling_mean_10", "imputed_uds_xA_share_mean_last_season"),
+        ("uds_xA_share_rolling_mean_20", "imputed_uds_xA_share_mean_last_season"),
+        (
+            "assists_share_rolling_mean_3",
+            "imputed_assists_share_mean_last_season",
+        ),
+        (
+            "assists_share_rolling_mean_5",
+            "imputed_assists_share_mean_last_season",
+        ),
+        (
+            "assists_share_rolling_mean_10",
+            "imputed_assists_share_mean_last_season",
+        ),
+        (
+            "assists_share_rolling_mean_20",
+            "imputed_assists_share_mean_last_season",
+        ),
+        (
+            "creativity_share_rolling_mean_3",
+            "imputed_creativity_share_mean_last_season",
+        ),
+        (
+            "creativity_share_rolling_mean_5",
+            "imputed_creativity_share_mean_last_season",
+        ),
+        (
+            "creativity_share_rolling_mean_10",
+            "imputed_creativity_share_mean_last_season",
+        ),
+        (
+            "creativity_share_rolling_mean_20",
+            "imputed_creativity_share_mean_last_season",
+        ),
     ]
 
     imputed_last_season_means = [
