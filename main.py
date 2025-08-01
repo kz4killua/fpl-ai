@@ -21,7 +21,7 @@ def main():
     simulate_parser.add_argument(
         "--season",
         type=str,
-        choices=["2021-22", "2022-23", "2023-24"],
+        choices=["2021-22", "2022-23", "2023-24", "2024-25"],
         help="Season to simulate",
     )
     simulate_parser.add_argument(
