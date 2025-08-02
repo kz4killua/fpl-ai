@@ -28,7 +28,9 @@ def optimize_squad(
     total_points: dict[tuple[int, int], float],
     element_types: dict[int, int],
     teams: dict[int, int],
+    web_names: dict[int, str],
     parameters: dict[str, float] | None = None,
+    log: bool = False,
 ):
     """Runs optimization and returns the optimal squad roles for the next gameweek."""
 
@@ -102,7 +104,10 @@ def optimize_squad(
         budget_value=budget_value,
         free_transfer_value=free_transfer_value,
         transfer_cost_multiplier=transfer_cost_multiplier,
+        log=log,
     )
+    if log:
+        print_optimization_solution(solution, web_names)
 
     # Prepare roles for the next gameweek
     next_gameweek = upcoming_gameweeks[0]
@@ -116,3 +121,35 @@ def optimize_squad(
         "reserve_out_3": solution[next_gameweek]["reserve_out_3"][0],
     }
     return roles
+
+
+def print_optimization_solution(solution: dict, web_names: dict[int, str]):
+    """Prints the solution in a readable format."""
+
+    for gameweek in solution:
+        purchases = solution[gameweek]["purchases"]
+        sales = solution[gameweek]["sales"]
+        budget = solution[gameweek]["budget"][0]
+        free_transfers = solution[gameweek]["free_transfers"][0]
+        paid_transfers = solution[gameweek]["paid_transfers"][0]
+
+        # Print purchases and sales
+        print(f"Gameweek {gameweek} optimization plan:")
+        if not purchases and not sales:
+            print("  - No transfers made.")
+        else:
+            if purchases:
+                print("  - Buy:")
+                for player in purchases:
+                    print(f"    - {web_names[player]}")
+            if sales:
+                print("  - Sell:")
+                for player in sales:
+                    print(f"    - {web_names[player]}")
+
+        # Print budget, free transfers, and paid transfers
+        print(f"  - Budget: {budget}")
+        print(f"  - Free transfers: {free_transfers}")
+        print(f"  - Paid transfers: {paid_transfers}")
+
+        print("")

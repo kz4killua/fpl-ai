@@ -269,6 +269,7 @@ def print_gameweek_summary(
 
     print(f"Bank: {format_currency(final_budget)}")
     print(f"Team value: {format_currency(final_team_value)}")
+    print()
 
 
 def format_currency(amount: int):

@@ -118,6 +118,7 @@ def solve(
         print(f"Solver time: {solver.wall_time():d}ms")
         print(f"Objective value: {solver.Objective().Value()}")
         print(f"Optimal: {status == pywraplp.Solver.OPTIMAL}")
+        print()
 
     return get_solution(variables, gameweeks)
 

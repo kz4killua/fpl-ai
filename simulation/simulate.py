@@ -34,17 +34,20 @@ def simulate(
 
     # Simulate each gameweek
     while simulator.next_gameweek <= simulator.last_gameweek:
-        roles = get_gameweek_roles(simulator, model, wildcard_gameweeks, parameters)
+        roles = get_best_roles(
+            simulator, model, wildcard_gameweeks, parameters, log
+        )
         simulator.update(roles, wildcard_gameweeks, log=log)
 
     return simulator.season_points
 
 
-def get_gameweek_roles(
+def get_best_roles(
     simulator: Simulator,
     model: PredictionModel,
     wildcard_gameweeks: list[int],
     parameters: dict[str, float] | None = None,
+    log: bool = False,
 ) -> dict:
     """Get the optimal squad roles for the next gameweek."""
     # Unpack data from the simulator
@@ -115,6 +118,7 @@ def get_gameweek_roles(
     element_types = get_mapper(static_elements, "id", "element_type")
     teams = get_mapper(static_elements, "id", "team")
     selling_prices = get_selling_prices(squad, purchase_prices, now_costs)
+    web_names = get_mapper(static_elements, "id", "web_name")
     roles = optimize_squad(
         squad,
         budget,
@@ -126,7 +130,9 @@ def get_gameweek_roles(
         predictions,
         element_types,
         teams,
+        web_names,
         parameters,
+        log,
     )
 
     return roles
