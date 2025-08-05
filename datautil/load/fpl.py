@@ -230,6 +230,20 @@ def load_fpl(seasons: list[str]) -> tuple[pl.LazyFrame, pl.LazyFrame, pl.LazyFra
         on=["season", "round", "id"],
     )
 
+    # Add opponent team codes
+    teams = teams.join(
+        static_teams.select(
+            [
+                pl.col("season"),
+                pl.col("round"),
+                pl.col("id").alias("opponent_id"),
+                pl.col("code").alias("opponent_code"),
+            ]
+        ),
+        how="left",
+        on=["season", "round", "opponent_id"],
+    )
+
     # Add team strength information to teams
     teams = teams.join(
         static_teams.select(
@@ -248,6 +262,26 @@ def load_fpl(seasons: list[str]) -> tuple[pl.LazyFrame, pl.LazyFrame, pl.LazyFra
         ),
         how="left",
         on=["season", "round", "id"],
+    )
+
+    # Add opponent team strength information to teams
+    teams = teams.join(
+        static_teams.select(
+            [
+                pl.col("season"),
+                pl.col("round"),
+                pl.col("id").alias("opponent_id"),
+                pl.col("strength").alias("opponent_strength"),
+                pl.col("strength_attack_home").alias("opponent_strength_attack_home"),
+                pl.col("strength_attack_away").alias("opponent_strength_attack_away"),
+                pl.col("strength_defence_home").alias("opponent_strength_defence_home"),
+                pl.col("strength_defence_away").alias("opponent_strength_defence_away"),
+                pl.col("strength_overall_home").alias("opponent_strength_overall_home"),
+                pl.col("strength_overall_away").alias("opponent_strength_overall_away"),
+            ]
+        ),
+        how="left",
+        on=["season", "round", "opponent_id"],
     )
 
     return players, teams, managers

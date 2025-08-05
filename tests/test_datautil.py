@@ -227,7 +227,7 @@ def test_load_merged():
     teams = teams.collect()
     managers = managers.collect()
 
-    # Test FPL to understat player mappings
+    # Test player understat mappings
     expected = pl.DataFrame(
         {
             "season": ["2024-25", "2024-25", "2024-25", "2024-25"],
@@ -244,7 +244,7 @@ def test_load_merged():
         atol=1e-2,
     )
 
-    # Test FPL to understat team mappings
+    # Test team understat mappings
     expected = pl.DataFrame(
         {
             "season": ["2024-25", "2024-25", "2024-25", "2024-25"],
@@ -252,6 +252,22 @@ def test_load_merged():
             "round": [1, 2, 3, 4],
             "uds_xG": [1.18, 3.08, 3.19, 1.55],
             "uds_xGA": [1.06, 0.48, 0.95, 1.05],
+        }
+    )
+    assert_mappings_correct(
+        teams,
+        expected,
+        on=["season", "id", "round"],
+        atol=1e-2,
+    )
+
+    # Test team clubelo mappings
+    expected = pl.DataFrame(
+        {
+            "season": ["2024-25", "2024-25", "2024-25", "2024-25"],
+            "id": [13, 13, 13, 13],
+            "round": [1, 2, 3, 4],
+            "clb_elo": [2048.74291992, 2055.70703125, 2056.78808594, 2056.84448242],
         }
     )
     assert_mappings_correct(
