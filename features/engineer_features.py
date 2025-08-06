@@ -622,7 +622,7 @@ def transform_teams_to_matches(teams: pl.LazyFrame) -> pl.LazyFrame:
     columns = [
         column
         for column in teams.columns
-        if ("rolling_mean_" in column) or ("strength_" in column)
+        if ("rolling_mean" in column) or ("strength" in column) or ("clb_elo" in column)
     ]
 
     home_teams = teams.filter(pl.col("was_home") == 1).select(
