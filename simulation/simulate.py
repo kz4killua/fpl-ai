@@ -34,9 +34,7 @@ def simulate(
 
     # Simulate each gameweek
     while simulator.next_gameweek <= simulator.last_gameweek:
-        roles = get_best_roles(
-            simulator, model, wildcard_gameweeks, parameters, log
-        )
+        roles = get_best_roles(simulator, model, wildcard_gameweeks, parameters, log)
         simulator.update(roles, wildcard_gameweeks, log=log)
 
     return simulator.season_points
