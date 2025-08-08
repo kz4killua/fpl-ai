@@ -5,11 +5,17 @@ from datautil.load.fpl import load_fpl
 from datautil.load.understat import load_understat
 
 
-def load_merged(seasons: list[str]) -> tuple[pl.LazyFrame, pl.LazyFrame, pl.LazyFrame]:
+def load_merged(
+    seasons: list[str],
+    current_season: str | None = None,
+    upcoming_gameweeks: list[int] | None = None,
+) -> tuple[pl.LazyFrame, pl.LazyFrame, pl.LazyFrame]:
     """Load merged player, team, and manager data."""
 
     # Load data
-    fpl_players, fpl_teams, fpl_managers = load_fpl(seasons)
+    fpl_players, fpl_teams, fpl_managers = load_fpl(
+        seasons, current_season, upcoming_gameweeks
+    )
     uds_players, uds_teams = load_understat(seasons)
     clb_teams = load_clubelo()
 

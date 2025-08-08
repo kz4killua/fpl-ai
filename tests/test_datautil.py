@@ -1,34 +1,52 @@
 import polars as pl
 from polars.testing import assert_frame_equal
 
-from datautil.load.fpl import load_fixtures, load_fpl
-from datautil.load.fplcache import load_static_elements, load_static_teams
+from datautil.load.clubelo import load_clubelo
+from datautil.load.fpl import (
+    load_fixtures,
+    load_fpl,
+)
 from datautil.load.merged import load_merged
 from datautil.load.understat import load_understat
 from datautil.upcoming import (
     get_upcoming_fixtures,
     get_upcoming_gameweeks,
-    get_upcoming_managers,
-    get_upcoming_players,
-    get_upcoming_teams,
 )
 from datautil.utils import get_seasons
 from game.rules import DEF, FWD, GKP, MID, MNG
 
 
+def test_load_clubelo():
+    # Load clubelo ratings
+    df = load_clubelo()
+    df = df.collect()
+
+    # Check that FPL team codes are mapped correctly
+    expected = pl.DataFrame(
+        {
+            "Club": ["Arsenal", "Chelsea", "Liverpool"],
+            "fpl_code": [3, 8, 14],
+        }
+    )
+    assert_mappings_correct(
+        df,
+        expected,
+        on=["Club"],
+    )
+
+    # Check that no null values are present in the fpl_code column
+    assert df.get_column("fpl_code").null_count() == 0
+
+
 def test_load_fpl():
+    # Load FPL data
     seasons = ["2016-17", "2024-25"]
     players, teams, managers = load_fpl(seasons)
     players = players.collect()
     teams = teams.collect()
     managers = managers.collect()
-    _test_load_fpl_players(players)
-    _test_load_fpl_teams(teams)
-    _test_load_fpl_managers(managers)
 
-
-def _test_load_fpl_players(players: pl.DataFrame):
-    # Test mappings for element types and teams
+    # Test mappings for player element types and teams
     expected = pl.DataFrame(
         {
             "season": ["2016-17", "2016-17", "2016-17", "2016-17"],
@@ -48,7 +66,7 @@ def _test_load_fpl_players(players: pl.DataFrame):
         on=["season", "element", "fixture"],
     )
 
-    # Test for null element types and teams
+    # Test for null player element types and teams
     assert (
         players.select(
             [
@@ -66,7 +84,7 @@ def _test_load_fpl_players(players: pl.DataFrame):
         == 0
     )
 
-    # Test mappings for availability
+    # Test mappings for player availability
     expected = pl.DataFrame(
         {
             "season": ["2024-25", "2024-25", "2024-25", "2024-25"],
@@ -82,12 +100,10 @@ def _test_load_fpl_players(players: pl.DataFrame):
         on=["season", "element", "fixture"],
     )
 
-
-def _test_load_fpl_teams(teams: pl.DataFrame):
-    # Test that the correct number of rows is returned
+    # Test that the correct number of rows (for teams) is returned
     assert teams.height == 20 * 38 * 2
 
-    # Test mappings for match details
+    # Test mappings for team match details
     expected = pl.DataFrame(
         {
             "season": ["2024-25", "2024-25", "2024-25", "2024-25"],
@@ -133,8 +149,6 @@ def _test_load_fpl_teams(teams: pl.DataFrame):
     )
     assert_mappings_correct(teams, expected, on=["season", "id", "round"])
 
-
-def _test_load_fpl_managers(managers: pl.DataFrame):
     # Test that the correct number of managers is returned
     assert (
         len(
@@ -222,7 +236,11 @@ def test_load_understat():
 
 
 def test_load_merged():
-    players, teams, managers = load_merged(["2024-25"])
+    # Load data, including for upcoming fixtures
+    seasons = ["2024-25", "2025-26"]
+    current_season = "2025-26"
+    upcoming_gameweeks = [1, 2, 3]
+    players, teams, managers = load_merged(seasons, current_season, upcoming_gameweeks)
     players = players.collect()
     teams = teams.collect()
     managers = managers.collect()
@@ -277,6 +295,51 @@ def test_load_merged():
         atol=1e-2,
     )
 
+    # Test that the correct number of rows (for upcoming players) is returned
+    assert players.filter(
+        pl.col("season").eq(current_season)
+        & pl.col("round").is_in(upcoming_gameweeks)
+        & pl.col("code").eq(118748)
+    ).height == len(upcoming_gameweeks)
+
+    # Test that the correct number of rows (for upcoming teams) is returned
+    assert teams.filter(
+        pl.col("season").eq(current_season)
+        & pl.col("round").is_in(upcoming_gameweeks)
+        & pl.col("code").eq(14)
+    ).height == len(upcoming_gameweeks)
+
+    # Test upcoming player mappings
+    expected = pl.DataFrame(
+        {
+            "season": ["2024-25", "2025-26", "2025-26", "2025-26"],
+            "code": [118748, 118748, 118748, 118748],
+            "round": [38, 1, 2, 3],
+            "element": [328, 381, 381, 381],
+            "value": [136, 145, 145, 145],
+            "team": [12, 12, 12, 12],
+            "opponent_team": [7, 4, 15, 1],
+            "was_home": [1, 1, 0, 1],
+            # Availability should be only be filled for the next gameweek
+            "status": ["a", "a", None, None],
+        }
+    )
+
+    # Test upcoming team mappings
+    expected = pl.DataFrame(
+        {
+            "season": ["2024-25", "2025-26", "2025-26", "2025-26"],
+            "code": [118748, 118748, 118748, 118748],
+            "round": [38, 1, 2, 3],
+            "id": [12, 12, 12, 12],
+            "opponent_id": [7, 4, 15, 1],
+            "was_home": [1, 1, 0, 1],
+        }
+    )
+
+    # Test for null values in team clubelo ratings
+    assert teams.get_column("clb_elo").null_count() == 0
+
 
 def test_get_seasons():
     current_season = "2023-24"
@@ -314,139 +377,6 @@ def test_get_upcoming_fixtures():
     assert upcoming_fixtures.height == 50
     assert upcoming_fixtures.get_column("event").min() == 1
     assert upcoming_fixtures.get_column("event").max() == 5
-
-
-def test_get_upcoming_players():
-    def load_upcoming_players(season: str, next_gameweek: int) -> pl.DataFrame:
-        """Load upcoming player data for a given season and gameweek."""
-        upcoming_gameweeks = get_upcoming_gameweeks(next_gameweek, 5, 38)
-        fixtures = load_fixtures([season])
-        static_elements = load_static_elements(season, next_gameweek)
-        static_teams = load_static_teams(season, next_gameweek)
-        static_players = static_elements.filter(
-            pl.col("element_type").is_in([GKP, DEF, MID, FWD])
-        )
-        upcoming_fixtures = get_upcoming_fixtures(fixtures, season, upcoming_gameweeks)
-        upcoming_players = get_upcoming_players(
-            upcoming_fixtures, static_players, static_teams
-        )
-        upcoming_players = upcoming_players.collect()
-        return upcoming_players
-
-    # Test with gameweek 1 of the 2024-25 season
-    upcoming_players = load_upcoming_players("2024-25", 1)
-    expected = pl.DataFrame(
-        {
-            "season": ["2024-25", "2024-25", "2024-25", "2024-25"],
-            "element": [351, 351, 351, 351],
-            "round": [1, 2, 3, 4],
-            "element_type": [FWD, FWD, FWD, FWD],
-            "code": [223094, 223094, 223094, 223094],
-            "team": [13, 13, 13, 13],
-            "team_code": [43, 43, 43, 43],
-            "opponent_team": [6, 10, 19, 4],
-            "opponent_team_code": [8, 40, 21, 94],
-            "was_home": [False, True, False, True],
-            # Availability should be filled for (only) the next gameweek
-            "status": ["a", None, None, None],
-        }
-    )
-    assert_mappings_correct(
-        upcoming_players,
-        expected,
-        on=["season", "element", "round"],
-    )
-
-    # Test with (blank) gameweek 24 of the 2022-23 season
-    upcoming_players = load_upcoming_players("2022-23", 32)
-    expected = pl.DataFrame(
-        {
-            "season": ["2022-23", "2022-23", "2022-23", "2022-23"],
-            "element": [101, 101, 101, 101],
-            "round": [33, 34, 35, 36],
-            "code": [39155, 39155, 39155, 39155],
-            # Values should be filled properly even over blank gameweeks
-            "value": [48, 48, 48, 48],
-        }
-    )
-    assert_mappings_correct(
-        upcoming_players,
-        expected,
-        on=["season", "element", "round"],
-    )
-
-
-def test_get_upcoming_managers():
-    season = "2024-25"
-    next_gameweek = 24
-    upcoming_gameweeks = get_upcoming_gameweeks(next_gameweek, 5, 38)
-    fixtures = load_fixtures([season])
-    static_elements = load_static_elements(season, next_gameweek)
-    static_teams = load_static_teams(season, next_gameweek)
-    static_managers = static_elements.filter(pl.col("element_type") == MNG)
-    upcoming_fixtures = get_upcoming_fixtures(fixtures, season, upcoming_gameweeks)
-    upcoming_managers = get_upcoming_managers(
-        upcoming_fixtures, static_managers, static_teams
-    )
-    upcoming_managers = upcoming_managers.collect()
-
-    # Test that the correct number of rows is returned
-    assert upcoming_managers.height == 22 + 22 + 20 + 20 + 20
-
-    # Test that mappings are correct
-    expected = pl.DataFrame(
-        {
-            "season": ["2024-25", "2024-25", "2024-25", "2024-25"],
-            "element": [736, 736, 736, 736],
-            "round": [24, 25, 26, 27],
-            "element_type": [MNG, MNG, MNG, MNG],
-            "code": [100037973, 100037973, 100037973, 100037973],
-            "team": [13, 13, 13, 13],
-            "team_code": [43, 43, 43, 43],
-            "opponent_team": [1, 15, 12, 18],
-            "opponent_team_code": [3, 4, 14, 6],
-            "was_home": [False, True, True, False],
-        }
-    )
-    assert_mappings_correct(
-        upcoming_managers,
-        expected,
-        on=["season", "element", "round"],
-    )
-
-
-def test_get_upcoming_teams():
-    season = "2024-25"
-    next_gameweek = 1
-    static_teams = load_static_teams(season, next_gameweek)
-    fixtures = load_fixtures([season])
-    upcoming_gameweeks = get_upcoming_gameweeks(next_gameweek, 5, 38)
-    upcoming_fixtures = get_upcoming_fixtures(fixtures, season, upcoming_gameweeks)
-    upcoming_teams = get_upcoming_teams(upcoming_fixtures, static_teams)
-    upcoming_teams = upcoming_teams.collect()
-
-    # Test that the correct number of rows is returned
-    assert upcoming_teams.height == 20 * 5
-
-    # Test that mappings are correct
-    expected = pl.DataFrame(
-        {
-            "season": ["2024-25", "2024-25", "2024-25", "2024-25"],
-            "id": [13, 13, 13, 13],
-            "round": [1, 2, 3, 4],
-            "code": [43, 43, 43, 43],
-            "opponent_id": [6, 10, 19, 4],
-            "opponent_code": [8, 40, 21, 94],
-            "was_home": [False, True, False, True],
-            "strength_overall_home": [1355, 1355, 1355, 1355],
-            "strength_overall_away": [1380, 1380, 1380, 1380],
-        }
-    )
-    assert_mappings_correct(
-        upcoming_teams,
-        expected,
-        on=["season", "id", "round"],
-    )
 
 
 def assert_mappings_correct(

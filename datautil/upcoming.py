@@ -1,200 +1,180 @@
 import polars as pl
 
 
-def get_upcoming_players(
-    upcoming_fixtures: pl.LazyFrame,
-    static_players: pl.LazyFrame,
-    static_teams: pl.LazyFrame,
+def get_upcoming_elements(
+    season: str,
+    gameweeks: list[int],
+    fixtures: pl.LazyFrame,
+    static_elements: pl.LazyFrame,
 ) -> pl.LazyFrame:
-    """Get records for each player to predict upcoming fixtures."""
+    """"""
+    upcoming_fixtures = get_upcoming_fixtures(fixtures, season, gameweeks)
 
-    # Select relevant columns to begin the merge
+    # Select the most recent static teams data
+    static_elements = static_elements.filter(
+        pl.col("season").eq(season) & pl.col("round").eq(min(gameweeks))
+    )
+
+    # Select relevant columns to begin the transformation
     df = upcoming_fixtures.select(
-        pl.col("id").alias("fixture"),
-        pl.col("event").alias("round"),
-        pl.col("kickoff_time"),
         pl.col("season"),
+        pl.col("event").alias("round"),
+        pl.col("id").alias("fixture"),
+        pl.col("kickoff_time"),
         pl.col("team_a"),
         pl.col("team_h"),
     )
 
-    # Add team identifiers for both home and away teams
-    home_df = df.with_columns(
-        pl.col("team_h").alias("team"),
-        pl.col("team_a").alias("opponent_team"),
-        pl.lit(1).alias("was_home"),
+    # Split into records for home and away teams
+    df = pl.concat(
+        [
+            df.with_columns(
+                pl.col("team_h").alias("team"),
+                pl.col("team_a").alias("opponent_team"),
+                pl.lit(True).alias("was_home"),
+            ),
+            df.with_columns(
+                pl.col("team_a").alias("team"),
+                pl.col("team_h").alias("opponent_team"),
+                pl.lit(False).alias("was_home"),
+            ),
+        ],
+        how="vertical",
     )
-    away_df = df.with_columns(
-        pl.col("team_a").alias("team"),
-        pl.col("team_h").alias("opponent_team"),
-        pl.lit(0).alias("was_home"),
-    )
-    df = pl.concat([home_df, away_df], how="vertical")
-    df = df.drop(["team_a", "team_h"])
+    df = df.drop(["team_h", "team_a"])
 
-    # Add team codes and opponent codes
+    # Add elements for each team
     df = df.join(
-        static_teams.select(
-            pl.col("id").alias("team"),
-            pl.col("code").alias("team_code"),
-        ),
-        on="team",
-        how="left",
-    )
-    df = df.join(
-        static_teams.select(
-            pl.col("id").alias("opponent_team"),
-            pl.col("code").alias("opponent_team_code"),
-        ),
-        on="opponent_team",
-        how="left",
-    )
-
-    # Add players for each team
-    df = df.join(
-        static_players.select(
-            pl.col("team_code"),
+        static_elements.select(
+            pl.col("season"),
+            pl.col("team"),
             pl.col("id").alias("element"),
-            pl.col("code"),
-            pl.col("element_type"),
         ),
-        on="team_code",
+        on=["season", "team"],
         how="inner",
     )
 
-    # Add known availability information
+    # Add values for each element
     df = df.join(
-        static_players.select(
+        static_elements.filter(
+            pl.col("season").eq(season) & pl.col("round").eq(min(gameweeks))
+        ).select(
             pl.col("season"),
-            pl.col("round"),
-            pl.col("code"),
-            pl.col("status"),
-            pl.col("news"),
-            pl.col("news_added"),
-            pl.col("chance_of_playing_next_round"),
-        ),
-        on=["season", "round", "code"],
-        how="left",
-    )
-
-    # Get player values for all (season, round, code) combinations
-    base = pl.concat(
-        [
-            df.select(
-                pl.col("season"),
-                pl.col("round"),
-                pl.col("code"),
-            ),
-            static_players.select(
-                pl.col("season"),
-                pl.col("round"),
-                pl.col("code"),
-            ),
-        ],
-        how="diagonal_relaxed",
-    ).unique()
-    values = base.join(
-        static_players.select(
-            pl.col("season"),
-            pl.col("round"),
-            pl.col("code"),
+            pl.col("id").alias("element"),
             pl.col("now_cost").alias("value"),
         ),
-        on=["season", "round", "code"],
+        on=["season", "element"],
         how="left",
     )
-    # Estimate player values for upcoming gameweeks
-    values = values.sort("season", "round", "code").with_columns(
-        pl.col("value").forward_fill().over("code")
-    )
-    # Join the values back to the main DataFrame
-    df = df.join(
-        values,
-        on=["season", "round", "code"],
-        how="left",
+    df = df.sort("kickoff_time").with_columns(
+        pl.col("value").forward_fill().over(["season", "element"])
     )
 
     return df
 
 
-def get_upcoming_teams(
-    upcoming_fixtures: pl.LazyFrame,
+def get_upcoming_static_teams(
+    season: str,
+    upcoming_gameweeks: list[int],
     static_teams: pl.LazyFrame,
 ) -> pl.LazyFrame:
-    """Get records for each team to predict upcoming fixtures."""
+    """"""
 
-    # Select relevant columns to begin the merge
-    df = upcoming_fixtures.select(
-        pl.col("id").alias("fixture_id"),
-        pl.col("event").alias("round"),
-        pl.col("kickoff_time"),
-        pl.col("season"),
-        pl.col("team_a"),
-        pl.col("team_h"),
+    # Select the most recent static teams data
+    static_teams = static_teams.filter(
+        pl.col("season").eq(season) & pl.col("round").eq(min(upcoming_gameweeks))
     )
 
-    # Add identifiers for both home and away teams
-    home_df = df.with_columns(
-        pl.col("team_h").alias("id"),
-        pl.col("team_a").alias("opponent_id"),
-        pl.lit(1).alias("was_home"),
-    )
-    away_df = df.with_columns(
-        pl.col("team_a").alias("id"),
-        pl.col("team_h").alias("opponent_id"),
-        pl.lit(0).alias("was_home"),
-    )
-    df = pl.concat([home_df, away_df], how="vertical")
-    df = df.drop(["team_a", "team_h"])
-
-    # Add codes and opponent codes
-    df = df.join(
-        static_teams.select(
-            pl.col("id"),
-            pl.col("code"),
-        ),
-        on="id",
-        how="left",
-    )
-    df = df.join(
-        static_teams.select(
-            pl.col("id").alias("opponent_id"),
-            pl.col("code").alias("opponent_code"),
-        ),
-        on="opponent_id",
-        how="left",
+    # Keep only columns that we can reasonably assume as constant
+    static_teams = static_teams.select(
+        "season",
+        "round",
+        "code",
+        "id",
+        "name",
+        "short_name",
+        "pulse_id",
+        "strength",
+        "strength_attack_away",
+        "strength_attack_home",
+        "strength_defence_away",
+        "strength_defence_home",
+        "strength_overall_away",
+        "strength_overall_home",
     )
 
-    # Add team strengths
-    df = df.join(
-        static_teams.select(
-            pl.col("code"),
-            pl.col("strength"),
-            pl.col("strength_overall_home"),
-            pl.col("strength_overall_away"),
-            pl.col("strength_attack_home"),
-            pl.col("strength_attack_away"),
-            pl.col("strength_defence_home"),
-            pl.col("strength_defence_away"),
-        ),
-        on="code",
-        how="left",
+    # Duplicate for each upcoming gameweek
+    df = pl.concat(
+        [
+            static_teams.with_columns(pl.lit(gameweek).alias("round"))
+            for gameweek in upcoming_gameweeks
+        ],
+        how="vertical",
     )
 
     return df
 
 
-def get_upcoming_managers(
-    upcoming_fixtures: pl.LazyFrame,
-    static_managers: pl.LazyFrame,
-    static_teams: pl.LazyFrame,
+def get_upcoming_static_elements(
+    season: str,
+    upcoming_gameweeks: list[int],
+    static_elements: pl.LazyFrame,
 ) -> pl.LazyFrame:
-    """Alias of `get_upcoming_players`."""
-    return get_upcoming_players(
-        upcoming_fixtures,
-        static_managers,
-        static_teams,
+    """"""
+
+    # Select the most recent static elements data
+    static_elements = static_elements.filter(
+        pl.col("season").eq(season) & pl.col("round").eq(min(upcoming_gameweeks))
     )
+
+    # Keep only columns that we can reasonably assume as constant
+    df = static_elements.select(
+        "season",
+        "round",
+        "code",
+        "id",
+        "team",
+        "team_code",
+        "element_type",
+        "first_name",
+        "second_name",
+        "web_name",
+        "now_cost",
+        "corners_and_indirect_freekicks_order",
+        "corners_and_indirect_freekicks_text",
+        "direct_freekicks_order",
+        "direct_freekicks_text",
+        "penalties_order",
+        "penalties_text",
+    )
+
+    # Duplicate for each upcoming gameweek
+    df = pl.concat(
+        [
+            df.with_columns(pl.lit(gameweek).alias("round"))
+            for gameweek in upcoming_gameweeks
+        ],
+        how="vertical",
+    )
+
+    # Add availability information for only the next gameweek
+    df = df.join(
+        static_elements.select(
+            "season",
+            "round",
+            "code",
+            "status",
+            "chance_of_playing_next_round",
+            "news",
+            "news_added",
+        ).filter(
+            pl.col("season").eq(season) & pl.col("round").eq(min(upcoming_gameweeks))
+        ),
+        on=["season", "round", "code"],
+        how="left",
+    )
+
+    return df
 
 
 def get_upcoming_fixtures(
@@ -204,11 +184,13 @@ def get_upcoming_fixtures(
     df = fixtures.filter(
         (pl.col("event").is_in(upcoming_gameweeks)) & (pl.col("season") == season)
     )
+
     # Remove upcoming scores as they should be unknown
     df = df.with_columns(
         pl.lit(None).alias("team_a_score"),
         pl.lit(None).alias("team_h_score"),
     )
+
     return df
 
 
@@ -219,3 +201,10 @@ def get_upcoming_gameweeks(
     return list(
         range(next_gameweek, min(next_gameweek + window_size, last_gameweek + 1))
     )
+
+
+def remove_upcoming_data(df: pl.LazyFrame, season: str, gameweek: int) -> pl.LazyFrame:
+    """Remove all records on or after the given gameweek."""
+    df = df.filter(pl.col("season") <= season)
+    df = df.filter((pl.col("season") < season) | (pl.col("round") < gameweek))
+    return df

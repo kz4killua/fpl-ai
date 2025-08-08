@@ -1,3 +1,5 @@
+import glob
+
 import polars as pl
 
 from datautil.constants import DATA_DIR
@@ -12,8 +14,8 @@ def load_understat(seasons: list[str]):
     teams = load_teams(seasons)
     fixtures = load_fixtures(seasons)
     player_ids = load_player_ids()
-    fixture_ids = load_fixture_ids(seasons)
     team_ids = load_team_ids()
+    fixture_ids = load_fixture_ids(seasons)
 
     # Convert understat seasons to FPL seasons
     players = players.with_columns(
@@ -150,62 +152,70 @@ def load_players(seasons: list[str]) -> pl.LazyFrame:
 def load_teams(seasons: list[str]) -> pl.LazyFrame:
     """Load team data."""
     seasons = list(map(convert_season_to_year, seasons))
-    frames = [
-        pl.scan_csv(
-            DATA_DIR / f"understat/season/{season}/teams/*.csv",
-            try_parse_dates=True,
-            raise_if_empty=False,
-        ).with_columns(
-            pl.lit(season).alias("season"),
-        )
-        for season in seasons
-    ]
+
+    frames = []
+    for season in seasons:
+        path = DATA_DIR / f"understat/season/{season}/teams/*.csv"
+        if glob.glob(str(path)):
+            frames.append(
+                pl.scan_csv(
+                    path,
+                    try_parse_dates=True,
+                    raise_if_empty=False,
+                ).with_columns(
+                    pl.lit(season).alias("season"),
+                )
+            )
+
     return pl.concat(frames, how="diagonal")
 
 
 def load_fixtures(seasons: list[str]) -> pl.LazyFrame:
     """Load fixture data."""
     seasons = list(map(convert_season_to_year, seasons))
-    frames = [
-        pl.scan_csv(
-            DATA_DIR / f"understat/season/{season}/dates.csv",
-            try_parse_dates=True,
-            raise_if_empty=False,
-        ).with_columns(
-            pl.lit(season).alias("season"),
-        )
-        for season in seasons
-    ]
+
+    frames = []
+    for season in seasons:
+        path = DATA_DIR / f"understat/season/{season}/dates.csv"
+        if path.exists():
+            frames.append(
+                pl.scan_csv(
+                    path,
+                    try_parse_dates=True,
+                    raise_if_empty=False,
+                ).with_columns(
+                    pl.lit(season).alias("season"),
+                )
+            )
+
     return pl.concat(frames, how="diagonal")
 
 
 def load_player_ids() -> pl.LazyFrame:
     """Load FPL-to-understat player ID mappings."""
-    return pl.scan_csv(
-        DATA_DIR / "understat/player_ids.csv",
-        try_parse_dates=True,
-    )
+    return pl.scan_csv(DATA_DIR / "understat/player_ids.csv")
 
 
 def load_team_ids() -> pl.LazyFrame:
     """Load FPL-to-understat team ID mappings."""
-    return pl.scan_csv(
-        DATA_DIR / "understat/team_ids.csv",
-        try_parse_dates=True,
-    )
+    return pl.scan_csv(DATA_DIR / "understat/team_ids.csv")
 
 
 def load_fixture_ids(seasons: list[str]) -> pl.LazyFrame:
     """Load FPL-to-understat fixture ID mappings."""
     seasons = list(map(convert_season_to_year, seasons))
-    frames = [
-        pl.scan_csv(
-            DATA_DIR / f"understat/season/{season}/fixture_ids.csv",
-            try_parse_dates=True,
-            raise_if_empty=False,
-        ).with_columns(
-            pl.lit(season).alias("season"),
-        )
-        for season in seasons
-    ]
+
+    frames = []
+    for season in seasons:
+        path = DATA_DIR / f"understat/season/{season}/fixture_ids.csv"
+        if path.exists():
+            frames.append(
+                pl.scan_csv(
+                    path,
+                    try_parse_dates=True,
+                    raise_if_empty=False,
+                ).with_columns(
+                    pl.lit(season).alias("season"),
+                )
+            )
     return pl.concat(frames, how="diagonal")

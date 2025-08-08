@@ -9,14 +9,16 @@ def load_clubelo() -> pl.LazyFrame:
         DATA_DIR / "clubelo/ratings/*.csv",
         try_parse_dates=True,
         raise_if_empty=False,
+        null_values=["None"],
     )
-    team_names = pl.scan_csv(
-        DATA_DIR / "clubelo/team_names.csv",
+    # Add FPL team codes to ratings
+    team_ids = pl.scan_csv(
+        DATA_DIR / "clubelo/team_ids.csv",
         try_parse_dates=True,
         raise_if_empty=False,
     )
     ratings = ratings.join(
-        team_names.select(
+        team_ids.select(
             pl.col("clubelo_name").alias("Club"),
             pl.col("fpl_code"),
         ),
