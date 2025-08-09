@@ -75,6 +75,9 @@ class Simulator:
         self.players, self.teams, self.managers = load_merged(
             seasons, self.season, upcoming_gameweeks
         )
+        self.players = self.players.collect()
+        self.teams = self.teams.collect()
+        self.managers = self.managers.collect()
 
     def update(self, roles: dict, wildcard_gameweeks: list[int], log: bool = False):
         """Updates the squad and results for the next gameweek."""
