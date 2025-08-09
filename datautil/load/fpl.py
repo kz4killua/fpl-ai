@@ -77,12 +77,12 @@ def load_fpl(
             [static_teams, upcoming_static_teams], how="diagonal_relaxed"
         )
 
-        # Filter fixtures to only include upcoming gameweeks
+        # Filter fixtures to only include relevant gameweeks
         fixtures = fixtures.filter(
             (pl.col("season") < current_season)
             | (
                 (pl.col("season") == current_season)
-                & (pl.col("event").is_in(upcoming_gameweeks))
+                & (pl.col("event") <= max(upcoming_gameweeks))
             )
         )
 

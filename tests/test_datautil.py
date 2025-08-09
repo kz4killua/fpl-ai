@@ -336,6 +336,9 @@ def test_load_merged():
         }
     )
 
+    # Test for null values in upcoming players
+    assert players.select("team", "team_code").null_count().sum_horizontal().item() == 0
+
     # Test for null values in team clubelo ratings
     assert teams.get_column("clb_elo").null_count() == 0
 
