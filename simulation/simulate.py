@@ -1,11 +1,7 @@
 import polars as pl
 
 from datautil.upcoming import (
-    get_upcoming_fixtures,
     get_upcoming_gameweeks,
-    get_upcoming_managers,
-    get_upcoming_players,
-    get_upcoming_teams,
 )
 from datautil.utils import get_mapper
 from features.engineer_features import (
@@ -33,7 +29,7 @@ def simulate(
     simulator = Simulator(season)
 
     # Simulate each gameweek
-    while simulator.next_gameweek <= simulator.last_gameweek:
+    while simulator.next_gameweek is not None:
         roles = get_best_roles(simulator, model, wildcard_gameweeks, parameters, log)
         simulator.update(roles, wildcard_gameweeks, log=log)
 
@@ -57,54 +53,33 @@ def get_best_roles(
     next_gameweek = simulator.next_gameweek
     last_gameweek = simulator.last_gameweek
     static_elements = simulator.static_elements
-    static_players = simulator.static_players
-    static_teams = simulator.static_teams
-    static_managers = simulator.static_managers
-    historical_players = simulator.historical_players
-    historical_teams = simulator.historical_teams
-    historical_managers = simulator.historical_managers
-    fixtures = simulator.fixtures
+    players = simulator.players
+    teams = simulator.teams
+    matches = simulator.managers
 
-    # Get upcoming data
+    # Engineer features
+    players = engineer_player_features(players)
+    teams = engineer_team_features(teams)
+    matches = engineer_match_features(teams)
+
+    # Keep only the features for upcoming gameweeks
     upcoming_gameweeks = get_upcoming_gameweeks(
         next_gameweek, OPTIMIZATION_WINDOW_SIZE, last_gameweek
     )
-    upcoming_fixtures = get_upcoming_fixtures(fixtures, season, upcoming_gameweeks)
-    upcoming_players = get_upcoming_players(
-        upcoming_fixtures, static_players, static_teams
-    )
-    upcoming_managers = get_upcoming_managers(
-        upcoming_fixtures, static_managers, static_teams
-    )
-    upcoming_teams = get_upcoming_teams(upcoming_fixtures, static_teams)
-
-    # Combine the data for feature engineering
-    combined_players = pl.concat(
-        [historical_players, upcoming_players], how="diagonal_relaxed"
-    )
-    combined_teams = pl.concat(
-        [historical_teams, upcoming_teams], how="diagonal_relaxed"
-    )
-    _ = pl.concat([historical_managers, upcoming_managers], how="diagonal_relaxed")
-
-    # Engineer features
-    player_features = engineer_player_features(combined_players)
-    team_features = engineer_team_features(combined_teams)
-    match_features = engineer_match_features(team_features)
-
-    # Keep only the features for upcoming gameweeks
-    player_features = player_features.filter(
+    players = players.filter(
         (pl.col("season") == season) & (pl.col("round").is_in(upcoming_gameweeks))
     )
-    team_features = team_features.filter(
+    teams = teams.filter(
         (pl.col("season") == season) & (pl.col("round").is_in(upcoming_gameweeks))
     )
-    match_features = match_features.filter(
+    matches = matches.filter(
         (pl.col("season") == season) & (pl.col("round").is_in(upcoming_gameweeks))
     )
 
     # Predict total points
-    predictions = make_predictions(model, player_features, match_features)
+    predictions = make_predictions(model, players, matches)
+
+    # Map each prediction to an ID and gameweek
     predictions = get_mapper(predictions, ["element", "round"], "total_points")
     for player in static_elements["id"]:
         for gameweek in upcoming_gameweeks:

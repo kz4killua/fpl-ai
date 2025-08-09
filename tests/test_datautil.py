@@ -13,7 +13,6 @@ from datautil.upcoming import (
     get_upcoming_gameweeks,
 )
 from datautil.utils import get_seasons
-from game.rules import DEF, FWD, GKP, MID, MNG
 
 
 def test_load_clubelo():

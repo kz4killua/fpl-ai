@@ -148,13 +148,6 @@ def make_automatic_substitutions(roles: dict, minutes: dict, positions: dict) ->
     return roles
 
 
-def remove_upcoming_data(df: pl.LazyFrame, season: str, gameweek: int) -> pl.LazyFrame:
-    """Remove all records on or after the given gameweek."""
-    df = df.filter(pl.col("season") <= season)
-    df = df.filter((pl.col("season") < season) | (pl.col("round") < gameweek))
-    return df
-
-
 def load_results(season: str) -> pl.LazyFrame:
     """Load player points and minutes for each gameweek in the given season."""
     elements = load_elements([season])

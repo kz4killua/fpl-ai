@@ -3,6 +3,7 @@ import json
 import polars as pl
 
 from datautil.load.fpl import load_elements
+from datautil.upcoming import remove_upcoming_data
 from game.rules import DEF, FWD, GKP, MID
 from simulation.simulate import Simulator
 from simulation.utils import (
@@ -11,7 +12,6 @@ from simulation.utils import (
     calculate_transfer_cost,
     load_results,
     make_automatic_substitutions,
-    remove_upcoming_data,
 )
 
 
@@ -381,9 +381,9 @@ def test_simulator():
 
     # Simulate the entry's season
     simulator = Simulator(season)
-    while simulator.next_gameweek <= simulator.last_gameweek:
+    while simulator.next_gameweek is not None:
         picks = entry_picks[str(simulator.next_gameweek)]
-        roles = _get_simulator_roles(picks)
+        roles = get_simulator_roles(picks)
         simulator.update(roles, wildcard_gameweeks, log=True)
         assert simulator.season_points == picks["entry_history"]["total_points"], (
             f"Total points mismatch in round {simulator.next_gameweek}. "
@@ -392,7 +392,8 @@ def test_simulator():
         )
 
 
-def _get_simulator_roles(picks: dict):
+def get_simulator_roles(picks: dict):
+    """Convert the squad picks to simulator roles."""
     roles = {
         "captain": None,
         "vice_captain": None,
@@ -402,12 +403,14 @@ def _get_simulator_roles(picks: dict):
         "reserve_out_2": None,
         "reserve_out_3": None,
     }
+
     for item in picks["picks"]:
         # Set the captain and vice-captain
         if item["is_captain"]:
             roles["captain"] = item["element"]
         elif item["is_vice_captain"]:
             roles["vice_captain"] = item["element"]
+
         # Set the starting XI and reserves
         if item["position"] >= 1 and item["position"] <= 11:
             roles["starting_xi"].append(item["element"])
