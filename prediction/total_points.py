@@ -50,6 +50,12 @@ TOTAL_POINTS_RULES = {
             MID: 0,
             FWD: 0,
         },
+        "bonus": {
+            GKP: 1,
+            DEF: 1,
+            MID: 1,
+            FWD: 1,
+        },
     }
 }
 
@@ -84,6 +90,7 @@ class TotalPointsPredictor(BaseEstimator, RegressorMixin):
             "clean_sheets",
             "saves",
             "goals_conceded",
+            "bonus",
         ]
         predicted_values = {
             action: X[f"predicted_{action}"].to_numpy() for action in actions
