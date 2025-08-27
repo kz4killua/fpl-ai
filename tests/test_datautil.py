@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import polars as pl
 from polars.testing import assert_frame_equal
 
@@ -17,7 +19,7 @@ from datautil.utils import get_seasons
 
 def test_load_clubelo():
     # Load clubelo ratings
-    df = load_clubelo()
+    df = load_clubelo(datetime.max)
     df = df.collect()
 
     # Check that FPL team codes are mapped correctly
@@ -163,7 +165,7 @@ def test_load_fpl():
 def test_load_understat():
     # Load data for the 2021-22 season
     seasons = ["2021-22"]
-    players, teams = load_understat(seasons)
+    players, teams = load_understat(seasons, datetime.max)
     players = players.collect()
     teams = teams.collect()
 
@@ -244,7 +246,7 @@ def test_load_merged():
     teams = teams.collect()
     managers = managers.collect()
 
-    # Test player understat mappings
+    # Test non-upcoming player mappings
     expected = pl.DataFrame(
         {
             "season": ["2024-25", "2024-25", "2024-25", "2024-25"],
@@ -261,36 +263,66 @@ def test_load_merged():
         atol=1e-2,
     )
 
-    # Test team understat mappings
+    # Test non-upcoming team mappings
     expected = pl.DataFrame(
         {
             "season": ["2024-25", "2024-25", "2024-25", "2024-25"],
+            "code": [43, 43, 43, 43],
             "id": [13, 13, 13, 13],
             "round": [1, 2, 3, 4],
             "uds_xG": [1.18, 3.08, 3.19, 1.55],
             "uds_xGA": [1.06, 0.48, 0.95, 1.05],
+            "clb_elo": [2050.57299805, 2055.97094727, 2056.84448242, 2060.20605469],
         }
     )
     assert_mappings_correct(
         teams,
         expected,
-        on=["season", "id", "round"],
+        on=["season", "code", "round"],
         atol=1e-2,
     )
 
-    # Test team clubelo mappings
+    # Test upcoming player mappings
     expected = pl.DataFrame(
         {
-            "season": ["2024-25", "2024-25", "2024-25", "2024-25"],
-            "id": [13, 13, 13, 13],
-            "round": [1, 2, 3, 4],
-            "clb_elo": [2048.74291992, 2055.70703125, 2056.78808594, 2056.84448242],
+            "season": ["2024-25", "2025-26", "2025-26", "2025-26"],
+            "code": [118748, 118748, 118748, 118748],
+            "round": [38, 1, 2, 3],
+            "element": [328, 381, 381, 381],
+            "value": [136, 145, 145, 145],
+            "team": [12, 12, 12, 12],
+            "opponent_team": [7, 4, 15, 1],
+            "was_home": [1, 1, 0, 1],
+            # Availability should be only be filled for the next gameweek
+            "status": ["a", "a", None, None],
+            "uds_xG": [0.65, None, None, None],
+        }
+    )
+    assert_mappings_correct(
+        players,
+        expected,
+        on=["season", "code", "round"],
+        atol=1e-2,
+    )
+
+    # Test upcoming team mappings
+    expected = pl.DataFrame(
+        {
+            "season": ["2024-25", "2025-26", "2025-26", "2025-26"],
+            "round": [38, 1, 2, 3],
+            "code": [14, 14, 14, 14],
+            "id": [12, 12, 12, 12],
+            "opponent_id": [7, 4, 15, 1],
+            "was_home": [1, 1, 0, 1],
+            "uds_xG": [1.92, None, None, None],
+            "uds_xGA": [1.41, None, None, None],
+            "clb_elo": [1996.71533203, 1993.41772461, 1993.41772461, 1993.41772461],
         }
     )
     assert_mappings_correct(
         teams,
         expected,
-        on=["season", "id", "round"],
+        on=["season", "code", "round"],
         atol=1e-2,
     )
 
@@ -307,34 +339,6 @@ def test_load_merged():
         & pl.col("round").is_in(upcoming_gameweeks)
         & pl.col("code").eq(14)
     ).height == len(upcoming_gameweeks)
-
-    # Test upcoming player mappings
-    expected = pl.DataFrame(
-        {
-            "season": ["2024-25", "2025-26", "2025-26", "2025-26"],
-            "code": [118748, 118748, 118748, 118748],
-            "round": [38, 1, 2, 3],
-            "element": [328, 381, 381, 381],
-            "value": [136, 145, 145, 145],
-            "team": [12, 12, 12, 12],
-            "opponent_team": [7, 4, 15, 1],
-            "was_home": [1, 1, 0, 1],
-            # Availability should be only be filled for the next gameweek
-            "status": ["a", "a", None, None],
-        }
-    )
-
-    # Test upcoming team mappings
-    expected = pl.DataFrame(
-        {
-            "season": ["2024-25", "2025-26", "2025-26", "2025-26"],
-            "code": [118748, 118748, 118748, 118748],
-            "round": [38, 1, 2, 3],
-            "id": [12, 12, 12, 12],
-            "opponent_id": [7, 4, 15, 1],
-            "was_home": [1, 1, 0, 1],
-        }
-    )
 
     # Test for null values in upcoming players
     assert players.select("team", "team_code").null_count().sum_horizontal().item() == 0

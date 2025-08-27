@@ -7,7 +7,6 @@ def get_upcoming_elements(
     fixtures: pl.LazyFrame,
     static_elements: pl.LazyFrame,
 ) -> pl.LazyFrame:
-    """"""
     upcoming_fixtures = get_upcoming_fixtures(fixtures, season, gameweeks)
 
     # Select the most recent static teams data
@@ -78,8 +77,6 @@ def get_upcoming_static_teams(
     upcoming_gameweeks: list[int],
     static_teams: pl.LazyFrame,
 ) -> pl.LazyFrame:
-    """"""
-
     # Select the most recent static teams data
     static_teams = static_teams.filter(
         pl.col("season").eq(season) & pl.col("round").eq(min(upcoming_gameweeks))
@@ -120,8 +117,6 @@ def get_upcoming_static_elements(
     upcoming_gameweeks: list[int],
     static_elements: pl.LazyFrame,
 ) -> pl.LazyFrame:
-    """"""
-
     # Select the most recent static elements data
     static_elements = static_elements.filter(
         pl.col("season").eq(season) & pl.col("round").eq(min(upcoming_gameweeks))
@@ -205,6 +200,27 @@ def get_upcoming_gameweeks(
 
 def remove_upcoming_data(df: pl.LazyFrame, season: str, gameweek: int) -> pl.LazyFrame:
     """Remove all records on or after the given gameweek."""
-    df = df.filter(pl.col("season") <= season)
-    df = df.filter((pl.col("season") < season) | (pl.col("round") < gameweek))
-    return df
+    upcoming = get_upcoming_condition(season, gameweek)
+    return df.filter(~upcoming)
+
+
+def mask_upcoming_data(
+    df: pl.LazyFrame, season: str, gameweek: int, columns: list[str]
+) -> pl.LazyFrame:
+    """Set upcoming values to `None`."""
+    upcoming = get_upcoming_condition(season, gameweek)
+
+    expressions = []
+    for column in columns:
+        expressions.append(
+            pl.when(upcoming).then(pl.lit(None)).otherwise(pl.col(column)).alias(column)
+        )
+
+    return df.with_columns(expressions)
+
+
+def get_upcoming_condition(season: str, gameweek: int):
+    """Return a Polars expression matching upcoming data."""
+    return (pl.col("season") > season) | (
+        (pl.col("season") == season) & (pl.col("round") >= gameweek)
+    )

@@ -1,7 +1,9 @@
+from datetime import datetime
+
 import polars as pl
 
 from datautil.load.clubelo import load_clubelo
-from datautil.load.fpl import load_fpl
+from datautil.load.fpl import load_bootstrap_static, load_fpl
 from datautil.load.understat import load_understat
 
 
@@ -12,27 +14,42 @@ def load_merged(
 ) -> tuple[pl.LazyFrame, pl.LazyFrame, pl.LazyFrame]:
     """Load merged player, team, and manager data."""
 
-    # Load data
+    # Get the cutoff time for loaded data
+    if upcoming_gameweeks:
+        next_gameweek = min(upcoming_gameweeks)
+        bootstrap_static = load_bootstrap_static(current_season, next_gameweek)
+        for event in bootstrap_static["events"]:
+            if event["id"] == next_gameweek:
+                cutoff_time = datetime.fromisoformat(event["deadline_time"])
+                break
+        else:
+            raise ValueError(
+                f"Could not find cutoff time for gameweek {next_gameweek}."
+            )
+    else:
+        cutoff_time = datetime.max
+
+    # Load data from all sources
     fpl_players, fpl_teams, fpl_managers = load_fpl(
         seasons, current_season, upcoming_gameweeks
     )
-    uds_players, uds_teams = load_understat(seasons)
-    clb_teams = load_clubelo()
+    uds_players, uds_teams = load_understat(seasons, cutoff_time)
+    clb_teams = load_clubelo(cutoff_time)
 
-    # Merge data
-    players = merge_players(fpl_players, uds_players)
+    players = merge_players(fpl_players, uds_players, cutoff_time)
     teams = merge_teams(fpl_teams, uds_teams, clb_teams)
     managers = fpl_managers
-
-    # Clean data
-    players = clean_players(players)
-    teams = clean_teams(teams)
 
     return players, teams, managers
 
 
-def merge_players(fpl_players: pl.LazyFrame, uds_players: pl.LazyFrame):
+def merge_players(
+    fpl_players: pl.LazyFrame,
+    uds_players: pl.LazyFrame,
+    cutoff_time: datetime,
+):
     """Merge player data from FPL and Understat."""
+    # Map understat attributes to each player
     columns = [
         "xG",
         "xA",
@@ -44,28 +61,46 @@ def merge_players(fpl_players: pl.LazyFrame, uds_players: pl.LazyFrame):
         "xGBuildup",
         "position",
     ]
-    players = fpl_players.join(
+    aliases = [f"uds_{column}" for column in columns]
+
+    fpl_players = fpl_players.join(
         uds_players.select(
             [
                 pl.col("fpl_code").alias("code"),
                 pl.col("fpl_season").alias("season"),
                 pl.col("fpl_fixture_id").alias("fixture"),
-                *[pl.col(column).alias(f"uds_{column}") for column in columns],
+                *[
+                    pl.col(column).alias(alias)
+                    for column, alias in zip(columns, aliases, strict=True)
+                ],
             ]
         ),
         how="left",
         on=["code", "season", "fixture"],
     )
-    return players
+
+    # Fill null values, but not for upcoming gameweeks
+    expressions = []
+    for column in aliases:
+        expressions.append(
+            pl.when(pl.col("kickoff_time") < cutoff_time)
+            .then(pl.col(column).fill_null(0))
+            .otherwise(pl.col(column))
+            .alias(column)
+        )
+
+    return fpl_players
 
 
 def merge_teams(
-    fpl_teams: pl.LazyFrame, uds_teams: pl.LazyFrame, clb_teams: pl.LazyFrame
+    fpl_teams: pl.LazyFrame,
+    uds_teams: pl.LazyFrame,
+    clb_teams: pl.LazyFrame,
 ):
     """Merge team data from fpl, understat.com, and clubelo.com"""
 
-    # Add understat columns to FPL teams
-    uds_columns = [
+    # Map understat attributes to each team
+    columns = [
         "xG",
         "xGA",
         "npxG",
@@ -85,12 +120,17 @@ def merge_teams(
         "ppda_allowed_att",
         "ppda_allowed_def",
     ]
+    aliases = [f"uds_{column}" for column in columns]
+
     fpl_teams = fpl_teams.join(
         uds_teams.select(
             pl.col("fpl_season").alias("season"),
             pl.col("fpl_fixture_id").alias("fixture_id"),
             pl.col("fpl_code").alias("code"),
-            *[pl.col(column).alias(f"uds_{column}") for column in uds_columns],
+            *[
+                pl.col(column).alias(alias)
+                for column, alias in zip(columns, aliases, strict=True)
+            ],
         ),
         how="left",
         on=["season", "fixture_id", "code"],
@@ -104,7 +144,7 @@ def merge_teams(
         clb_teams.select(
             pl.col("fpl_code").alias("code"),
             pl.col("Elo").alias("clb_elo"),
-            pl.col("To").cast(pl.Datetime(time_zone="UTC")).dt.offset_by("23h59m59s"),
+            pl.col("To").cast(pl.Datetime(time_zone="UTC")),
         ),
         left_on="kickoff_time",
         right_on="To",
@@ -117,7 +157,7 @@ def merge_teams(
         clb_teams.select(
             pl.col("fpl_code").alias("opponent_code"),
             pl.col("Elo").alias("opponent_clb_elo"),
-            pl.col("To").cast(pl.Datetime(time_zone="UTC")).dt.offset_by("23h59m59s"),
+            pl.col("To").cast(pl.Datetime(time_zone="UTC")),
         ),
         left_on="kickoff_time",
         right_on="To",
@@ -127,29 +167,3 @@ def merge_teams(
     ).drop("To")
 
     return fpl_teams
-
-
-def clean_players(players: pl.LazyFrame) -> pl.LazyFrame:
-    """Clean player data."""
-
-    # Fill in missing values for numeric understats
-    players = players.with_columns(
-        pl.col("uds_shots").fill_null(0),
-        pl.col("uds_xG").fill_null(0),
-        pl.col("uds_xA").fill_null(0),
-        pl.col("uds_key_passes").fill_null(0),
-        pl.col("uds_npg").fill_null(0),
-        pl.col("uds_npxG").fill_null(0),
-        pl.col("uds_xGChain").fill_null(0),
-        pl.col("uds_xGBuildup").fill_null(0),
-    )
-
-    # Cast was_home to an integer
-    players = players.with_columns(pl.col("was_home").cast(pl.Int8))
-
-    return players
-
-
-def clean_teams(teams: pl.LazyFrame) -> pl.LazyFrame:
-    """Clean team data."""
-    return teams

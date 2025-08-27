@@ -1,9 +1,11 @@
+from datetime import datetime
+
 import polars as pl
 
 from datautil.constants import DATA_DIR
 
 
-def load_clubelo() -> pl.LazyFrame:
+def load_clubelo(cutoff_time: datetime) -> pl.LazyFrame:
     """Load local clubelo ratings for teams."""
     ratings = pl.scan_csv(
         DATA_DIR / "clubelo/ratings/*.csv",
@@ -24,5 +26,16 @@ def load_clubelo() -> pl.LazyFrame:
         ),
         how="left",
         on="Club",
+    )
+    # Filter ratings using the cutoff time
+    ratings = pl.concat(
+        [
+            ratings.filter(pl.col("To") < cutoff_time.date()),
+            ratings.filter(pl.col("To") >= cutoff_time.date())
+            .group_by("Club")
+            .agg(pl.min("To"))
+            .join(ratings, on=["Club", "To"])
+        ],
+        how="diagonal"
     )
     return ratings

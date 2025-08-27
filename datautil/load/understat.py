@@ -1,4 +1,5 @@
 import glob
+from datetime import datetime
 
 import polars as pl
 
@@ -6,7 +7,7 @@ from datautil.constants import DATA_DIR
 from datautil.utils import convert_season_to_year, convert_year_col_to_season_col
 
 
-def load_understat(seasons: list[str]):
+def load_understat(seasons: list[str], cutoff_time: datetime):
     """Loads local understat data for the given seasons."""
 
     # Load local data
@@ -124,6 +125,10 @@ def load_understat(seasons: list[str]):
         how="left",
         on="id",
     )
+
+    # Filter records using the cutoff time
+    players = players.filter(pl.col("date") < cutoff_time.date())
+    teams = teams.filter(pl.col("date") < cutoff_time.date())
 
     return players, teams
 
