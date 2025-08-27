@@ -1,238 +1,446 @@
-import unittest
+import json
 
-import pandas as pd
-from datautil.utilities import GKP, MID, DEF, FWD
-from simulation.utilities import make_automatic_substitutions, calculate_selling_price, get_selling_prices
-from optimize.utilities import update_purchase_prices, update_selling_prices
-from simulation.loaders import load_simulation_true_results, load_simulation_players_and_teams, load_simulation_purchase_prices
+import polars as pl
+
+from datautil.load.fpl import load_elements
+from datautil.upcoming import remove_upcoming_data
+from game.rules import DEF, FWD, GKP, MID
+from simulation.simulate import Simulator
+from simulation.utils import (
+    calculate_points,
+    calculate_selling_price,
+    calculate_transfer_cost,
+    load_results,
+    make_automatic_substitutions,
+)
 
 
-class TestMakeAutomaticSubstitutions(unittest.TestCase):
+def test_make_automatic_substitutions():
+    # Entry 2267416 - 2023-24 season
+    roles = {
+        "captain": 415,
+        "vice_captain": 352,
+        "starting_xi": [352, 616, 206, 398, 31, 6, 501, 294, 303, 415, 297],
+        "reserve_gkp": 597,
+        "reserve_out_1": 368,
+        "reserve_out_2": 209,
+        "reserve_out_3": 278,
+    }
+    positions = {
+        352: GKP,
+        597: GKP,
+        616: DEF,
+        206: DEF,
+        398: DEF,
+        368: DEF,
+        31: DEF,
+        209: MID,
+        6: MID,
+        501: MID,
+        294: MID,
+        303: MID,
+        415: FWD,
+        297: FWD,
+        278: FWD,
+    }
 
-    def test_make_automatic_substitutions(self):
+    test_cases = [
+        # Gameweek 1 - 1 substitution
+        {
+            "minutes": {
+                352: 90,
+                616: 11,
+                206: 75,
+                398: 90,
+                209: 67,
+                6: 90,
+                501: 90,
+                294: 65,
+                303: 76,
+                415: 67,
+                297: 65,
+                597: 90,
+                368: 0,
+                31: 0,
+                278: 32,
+            },
+            "expected": {
+                "captain": 415,
+                "vice_captain": 352,
+                "starting_xi": [352, 616, 206, 398, 209, 6, 501, 294, 303, 415, 297],
+                "reserve_gkp": 597,
+                "reserve_out_1": 368,
+                "reserve_out_2": 31,
+                "reserve_out_3": 278,
+            },
+        },
+        # Gameweek 3 - 0 substitutions
+        {
+            "minutes": {
+                352: 90,
+                616: 90,
+                206: 0,
+                398: 0,
+                209: 0,
+                6: 55,
+                501: 90,
+                294: 32,
+                303: 32,
+                415: 71,
+                297: 57,
+                597: 90,
+                368: 0,
+                31: 34,
+                278: 0,
+            },
+            "expected": {
+                "captain": 415,
+                "vice_captain": 352,
+                "starting_xi": [352, 616, 206, 398, 31, 6, 501, 294, 303, 415, 297],
+                "reserve_gkp": 597,
+                "reserve_out_1": 368,
+                "reserve_out_2": 209,
+                "reserve_out_3": 278,
+            },
+        },
+        # Gameweek 8 - 2 substitutions
+        {
+            "minutes": {
+                352: 90,
+                616: 90,
+                206: 0,
+                398: 0,
+                209: 62,
+                6: 15,
+                501: 90,
+                294: 0,
+                303: 90,
+                415: 85,
+                297: 0,
+                597: 90,
+                368: 22,
+                31: 74,
+                278: 0,
+            },
+            "expected": {
+                "captain": 415,
+                "vice_captain": 352,
+                "starting_xi": [352, 616, 368, 209, 31, 6, 501, 294, 303, 415, 297],
+                "reserve_gkp": 597,
+                "reserve_out_1": 206,
+                "reserve_out_2": 398,
+                "reserve_out_3": 278,
+            },
+        },
+        # Gameweek 9 - 3 substitutions
+        {
+            "minutes": {
+                352: 0,
+                616: 90,
+                206: 6,
+                398: 0,
+                209: 2,
+                6: 12,
+                501: 90,
+                294: 90,
+                303: 80,
+                415: 20,
+                297: 0,
+                597: 90,
+                368: 74,
+                31: 45,
+                278: 0,
+            },
+            "expected": {
+                "captain": 415,
+                "vice_captain": 352,
+                "starting_xi": [597, 616, 206, 368, 31, 6, 501, 294, 303, 415, 209],
+                "reserve_gkp": 352,
+                "reserve_out_1": 398,
+                "reserve_out_2": 297,
+                "reserve_out_3": 278,
+            },
+        },
+    ]
 
-        # Entry 2267416 - 2023-24 season
-        roles = {
-            'captain': 415, 'vice_captain': 352,
-            'starting_gkp': 352, 'starting_xi': [352, 616, 206, 398, 31, 6, 501, 294, 303, 415, 297],
-            'reserve_gkp': 597, 'reserve_out': [368, 209, 278]
+    for test_case in test_cases:
+        substituted_roles = make_automatic_substitutions(
+            roles, test_case["minutes"], positions
+        )
+        assert substituted_roles == test_case["expected"]
+
+    # Entry 3291882 - 2024-25 season
+    roles = {
+        "captain": 755,
+        "vice_captain": 328,
+        "starting_xi": [201, 291, 311, 517, 182, 328, 74, 78, 755, 401, 110],
+        "reserve_gkp": 109,
+        "reserve_out_1": 770,
+        "reserve_out_2": 270,
+        "reserve_out_3": 457,
+    }
+    positions = {
+        201: 1,
+        291: 2,
+        311: 2,
+        270: 2,
+        182: 3,
+        328: 3,
+        74: 3,
+        78: 3,
+        755: 4,
+        401: 4,
+        110: 4,
+        109: 1,
+        770: 3,
+        517: 2,
+        457: 2,
+    }
+    test_cases = [
+        # Gameweek 33 - 1 substitution
+        {
+            "minutes": {
+                201: 180,
+                291: 90,
+                311: 19,
+                270: 90,
+                182: 90,
+                328: 90,
+                74: 68,
+                78: 90,
+                755: 180,
+                401: 75,
+                110: 90,
+                109: 0,
+                770: 90,
+                517: 0,
+                457: 0,
+            },
+            "expected": {
+                "captain": 755,
+                "vice_captain": 328,
+                "starting_xi": [201, 291, 311, 270, 182, 328, 74, 78, 755, 401, 110],
+                "reserve_gkp": 109,
+                "reserve_out_1": 770,
+                "reserve_out_2": 517,
+                "reserve_out_3": 457,
+            },
         }
-        positions = pd.Series({
-            352: GKP, 597: GKP, 
-            616: DEF, 206: DEF, 398: DEF, 368: DEF, 31: DEF,
-            209: MID, 6: MID, 501: MID, 294: MID, 303: MID,
-            415: FWD, 297: FWD, 278: FWD
-        })
-        
-        test_cases = [
+    ]
 
-            # Gameweek 1 - 1 substitution
-            {
-                'minutes': pd.Series({
-                    352: 90, 616: 11, 206: 75, 398: 90, 209: 67, 6: 90, 501: 90, 
-                    294: 65, 303: 76, 415: 67, 297: 65, 597: 90, 368: 0, 31: 0, 278: 32
-                }), 
-                'expected': {
-                    'captain': 415, 'vice_captain': 352,
-                    'starting_gkp': 352, 'starting_xi': [352, 616, 206, 398, 209, 6, 501, 294, 303, 415, 297],
-                    'reserve_gkp': 597, 'reserve_out': [368, 31, 278]
-                }, 
-            },
+    for test_case in test_cases:
+        substituted_roles = make_automatic_substitutions(
+            roles, test_case["minutes"], positions
+        )
+        assert substituted_roles == test_case["expected"]
 
-            # Gameweek 3 - 0 substitutions
-            {
-                'minutes': pd.Series({
-                    352: 90, 616: 90, 206: 0, 398: 0, 209: 0, 6: 55, 501: 90, 
-                    294: 32, 303: 32, 415: 71, 297: 57, 597: 90, 368: 0, 31: 34, 278: 0
-                }),
-                'expected': {
-                   'captain': 415, 'vice_captain': 352,
-                   'starting_gkp': 352, 'starting_xi': [352, 616, 206, 398, 31, 6, 501, 294, 303, 415, 297],
-                   'reserve_gkp': 597, 'reserve_out': [368, 209, 278]
-                }
-            },
 
-            # Gameweek 8 - 2 substitutions
-            {
-                'minutes': pd.Series({
-                    352: 90, 616: 90, 206: 0, 398: 0, 209: 62, 6: 15, 
-                    501: 90, 294: 0, 303: 90, 415: 85, 297: 0, 597: 90, 368: 22, 31: 74, 278: 0
-                }),
-                'expected': {
-                   'captain': 415, 'vice_captain': 352,
-                   'starting_gkp': 352, 'starting_xi': [352, 616, 368, 209, 31, 6, 501, 294, 303, 415, 297],
-                   'reserve_gkp': 597, 'reserve_out': [206, 398, 278]
-                }
-            },
-        
-            # Gameweek 9 - 3 substitutions
-            {
-                'minutes': pd.Series({
-                    352: 0, 616: 90, 206: 6, 398: 0, 209: 2, 6: 12, 501: 90, 294: 90, 
-                    303: 80, 415: 20, 297: 0, 597: 90, 368: 74, 31: 45, 278: 0
-                }),
-                'expected': {
-                   'captain': 415, 'vice_captain': 352,
-                   'starting_gkp': 597, 'starting_xi': [597, 616, 206, 368, 31, 6, 501, 294, 303, 415, 209],
-                   'reserve_gkp': 352, 'reserve_out': [398, 297, 278]
-                }
-            },
+def test_remove_upcoming_data():
+    elements = load_elements(["2016-17", "2017-18"])
+
+    # Test removing data on or after the first gameweek
+    filtered_elements = remove_upcoming_data(elements, "2017-18", 1)
+    filtered_elements = filtered_elements.collect()
+    assert filtered_elements.get_column("round").max() == 38
+    assert filtered_elements.get_column("season").max() == "2016-17"
+
+    # Test removing data from the middle of the season
+    filtered_elements = remove_upcoming_data(elements, "2017-18", 20)
+    filtered_elements = filtered_elements.collect()
+    assert (
+        filtered_elements.filter(pl.col("season") == "2016-17")
+        .get_column("round")
+        .max()
+        == 38
+    )
+    assert (
+        filtered_elements.filter(pl.col("season") == "2017-18")
+        .get_column("round")
+        .max()
+        == 19
+    )
+
+
+def test_load_results():
+    season = "2023-24"
+    results = load_results(season).collect()
+
+    # Erling Haaland (355) scored 15 points in gameweek 37
+    r1 = results.filter((pl.col("element") == 355) & (pl.col("round") == 37))
+    assert r1.select(["total_points", "minutes"]).to_dicts()[0] == {
+        "total_points": 15,
+        "minutes": 171,
+    }
+
+    # Josko Gvardiol (616) scored 27 points in gameweek 37
+    r2 = results.filter((pl.col("element") == 616) & (pl.col("round") == 37))
+    assert r2.select(["total_points", "minutes"]).to_dicts()[0] == {
+        "total_points": 27,
+        "minutes": 180,
+    }
+
+    assert results.null_count().sum_horizontal().item() == 0
+
+
+def test_calculate_points():
+    roles = {
+        "captain": 11,
+        "vice_captain": 10,
+        "starting_xi": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+        "reserve_gkp": 12,
+        "reserve_out_1": 13,
+        "reserve_out_2": 14,
+        "reserve_out_3": 15,
+    }
+    total_points = {
+        1: 1,
+        2: 2,
+        3: 3,
+        4: 4,
+        5: 5,
+        6: 6,
+        7: 7,
+        8: 8,
+        9: 9,
+        10: 10,
+        11: 11,
+        12: 12,
+        13: 13,
+        14: 14,
+        15: 15,
+    }
+    assert calculate_points(roles, total_points) == 77
+
+
+def test_calculate_selling_price():
+    assert calculate_selling_price(100, 106) == 103
+    assert calculate_selling_price(100, 105) == 102
+    assert calculate_selling_price(50, 54) == 52
+    assert calculate_selling_price(50, 53) == 51
+    assert calculate_selling_price(120, 117) == 117
+
+
+def test_calculate_transfer_cost():
+    free_transfers = 1
+    transfers_made = 3
+    next_gameweek = 15
+    wildcard_gameweeks = [14, 25]
+    assert (
+        calculate_transfer_cost(
+            free_transfers, transfers_made, next_gameweek, wildcard_gameweeks
+        )
+        == 8
+    )
+
+    free_transfers = 1
+    transfers_made = 0
+    next_gameweek = 15
+    wildcard_gameweeks = [14, 25]
+    assert (
+        calculate_transfer_cost(
+            free_transfers, transfers_made, next_gameweek, wildcard_gameweeks
+        )
+        == 0
+    )
+
+    free_transfers = 0
+    transfers_made = 10
+    next_gameweek = 1
+    wildcard_gameweeks = [14, 25]
+    assert (
+        calculate_transfer_cost(
+            free_transfers, transfers_made, next_gameweek, wildcard_gameweeks
+        )
+        == 0
+    )
+
+    free_transfers = 1
+    transfers_made = 3
+    next_gameweek = 14
+    wildcard_gameweeks = [14, 25]
+    assert (
+        calculate_transfer_cost(
+            free_transfers, transfers_made, next_gameweek, wildcard_gameweeks
+        )
+        == 0
+    )
+
+
+def test_simulator():
+    season = "2024-25"
+    entry_id = 3291882
+
+    # Load entry data
+    with open(f"tests/data/simulation/{entry_id}_picks.json") as f:
+        entry_picks = json.load(f)
+    with open(f"tests/data/simulation/{entry_id}_history.json") as f:
+        entry_history = json.load(f)
+    wildcard_gameweeks = [
+        chip["event"] for chip in entry_history["chips"] if chip["name"] == "wildcard"
+    ]
+
+    # Simulate the entry's season
+    simulator = Simulator(season)
+    while simulator.next_gameweek is not None:
+        picks = entry_picks[str(simulator.next_gameweek)]
+        roles = get_simulator_roles(picks)
+        simulator.update(roles, wildcard_gameweeks, log=True)
+        assert simulator.season_points == picks["entry_history"]["total_points"], (
+            f"Total points mismatch in round {simulator.next_gameweek}. "
+            f"Expected {picks['entry_history']['total_points']}, "
+            f"got {simulator.season_points}."
+        )
+
+
+def get_simulator_roles(picks: dict):
+    """Convert the squad picks to simulator roles."""
+    roles = {
+        "captain": None,
+        "vice_captain": None,
+        "starting_xi": [],
+        "reserve_gkp": None,
+        "reserve_out_1": None,
+        "reserve_out_2": None,
+        "reserve_out_3": None,
+    }
+
+    for item in picks["picks"]:
+        # Set the captain and vice-captain
+        if item["is_captain"]:
+            roles["captain"] = item["element"]
+        elif item["is_vice_captain"]:
+            roles["vice_captain"] = item["element"]
+
+        # Set the starting XI and reserves
+        if item["position"] >= 1 and item["position"] <= 11:
+            roles["starting_xi"].append(item["element"])
+        elif item["position"] == 12:
+            roles["reserve_gkp"] = item["element"]
+        elif item["position"] == 13:
+            roles["reserve_out_1"] = item["element"]
+        elif item["position"] == 14:
+            roles["reserve_out_2"] = item["element"]
+        elif item["position"] == 15:
+            roles["reserve_out_3"] = item["element"]
+
+    # Undo automatic substitutions
+    for item in picks["automatic_subs"]:
+        element_out = item["element_out"]
+        element_in = item["element_in"]
+        assert element_in in roles["starting_xi"]
+        assert element_out in [
+            roles["reserve_gkp"],
+            roles["reserve_out_1"],
+            roles["reserve_out_2"],
+            roles["reserve_out_3"],
         ]
 
-        for test_case in test_cases:
-            substituted_roles = make_automatic_substitutions(roles, test_case['minutes'], positions)
-            expected = test_case['expected']
-            self.assertEqual(substituted_roles['captain'], expected['captain'])
-            self.assertEqual(substituted_roles['vice_captain'], expected['vice_captain'])
-            self.assertEqual(substituted_roles['reserve_gkp'], expected['reserve_gkp'])
-            self.assertListEqual(substituted_roles['reserve_out'], expected['reserve_out'])
-            self.assertListEqual(substituted_roles['starting_xi'], expected['starting_xi'])
+        for key in ["reserve_gkp", "reserve_out_1", "reserve_out_2", "reserve_out_3"]:
+            if roles[key] == element_out:
+                roles[key] = element_in
+                idx = roles["starting_xi"].index(element_in)
+                roles["starting_xi"].remove(element_in)
+                roles["starting_xi"].insert(idx, element_out)
+                break
 
-
-class TestSellingAndPurchasePrices(unittest.TestCase):
-
-    def test_calculate_selling_price(self):
-        
-        test_cases = [
-            {'purchase_price': 55, 'current_cost': 55, 'expected': 55},
-            {'purchase_price': 50, 'current_cost': 49, 'expected': 49},
-            {'purchase_price': 55, 'current_cost': 59, 'expected': 57},
-            {'purchase_price': 50, 'current_cost': 53, 'expected': 51},
-        ]
-
-        for test_case in test_cases:
-            self.assertEqual(
-                calculate_selling_price(
-                    test_case['purchase_price'],
-                    test_case['current_cost'],
-                ),
-                test_case['expected']
-            )
-
-
-    def test_get_selling_prices(self):
-
-        test_cases = [
-            {
-                'players': [1, 2, 3, 4], 
-                'purchase_prices': pd.Series({
-                    1: 55, 2: 50, 3: 55, 4: 50
-                }),
-                'now_costs': pd.Series({
-                    1: 55, 2: 49, 3: 59, 4: 53
-                }),
-                'expected': pd.Series({
-                    1: 55, 2: 49, 3: 57, 4: 51
-                })
-            }
-        ]
-
-        for test_case in test_cases:
-            self.assertListEqual(
-                list(
-                    get_selling_prices(
-                        test_case['players'],
-                        test_case['purchase_prices'],
-                        test_case['now_costs']
-                    ).values
-                ),
-                list(test_case['expected'].values)
-            )
-
-
-    def test_update_purchase_prices(self):
-        
-        test_cases = [
-            {
-                'purchase_prices': pd.Series({1: 55, 2: 50, 3: 55, 4: 50}),
-                'now_costs': pd.Series({1: 55, 2: 49, 3: 59, 4: 53, 5: 52, 6: 63}),
-                'old_squad': {1, 2, 3, 4},
-                'new_squad': {1, 2, 3, 5},
-                'expected': pd.Series({1: 55, 2: 50, 3: 55, 5: 52}),
-            },
-            {
-                'purchase_prices': pd.Series({1: 55, 2: 50, 3: 55, 4: 50}),
-                'now_costs': pd.Series({1: 55, 2: 49, 3: 59, 4: 53, 5: 52, 6: 63}),
-                'old_squad': {1, 2, 3, 4},
-                'new_squad': {1, 2, 5, 6},
-                'expected': pd.Series({1: 55, 2: 50, 5: 52, 6: 63}),
-            }
-        ]
-
-        for test_case in test_cases:
-
-            result = update_purchase_prices(
-                test_case['purchase_prices'], 
-                test_case['now_costs'], 
-                test_case['old_squad'],
-                test_case['new_squad']
-            )
-            self.assertTrue((result == test_case['expected']).all())
-
-
-    def test_update_selling_prices(self):
-
-        test_cases = [
-            {
-                'selling_prices': pd.Series({1: 55, 2: 50, 3: 55, 4: 50}),
-                'now_costs': pd.Series({1: 55, 2: 49, 3: 59, 4: 53, 5: 52, 6: 63}),
-                'old_squad': {1, 2, 3, 4},
-                'new_squad': {1, 2, 3, 5},
-                'expected': pd.Series({1: 55, 2: 50, 3: 55, 5: 52}),
-            },
-            {
-                'selling_prices': pd.Series({1: 55, 2: 50, 3: 55, 4: 50}),
-                'now_costs': pd.Series({1: 55, 2: 49, 3: 59, 4: 53, 5: 52, 6: 63}),
-                'old_squad': {1, 2, 3, 4},
-                'new_squad': {1, 2, 5, 6},
-                'expected': pd.Series({1: 55, 2: 50, 5: 52, 6: 63}),
-            }
-        ]
-
-        for test_case in test_cases:
-
-            result = update_selling_prices(
-                test_case['selling_prices'], 
-                test_case['now_costs'], 
-                test_case['old_squad'],
-                test_case['new_squad']
-            )
-            self.assertTrue((result == test_case['expected']).all())
-
-
-class TestLoaders(unittest.TestCase):
-
-    def test_load_simulation_true_results(self):
-        true_results = load_simulation_true_results('2023-24', use_cache=False)
-        self.assertEqual(true_results['total_points'].loc[353, 38], 15)
-        self.assertEqual(true_results['total_points'].loc[353, 37], 11)
-        self.assertEqual(true_results['minutes'].loc[353, 37], 171)
-
-
-    def test_load_simulation_purchase_prices(self):
-        purchase_prices = load_simulation_purchase_prices('2023-24', {415, 6}, 1)
-        self.assertEqual(purchase_prices.loc[415], 75)
-        self.assertEqual(purchase_prices.loc[6], 75)
-        
-        purchase_prices = load_simulation_purchase_prices('2023-24', {415, 6}, 35)
-        self.assertEqual(purchase_prices.loc[415], 82)
-        self.assertEqual(purchase_prices.loc[6], 74)
-
-    
-    def test_load_simulation_players_and_teams(self):
-
-        local_players, local_teams = load_simulation_players_and_teams('2017-18', 1)
-        self.assertSequenceEqual(local_players['season'].max(), '2016-17')
-        self.assertSequenceEqual(local_teams['fpl_season'].max(), '2016-17')
-        self.assertEqual(local_players[local_players['season'] == '2016-17']['round'].max(), 38)
-        self.assertEqual(len(local_teams[local_teams['fpl_season'] == '2017-18']), 0)
-        self.assertEqual(len(local_teams[local_teams['fpl_season'] == '2017-18']), 0)
-        self.assertEqual(len(local_teams[local_teams['fpl_season'] == '2016-17']), 38 * 20)
-
-        local_players, local_teams = load_simulation_players_and_teams('2017-18', 10)
-        self.assertSequenceEqual(local_players['season'].max(), '2017-18')
-        self.assertSequenceEqual(local_teams['fpl_season'].max(), '2017-18')
-        self.assertEqual(local_players[local_players['season'] == '2016-17']['round'].max(), 38)
-        self.assertEqual(local_players[local_players['season'] == '2017-18']['round'].max(), 9)
-        self.assertEqual(len(local_teams[local_teams['fpl_season'] == '2017-18']), 9 * 20)
-        self.assertEqual(len(local_teams[local_teams['fpl_season'] == '2016-17']), 38 * 20)
+    return roles

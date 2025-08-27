@@ -1,0 +1,38 @@
+[project]
+name = "fpl-ai-dev"
+version = "0.1.0"
+description = "AI for Fantasy Premier League"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "lightgbm>=4.6.0",
+    "numpy>=2.2.5",
+    "ortools>=9.12.4544",
+    "polars>=1.29.0",
+    "requests>=2.32.3",
+    "scikit-learn>=1.6.1",
+]
+
+[dependency-groups]
+dev = [
+    "ipykernel>=6.29.5",
+    "matplotlib>=3.10.3",
+    "optuna>=4.3.0",
+    "pytest>=8.4.0",
+    "ruff>=0.11.8",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle
+    "F",    # Pyflakes
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "SIM",  # flake8-simplify
+    "I",    # isort
+]
+
+[tool.pytest.ini_options]
+pythonpath = [
+  "."
+]

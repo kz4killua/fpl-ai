@@ -1,3 +1,3 @@
 from pathlib import Path
 
-LOCAL_DATA_PATH = Path("data")
+DATA_DIR = Path("fpl-data/data")
