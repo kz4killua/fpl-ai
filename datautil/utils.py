@@ -57,9 +57,7 @@ def get_mapper(df: pl.DataFrame, from_col: str | Iterable[str], to_col: str) -> 
     return mapper
 
 
-def calculate_implied_probabilities(
-    home: pl.Expr, away: pl.Expr, draw: pl.Expr
-):
+def calculate_implied_probabilities(home: pl.Expr, away: pl.Expr, draw: pl.Expr):
     """Convert bookmaker odds to implied probabilities, adjusted for overround."""
     implied_home = 1 / home
     implied_away = 1 / away

@@ -34,8 +34,8 @@ def load_clubelo(cutoff_time: datetime) -> pl.LazyFrame:
             ratings.filter(pl.col("To") >= cutoff_time.date())
             .group_by("Club")
             .agg(pl.min("To"))
-            .join(ratings, on=["Club", "To"])
+            .join(ratings, on=["Club", "To"]),
         ],
-        how="diagonal"
+        how="diagonal",
     )
     return ratings

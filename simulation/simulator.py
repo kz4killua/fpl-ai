@@ -2,8 +2,8 @@ from collections import defaultdict
 
 import polars as pl
 
-from datautil.load.fpl import load_fixtures, load_static_elements, load_static_teams
-from datautil.load.merged import load_merged
+from datautil.fpl import load_fixtures, load_static_elements, load_static_teams
+from datautil.merged import load_merged
 from datautil.utils import get_mapper, get_seasons
 from game.rules import DEF, ELEMENT_TYPES, FWD, GKP, MID, MNG
 

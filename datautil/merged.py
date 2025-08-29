@@ -2,9 +2,9 @@ from datetime import datetime
 
 import polars as pl
 
-from datautil.load.clubelo import load_clubelo
-from datautil.load.fpl import load_bootstrap_static, load_fpl
-from datautil.load.understat import load_understat
+from datautil.clubelo import load_clubelo
+from datautil.fpl import load_bootstrap_static, load_fpl
+from datautil.understat import load_understat
 
 
 def load_merged(

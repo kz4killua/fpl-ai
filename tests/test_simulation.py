@@ -2,7 +2,7 @@ import json
 
 import polars as pl
 
-from datautil.load.fpl import load_elements
+from datautil.fpl import load_elements
 from datautil.upcoming import remove_upcoming_data
 from game.rules import DEF, FWD, GKP, MID
 from simulation.simulate import Simulator

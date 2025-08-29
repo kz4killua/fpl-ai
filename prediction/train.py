@@ -1,6 +1,6 @@
 import polars as pl
 
-from datautil.load.merged import load_merged
+from datautil.merged import load_merged
 from datautil.utils import get_seasons
 from features.engineer_features import (
     engineer_match_features,

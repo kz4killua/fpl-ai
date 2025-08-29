@@ -4,7 +4,7 @@ from copy import deepcopy
 
 import polars as pl
 
-from datautil.load.fpl import load_elements
+from datautil.fpl import load_elements
 from datautil.utils import get_mapper
 from game.rules import (
     DEF,
