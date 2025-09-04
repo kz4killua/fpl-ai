@@ -9,6 +9,7 @@ from datautil.upcoming import (
     get_upcoming_elements,
     get_upcoming_static_elements,
     get_upcoming_static_teams,
+    mask_upcoming_data,
     remove_upcoming_data,
 )
 from game.rules import DEF, FWD, GKP, MID, MNG
@@ -46,6 +47,14 @@ def load_fpl(
         if current_season not in seasons:
             raise ValueError(f"Season '{current_season}' is not loaded.")
 
+        # Mask fixture results for upcoming gameweeks
+        fixtures = mask_upcoming_data(
+            fixtures,
+            current_season,
+            min(upcoming_gameweeks),
+            ["team_h_score", "team_a_score"],
+        )
+
         # Create records for upcoming gameweeks
         upcoming_elements = get_upcoming_elements(
             current_season, upcoming_gameweeks, fixtures, static_elements
@@ -75,15 +84,6 @@ def load_fpl(
         )
         static_teams = pl.concat(
             [static_teams, upcoming_static_teams], how="diagonal_relaxed"
-        )
-
-        # Filter fixtures to only include relevant gameweeks
-        fixtures = fixtures.filter(
-            (pl.col("season") < current_season)
-            | (
-                (pl.col("season") == current_season)
-                & (pl.col("event") <= max(upcoming_gameweeks))
-            )
         )
 
     # Add "element_type" and "code" to elements

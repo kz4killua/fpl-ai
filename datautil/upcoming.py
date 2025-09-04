@@ -198,17 +198,21 @@ def get_upcoming_gameweeks(
     )
 
 
-def remove_upcoming_data(df: pl.LazyFrame, season: str, gameweek: int) -> pl.LazyFrame:
+def remove_upcoming_data(
+    df: pl.LazyFrame, season: str, next_gameweek: int
+) -> pl.LazyFrame:
     """Remove all records on or after the given gameweek."""
-    upcoming = get_upcoming_condition(season, gameweek)
+    upcoming = get_upcoming_condition(season, next_gameweek)
     return df.filter(~upcoming)
 
 
 def mask_upcoming_data(
-    df: pl.LazyFrame, season: str, gameweek: int, columns: list[str]
+    df: pl.LazyFrame, season: str, next_gameweek: int, columns: list[str]
 ) -> pl.LazyFrame:
     """Set upcoming values to `None`."""
-    upcoming = get_upcoming_condition(season, gameweek)
+    upcoming = get_upcoming_condition(
+        season, next_gameweek, gameweek_column="event"
+    )
 
     expressions = []
     for column in columns:
@@ -219,8 +223,14 @@ def mask_upcoming_data(
     return df.with_columns(expressions)
 
 
-def get_upcoming_condition(season: str, gameweek: int):
+def get_upcoming_condition(
+    season: str,
+    next_gameweek: int,
+    season_column: str = "season",
+    gameweek_column: str = "round",
+):
     """Return a Polars expression matching upcoming data."""
-    return (pl.col("season") > season) | (
-        (pl.col("season") == season) & (pl.col("round") >= gameweek)
+    return (pl.col(season_column) > season) | (
+        (pl.col(season_column) == season)
+        & (pl.col(gameweek_column) >= next_gameweek)
     )
