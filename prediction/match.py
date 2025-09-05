@@ -9,6 +9,9 @@ from prediction.utils import FeatureSelector
 
 def make_match_predictor():
     columns = [
+        "home_market_probability",
+        "away_market_probability",
+        "draw_market_probability",
         "team_h_clb_elo",
         "team_a_clb_elo",
         "team_h_clb_elo_win_probability",
