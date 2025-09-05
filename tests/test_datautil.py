@@ -14,7 +14,7 @@ from datautil.upcoming import (
     get_upcoming_fixtures,
     get_upcoming_gameweeks,
 )
-from datautil.utils import calculate_implied_probabilities, get_seasons
+from datautil.utils import calculate_implied_probabilities, get_seasons, get_teams_view
 
 
 def test_load_clubelo():
@@ -111,8 +111,6 @@ def test_load_fpl():
             "round": [1, 2, 3, 4],
             "id": [13, 13, 13, 13],
             "code": [43, 43, 43, 43],
-            "opponent_id": [6, 10, 19, 4],
-            "opponent_code": [8, 40, 21, 94],
             "was_home": [False, True, False, True],
             "scored": [2, 4, 3, 2],
             "conceded": [0, 1, 1, 1],
@@ -241,10 +239,13 @@ def test_load_merged():
     seasons = ["2024-25", "2025-26"]
     current_season = "2025-26"
     upcoming_gameweeks = [1, 2, 3]
-    players, teams, managers = load_merged(seasons, current_season, upcoming_gameweeks)
+    players, matches, managers = load_merged(
+        seasons, current_season, upcoming_gameweeks
+    )
     players = players.collect()
-    teams = teams.collect()
+    matches = matches.collect()
     managers = managers.collect()
+    teams = get_teams_view(matches)
 
     # Test non-upcoming player mappings
     expected = pl.DataFrame(
@@ -312,7 +313,6 @@ def test_load_merged():
             "round": [38, 1, 2, 3],
             "code": [14, 14, 14, 14],
             "id": [12, 12, 12, 12],
-            "opponent_id": [7, 4, 15, 1],
             "was_home": [1, 1, 0, 1],
             "uds_xG": [1.92, None, None, None],
             "uds_xGA": [1.41, None, None, None],

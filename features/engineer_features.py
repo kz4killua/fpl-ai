@@ -1,5 +1,6 @@
 import polars as pl
 
+from datautil.utils import get_matches_view, get_teams_view
 from features.balanced_mean import compute_balanced_mean
 from features.depth_rank import compute_depth_rank
 from features.depth_unavailability import compute_depth_unavailability
@@ -139,11 +140,6 @@ def engineer_player_features(df: pl.LazyFrame) -> pl.LazyFrame:
         ("creativity_per_90", 5),
         ("creativity_per_90", 10),
         ("creativity_per_90", 20),
-        # For predicting goals scored and assists
-        ("opponent_team_strength_defence_condition", 3),
-        ("opponent_team_strength_defence_condition", 5),
-        ("opponent_team_strength_defence_condition", 10),
-        ("opponent_team_strength_defence_condition", 20),
     ]
 
     rolling_stds = [
@@ -569,85 +565,29 @@ def engineer_player_features(df: pl.LazyFrame) -> pl.LazyFrame:
     return df
 
 
-def engineer_team_features(teams: pl.LazyFrame) -> pl.LazyFrame:
-    rolling_means = [
-        ("scored", 5),
-        ("scored", 10),
-        ("scored", 20),
-        ("scored", 30),
-        ("scored", 40),
-        ("conceded", 5),
-        ("conceded", 10),
-        ("conceded", 20),
-        ("conceded", 30),
-        ("conceded", 40),
-        ("uds_xG", 5),
-        ("uds_xG", 10),
-        ("uds_xG", 20),
-        ("uds_xG", 30),
-        ("uds_xG", 40),
-        ("uds_xGA", 5),
-        ("uds_xGA", 10),
-        ("uds_xGA", 20),
-        ("uds_xGA", 30),
-        ("uds_xGA", 40),
-    ]
+def engineer_match_features(matches: pl.LazyFrame) -> pl.LazyFrame:
+    
+    # Compute team level features
+    teams = get_teams_view(matches)
 
-    last_season_means = [
-        "scored",
-        "conceded",
-        "uds_xG",
-        "uds_xGA",
-    ]
+    for column in ["scored", "conceded", "uds_xG", "uds_xGA"]:
+        for window in [5, 10, 20, 30, 40]:
+            teams = compute_rolling_mean(
+                teams,
+                [column],
+                [window],
+                # Compute team averages over just codes
+                over=["code"],
+            )
 
-    return teams.pipe(
-        compute_rolling_mean,
-        columns=[c for c, _ in rolling_means],
-        window_sizes=[w for _, w in rolling_means],
-        # Compute team averages over just codes
-        over=["code"],
-    ).pipe(
-        compute_last_season_mean,
-        columns=last_season_means,
-    )
+    teams = compute_last_season_mean(teams, ["scored", "conceded", "uds_xG", "uds_xGA"])
 
+    # Add match level features
+    matches = get_matches_view(teams, extra_fixed_columns=[
+        "home_market_probability",
+        "away_market_probability",
+        "draw_market_probability",
+    ])
+    matches = compute_relative_strength(matches)
 
-def engineer_match_features(team_features: pl.LazyFrame) -> pl.LazyFrame:
-    matches = transform_teams_to_matches(team_features)
-    return matches.pipe(compute_relative_strength)
-
-
-def transform_teams_to_matches(teams: pl.LazyFrame) -> pl.LazyFrame:
-    """Transform per-team data into per-match data."""
-    columns = [
-        column
-        for column in teams.columns
-        if ("rolling_mean" in column) or ("strength" in column) or ("clb_elo" in column)
-    ]
-
-    home_teams = teams.filter(pl.col("was_home") == 1).select(
-        [
-            pl.col("season"),
-            pl.col("fixture_id"),
-            pl.col("round"),
-            pl.col("code").alias("team_h_code"),
-            pl.col("scored").alias("team_h_scored"),
-            *[pl.col(column).alias(f"team_h_{column}") for column in columns],
-        ]
-    )
-    away_teams = teams.filter(pl.col("was_home") == 0).select(
-        [
-            pl.col("season"),
-            pl.col("fixture_id"),
-            pl.col("round"),
-            pl.col("code").alias("team_a_code"),
-            pl.col("scored").alias("team_a_scored"),
-            *[pl.col(column).alias(f"team_a_{column}") for column in columns],
-        ]
-    )
-    matches = home_teams.join(
-        away_teams,
-        on=["season", "fixture_id"],
-        how="inner",
-    )
     return matches

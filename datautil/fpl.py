@@ -12,6 +12,7 @@ from datautil.upcoming import (
     mask_upcoming_data,
     remove_upcoming_data,
 )
+from datautil.utils import get_teams_view
 from game.rules import DEF, FWD, GKP, MID, MNG
 
 
@@ -53,6 +54,13 @@ def load_fpl(
             current_season,
             min(upcoming_gameweeks),
             ["team_h_score", "team_a_score"],
+            gameweek_column="event",
+        )
+        fixtures = remove_upcoming_data(
+            fixtures,
+            current_season,
+            max(upcoming_gameweeks) + 1,
+            gameweek_column="event",
         )
 
         # Create records for upcoming gameweeks
@@ -187,86 +195,22 @@ def load_fpl(
         how="left",
     )
 
-    # Add team and opponent strength information to players
-    players = players.join(
-        static_teams.select(
-            [
-                pl.col("season"),
-                pl.col("round"),
-                pl.col("id").alias("team"),
-                pl.col("strength").alias("team_strength"),
-                pl.col("strength_attack_home").alias("team_strength_attack_home"),
-                pl.col("strength_attack_away").alias("team_strength_attack_away"),
-                pl.col("strength_defence_home").alias("team_strength_defence_home"),
-                pl.col("strength_defence_away").alias("team_strength_defence_away"),
-                pl.col("strength_overall_home").alias("team_strength_overall_home"),
-                pl.col("strength_overall_away").alias("team_strength_overall_away"),
-            ]
-        ),
-        how="left",
-        on=["season", "round", "team"],
-    )
-    players = players.join(
-        static_teams.select(
-            [
-                pl.col("season"),
-                pl.col("round"),
-                pl.col("id").alias("opponent_team"),
-                pl.col("strength").alias("opponent_team_strength"),
-                pl.col("strength_attack_home").alias(
-                    "opponent_team_strength_attack_home"
-                ),
-                pl.col("strength_attack_away").alias(
-                    "opponent_team_strength_attack_away"
-                ),
-                pl.col("strength_defence_home").alias(
-                    "opponent_team_strength_defence_home"
-                ),
-                pl.col("strength_defence_away").alias(
-                    "opponent_team_strength_defence_away"
-                ),
-                pl.col("strength_overall_home").alias(
-                    "opponent_team_strength_overall_home"
-                ),
-                pl.col("strength_overall_away").alias(
-                    "opponent_team_strength_overall_away"
-                ),
-            ]
-        ),
-        how="left",
-        on=["season", "round", "opponent_team"],
-    )
-    players = players.with_columns(
-        # Select team strengths based on home / away status
-        pl.when(pl.col("was_home"))
-        .then(pl.col("team_strength_attack_home"))
-        .otherwise(pl.col("team_strength_attack_away"))
-        .alias("team_strength_attack_condition"),
-        pl.when(pl.col("was_home"))
-        .then(pl.col("team_strength_defence_home"))
-        .otherwise(pl.col("team_strength_defence_away"))
-        .alias("team_strength_defence_condition"),
-        pl.when(pl.col("was_home"))
-        .then(pl.col("team_strength_overall_home"))
-        .otherwise(pl.col("team_strength_overall_away"))
-        .alias("team_strength_overall_condition"),
-        # Select opponent team strengths based on home / away status
-        pl.when(pl.col("was_home"))
-        .then(pl.col("opponent_team_strength_attack_away"))
-        .otherwise(pl.col("opponent_team_strength_attack_home"))
-        .alias("opponent_team_strength_attack_condition"),
-        pl.when(pl.col("was_home"))
-        .then(pl.col("opponent_team_strength_defence_away"))
-        .otherwise(pl.col("opponent_team_strength_defence_home"))
-        .alias("opponent_team_strength_defence_condition"),
-        pl.when(pl.col("was_home"))
-        .then(pl.col("opponent_team_strength_overall_away"))
-        .otherwise(pl.col("opponent_team_strength_overall_home"))
-        .alias("opponent_team_strength_overall_condition"),
-    )
-
     # Load team information
-    teams = transform_fixtures_to_teams(fixtures, static_teams)
+    matches = fixtures.select(
+        pl.col("season"),
+        pl.col("id").alias("fixture_id"),
+        pl.col("event").alias("round"),
+        pl.col("kickoff_time"),
+        pl.col("team_h").alias("team_h_id"),
+        pl.col("team_a").alias("team_a_id"),
+        pl.col("team_h_score").alias("team_h_scored"),
+        pl.col("team_a_score").alias("team_a_scored"),
+    )
+    matches = matches.with_columns(
+        pl.col("team_h_scored").alias("team_a_conceded"),
+        pl.col("team_a_scored").alias("team_h_conceded"),
+    )
+    teams = get_teams_view(matches)
 
     # Add team codes
     teams = teams.join(
@@ -282,21 +226,7 @@ def load_fpl(
         on=["season", "round", "id"],
     )
 
-    # Add opponent team codes
-    teams = teams.join(
-        static_teams.select(
-            [
-                pl.col("season"),
-                pl.col("round"),
-                pl.col("id").alias("opponent_id"),
-                pl.col("code").alias("opponent_code"),
-            ]
-        ),
-        how="left",
-        on=["season", "round", "opponent_id"],
-    )
-
-    # Add team strength information to teams
+    # Add team strength information
     teams = teams.join(
         static_teams.select(
             [
@@ -314,26 +244,6 @@ def load_fpl(
         ),
         how="left",
         on=["season", "round", "id"],
-    )
-
-    # Add opponent team strength information to teams
-    teams = teams.join(
-        static_teams.select(
-            [
-                pl.col("season"),
-                pl.col("round"),
-                pl.col("id").alias("opponent_id"),
-                pl.col("strength").alias("opponent_strength"),
-                pl.col("strength_attack_home").alias("opponent_strength_attack_home"),
-                pl.col("strength_attack_away").alias("opponent_strength_attack_away"),
-                pl.col("strength_defence_home").alias("opponent_strength_defence_home"),
-                pl.col("strength_defence_away").alias("opponent_strength_defence_away"),
-                pl.col("strength_overall_home").alias("opponent_strength_overall_home"),
-                pl.col("strength_overall_away").alias("opponent_strength_overall_away"),
-            ]
-        ),
-        how="left",
-        on=["season", "round", "opponent_id"],
     )
 
     return players, teams, managers
@@ -419,79 +329,6 @@ def load_fixtures(seasons: list[str]) -> pl.LazyFrame:
     )
 
     return fixtures
-
-
-def transform_fixtures_to_teams(
-    fixtures: pl.LazyFrame, static_teams: pl.LazyFrame
-) -> pl.LazyFrame:
-    """Transform per-match (fixture) data into per-team data."""
-    # Select relevant columns from fixtures
-    matches = fixtures.select(
-        [
-            pl.col("season"),
-            pl.col("event").alias("round"),
-            pl.col("id").alias("fixture_id"),
-            pl.col("kickoff_time"),
-            pl.col("team_h"),
-            pl.col("team_a"),
-            pl.col("team_h_score"),
-            pl.col("team_a_score"),
-        ]
-    )
-    # Create records for home and away teams
-    home_teams = matches.select(
-        [
-            pl.col("season"),
-            pl.col("round"),
-            pl.col("fixture_id"),
-            pl.col("kickoff_time"),
-            pl.col("team_h").alias("id"),
-            pl.col("team_a").alias("opponent_id"),
-            pl.col("team_h_score").alias("scored"),
-            pl.col("team_a_score").alias("conceded"),
-            pl.lit(1).alias("was_home"),
-        ]
-    )
-    away_teams = matches.select(
-        [
-            pl.col("season"),
-            pl.col("round"),
-            pl.col("fixture_id"),
-            pl.col("kickoff_time"),
-            pl.col("team_a").alias("id"),
-            pl.col("team_h").alias("opponent_id"),
-            pl.col("team_a_score").alias("scored"),
-            pl.col("team_h_score").alias("conceded"),
-            pl.lit(0).alias("was_home"),
-        ]
-    )
-    teams = pl.concat([home_teams, away_teams], how="diagonal_relaxed")
-    # Add team and opponent codes
-    teams = teams.join(
-        static_teams.select(
-            [
-                pl.col("season"),
-                pl.col("round"),
-                pl.col("id"),
-                pl.col("code").alias("team_code"),
-            ]
-        ),
-        how="left",
-        on=["season", "round", "id"],
-    )
-    teams = teams.join(
-        static_teams.select(
-            [
-                pl.col("season"),
-                pl.col("round"),
-                pl.col("id").alias("opponent_id"),
-                pl.col("code").alias("opponent_code"),
-            ]
-        ),
-        how="left",
-        on=["season", "round", "opponent_id"],
-    )
-    return teams
 
 
 def load_static_elements(season: str, gameweek: int) -> pl.LazyFrame:

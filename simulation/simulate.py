@@ -1,14 +1,8 @@
 import polars as pl
 
-from datautil.upcoming import (
-    get_upcoming_gameweeks,
-)
+from datautil.upcoming import get_upcoming_gameweeks
 from datautil.utils import get_mapper
-from features.engineer_features import (
-    engineer_match_features,
-    engineer_player_features,
-    engineer_team_features,
-)
+from features.engineer_features import engineer_match_features, engineer_player_features
 from optimization.optimize import optimize_squad
 from optimization.parameters import OPTIMIZATION_WINDOW_SIZE
 from prediction.model import PredictionModel
@@ -54,22 +48,17 @@ def get_best_roles(
     last_gameweek = simulator.last_gameweek
     static_elements = simulator.static_elements
     players = simulator.players
-    teams = simulator.teams
-    matches = simulator.managers
+    matches = simulator.matches
 
     # Engineer features
     players = engineer_player_features(players)
-    teams = engineer_team_features(teams)
-    matches = engineer_match_features(teams)
+    matches = engineer_match_features(matches)
 
     # Keep only the features for upcoming gameweeks
     upcoming_gameweeks = get_upcoming_gameweeks(
         next_gameweek, OPTIMIZATION_WINDOW_SIZE, last_gameweek
     )
     players = players.filter(
-        (pl.col("season") == season) & (pl.col("round").is_in(upcoming_gameweeks))
-    )
-    teams = teams.filter(
         (pl.col("season") == season) & (pl.col("round").is_in(upcoming_gameweeks))
     )
     matches = matches.filter(

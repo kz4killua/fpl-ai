@@ -72,11 +72,11 @@ class Simulator:
         # Load historical and upcoming data
         seasons = get_seasons(self.season, 2)
         upcoming_gameweeks = list(range(self.next_gameweek, self.last_gameweek + 1))
-        self.players, self.teams, self.managers = load_merged(
+        self.players, self.matches, self.managers = load_merged(
             seasons, self.season, upcoming_gameweeks
         )
         self.players = self.players.collect()
-        self.teams = self.teams.collect()
+        self.matches = self.matches.collect()
         self.managers = self.managers.collect()
 
     def update(self, roles: dict, wildcard_gameweeks: list[int], log: bool = False):

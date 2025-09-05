@@ -1,10 +1,12 @@
-from datetime import datetime
+from datetime import UTC, datetime
 
 import polars as pl
 
+from datautil.betting import load_market_probabilities
 from datautil.clubelo import load_clubelo
 from datautil.fpl import load_bootstrap_static, load_fpl
 from datautil.understat import load_understat
+from datautil.utils import get_matches_view
 
 
 def load_merged(
@@ -27,20 +29,27 @@ def load_merged(
                 f"Could not find cutoff time for gameweek {next_gameweek}."
             )
     else:
-        cutoff_time = datetime.max
+        next_gameweek = None
+        cutoff_time = datetime.max.replace(tzinfo=UTC)
 
-    # Load data from all sources
+    # Load all data sources
     fpl_players, fpl_teams, fpl_managers = load_fpl(
         seasons, current_season, upcoming_gameweeks
     )
     uds_players, uds_teams = load_understat(seasons, cutoff_time)
     clb_teams = load_clubelo(cutoff_time)
+    market_probabilities = load_market_probabilities(
+        seasons, cutoff_time, current_season, next_gameweek
+    )
 
+    # Merge all data sources
     players = merge_players(fpl_players, uds_players, cutoff_time)
     teams = merge_teams(fpl_teams, uds_teams, clb_teams)
+    matches = get_matches_view(teams)
+    matches = merge_matches(matches, market_probabilities)
     managers = fpl_managers
 
-    return players, teams, managers
+    return players, matches, managers
 
 
 def merge_players(
@@ -136,7 +145,7 @@ def merge_teams(
         on=["season", "fixture_id", "code"],
     )
 
-    # Add clubelo ratings for teams and opponent teams
+    # Add clubelo ratings for teams
     fpl_teams = fpl_teams.sort("kickoff_time")
     clb_teams = clb_teams.sort("To")
 
@@ -153,17 +162,23 @@ def merge_teams(
         check_sortedness=False,
     ).drop("To")
 
-    fpl_teams = fpl_teams.join_asof(
-        clb_teams.select(
-            pl.col("fpl_code").alias("opponent_code"),
-            pl.col("Elo").alias("opponent_clb_elo"),
-            pl.col("To").cast(pl.Datetime(time_zone="UTC")),
-        ),
-        left_on="kickoff_time",
-        right_on="To",
-        by="opponent_code",
-        strategy="backward",
-        check_sortedness=False,
-    ).drop("To")
-
     return fpl_teams
+
+
+def merge_matches(
+    matches: pl.LazyFrame,
+    market_probabilities: pl.LazyFrame
+):
+    matches = matches.join(
+        market_probabilities.select(
+            pl.col("season"),
+            pl.col("home_team_code").alias("team_h_code"),
+            pl.col("away_team_code").alias("team_a_code"),
+            pl.col("home_market_probability"),
+            pl.col("away_market_probability"),
+            pl.col("draw_market_probability"),
+        ),
+        on=["season", "team_h_code", "team_a_code"],
+        how="left",
+    )
+    return matches

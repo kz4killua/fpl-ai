@@ -68,3 +68,65 @@ def calculate_implied_probabilities(home: pl.Expr, away: pl.Expr, draw: pl.Expr)
     normalized_away = implied_away / overround
     normalized_draw = implied_draw / overround
     return normalized_home, normalized_away, normalized_draw
+
+
+def get_teams_view(matches: pl.LazyFrame) -> pl.LazyFrame:
+    """Convert per-match data to per-team data."""
+    
+    fixed_columns, home_columns, away_columns = [], [], []
+    for column in matches.columns:
+        if column.startswith("team_h_"):
+            home_columns.append(column)
+        elif column.startswith("team_a_"):
+            away_columns.append(column)
+        else:
+            fixed_columns.append(column)
+
+    home_teams = (
+        matches.select(fixed_columns + home_columns)
+        .rename({column: column.removeprefix("team_h_") for column in home_columns})
+        .with_columns(pl.lit(1).alias("was_home"))
+    )
+    away_teams = (
+        matches.select(fixed_columns + away_columns)
+        .rename({column: column.removeprefix("team_a_") for column in away_columns})
+        .with_columns(pl.lit(0).alias("was_home"))
+    )
+
+    return pl.concat([home_teams, away_teams], how="vertical")
+
+
+def get_matches_view(
+    teams: pl.LazyFrame, extra_fixed_columns: list[str] | None = None
+) -> pl.LazyFrame:
+    """Convert per-team data to per-match data."""
+
+    fixed_columns = [
+        "season",
+        "round",
+        "fixture_id",
+        "kickoff_time",
+        "was_home",
+    ]
+    if extra_fixed_columns:
+        fixed_columns.extend(extra_fixed_columns)
+
+    home_teams = teams.filter(pl.col("was_home") == 1).rename(
+        {
+            column: f"team_h_{column}"
+            for column in teams.columns
+            if column not in fixed_columns
+        }
+    )
+    away_teams = teams.filter(pl.col("was_home") == 0).rename(
+        {
+            column: f"team_a_{column}"
+            for column in teams.columns
+            if column not in fixed_columns
+        }
+    )
+
+    join_keys = ["season", "round", "fixture_id"]
+    drop = list(set(fixed_columns) - set(join_keys))
+    matches = home_teams.join(away_teams.drop(drop), on=join_keys, how="inner")
+    return matches
