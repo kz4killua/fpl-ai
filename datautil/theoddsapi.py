@@ -52,7 +52,12 @@ def load_theoddsapi(season: str, gameweek: int) -> pl.LazyFrame:
 
         rows.append(odds)
 
-    df = pl.DataFrame(rows).with_columns(
+    # Declare schema (in case of missing data e.g. Gameweek 1 for 2022-23)
+    schema = {
+        "home": pl.String,
+        "away": pl.String,
+    }
+    df = pl.DataFrame(rows, schema=schema).with_columns(
         pl.lit(season).alias("season"),
         pl.lit(gameweek).alias("round"),
     )
