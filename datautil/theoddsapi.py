@@ -57,6 +57,11 @@ def load_theoddsapi(season: str, gameweek: int) -> pl.LazyFrame:
         "home": pl.String,
         "away": pl.String,
     }
+    for bookmaker_key in bookmaker_keys:
+        schema[f"{bookmaker_key}_home"] = pl.Float64
+        schema[f"{bookmaker_key}_away"] = pl.Float64
+        schema[f"{bookmaker_key}_draw"] = pl.Float64
+
     df = pl.DataFrame(rows, schema=schema).with_columns(
         pl.lit(season).alias("season"),
         pl.lit(gameweek).alias("round"),
