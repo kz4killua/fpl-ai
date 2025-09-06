@@ -13,11 +13,22 @@ def load_theoddsapi(season: str, gameweek: int) -> pl.LazyFrame:
     with lzma.open(path, "rt", encoding="utf-8") as f:
         data = json.load(f)
 
+    # Remove duplicates by picking the occurence of each match with the most bookmakers
+    unique_matches = dict()
+    for match in data:
+        match_key = (match["home_team"], match["away_team"])
+        if match_key not in unique_matches:
+            unique_matches[match_key] = match
+        else:
+            unique_matches[match_key] = max(
+                match, unique_matches[match_key], key=lambda x: len(x["bookmakers"])
+            )
+
     # Keep a list of bookmakers for calculating implied probabilities later
     bookmaker_keys = set()
 
     rows = []
-    for match in data:
+    for match in unique_matches.values():
         home_team = match["home_team"]
         away_team = match["away_team"]
         odds = {
@@ -48,12 +59,10 @@ def load_theoddsapi(season: str, gameweek: int) -> pl.LazyFrame:
 
     # Convert odds to implied probabilities
     for bookmaker_key in bookmaker_keys:
-        implied_home, implied_away, implied_draw = (
-            calculate_implied_probabilities(
-                pl.col(f"{bookmaker_key}_home"),
-                pl.col(f"{bookmaker_key}_away"),
-                pl.col(f"{bookmaker_key}_draw"),
-            )
+        implied_home, implied_away, implied_draw = calculate_implied_probabilities(
+            pl.col(f"{bookmaker_key}_home"),
+            pl.col(f"{bookmaker_key}_away"),
+            pl.col(f"{bookmaker_key}_draw"),
         )
         df = df.with_columns(
             implied_home.alias(f"{bookmaker_key}_home_implied"),
