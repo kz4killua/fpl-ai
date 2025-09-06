@@ -165,10 +165,7 @@ def merge_teams(
     return fpl_teams
 
 
-def merge_matches(
-    matches: pl.LazyFrame,
-    market_probabilities: pl.LazyFrame
-):
+def merge_matches(matches: pl.LazyFrame, market_probabilities: pl.LazyFrame):
     matches = matches.join(
         market_probabilities.select(
             pl.col("season"),

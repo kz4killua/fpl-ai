@@ -566,7 +566,6 @@ def engineer_player_features(df: pl.LazyFrame) -> pl.LazyFrame:
 
 
 def engineer_match_features(matches: pl.LazyFrame) -> pl.LazyFrame:
-    
     # Compute team level features
     teams = get_teams_view(matches)
 
@@ -583,11 +582,14 @@ def engineer_match_features(matches: pl.LazyFrame) -> pl.LazyFrame:
     teams = compute_last_season_mean(teams, ["scored", "conceded", "uds_xG", "uds_xGA"])
 
     # Add match level features
-    matches = get_matches_view(teams, extra_fixed_columns=[
-        "home_market_probability",
-        "away_market_probability",
-        "draw_market_probability",
-    ])
+    matches = get_matches_view(
+        teams,
+        extra_fixed_columns=[
+            "home_market_probability",
+            "away_market_probability",
+            "draw_market_probability",
+        ],
+    )
     matches = compute_relative_strength(matches)
 
     return matches

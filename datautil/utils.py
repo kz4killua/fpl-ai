@@ -72,7 +72,7 @@ def calculate_implied_probabilities(home: pl.Expr, away: pl.Expr, draw: pl.Expr)
 
 def get_teams_view(matches: pl.LazyFrame) -> pl.LazyFrame:
     """Convert per-match data to per-team data."""
-    
+
     fixed_columns, home_columns, away_columns = [], [], []
     for column in matches.columns:
         if column.startswith("team_h_"):
