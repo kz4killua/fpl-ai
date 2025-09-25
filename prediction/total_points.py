@@ -7,7 +7,7 @@ from sklearn.base import BaseEstimator, RegressorMixin
 from game.rules import DEF, FWD, GKP, MID
 
 TOTAL_POINTS_RULES = {
-    "2024-25": {
+    2024: {
         "1_to_59_minutes": {
             GKP: 1,
             DEF: 1,

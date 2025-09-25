@@ -3,20 +3,20 @@ from datetime import UTC, datetime, time
 import polars as pl
 
 from datautil.constants import DATA_DIR
-from datautil.utils import calculate_implied_probabilities, convert_season_to_year
+from datautil.utils import calculate_implied_probabilities
 
 
-def load_footballdata(seasons: list[str], cutoff_time: datetime) -> pl.LazyFrame:
+def load_footballdata(seasons: list[int], cutoff_time: datetime) -> pl.LazyFrame:
     """Load historical odds and results from football-data.co.uk."""
 
     frames = []
     for season in seasons:
-        path = DATA_DIR / f"footballdata/data/{convert_season_to_year(season)}.csv"
+        path = DATA_DIR / f"footballdata/data/{season}.csv"
         frame = pl.scan_csv(path, try_parse_dates=True)
         frame = frame.with_columns(pl.lit(season).alias("season"))
 
         # For safe filtering, assume a midnight kickoff for rows without a Time value.
-        if season < "2019-20":
+        if season < 2019:
             frame = frame.with_columns(pl.lit(time(0, 0, 0)).alias("Time"))
 
         frames.append(frame)

@@ -17,9 +17,9 @@ from game.rules import DEF, FWD, GKP, MID, MNG
 
 
 def load_fpl(
-    seasons: list[str],
-    current_season: str | None = None,
-    upcoming_gameweeks: list[str] | None = None,
+    seasons: list[int],
+    current_season: int | None = None,
+    upcoming_gameweeks: list[int] | None = None,
 ) -> tuple[pl.LazyFrame, pl.LazyFrame, pl.LazyFrame]:
     """Load local FPL data for the given seasons."""
 
@@ -131,30 +131,19 @@ def load_fpl(
     elements = elements.drop(["team_h", "team_a"])
 
     # Add "team_code" and "opponent_team_code" to elements
-    elements = elements.join(
-        static_teams.select(
-            [
-                pl.col("season"),
-                pl.col("round"),
-                pl.col("id").alias("team"),
-                pl.col("code").alias("team_code"),
-            ]
-        ),
-        how="left",
-        on=["season", "round", "team"],
-    )
-    elements = elements.join(
-        static_teams.select(
-            [
-                pl.col("season"),
-                pl.col("round"),
-                pl.col("id").alias("opponent_team"),
-                pl.col("code").alias("opponent_team_code"),
-            ]
-        ),
-        how="left",
-        on=["season", "round", "opponent_team"],
-    )
+    for column in ["team", "opponent_team"]:
+        elements = elements.join(
+            static_teams.select(
+                [
+                    pl.col("season"),
+                    pl.col("round"),
+                    pl.col("id").alias(column),
+                    pl.col("code").alias(f"{column}_code"),
+                ]
+            ),
+            how="left",
+            on=["season", "round", column],
+        )
 
     # Split elements into players and managers
     players = elements.filter(pl.col("element_type").is_in([GKP, DEF, MID, FWD]))
@@ -171,7 +160,7 @@ def load_fpl(
             "mng_clean_sheets",
             "mng_goals_scored",
         ],
-        # These columns are only available from the 2024-25 season
+        # These columns are only available from the 2024-2025 season
         strict=False,
     )
 
@@ -249,7 +238,7 @@ def load_fpl(
     return players, teams, managers
 
 
-def load_elements(seasons: list[str]) -> pl.LazyFrame:
+def load_elements(seasons: list[int]) -> pl.LazyFrame:
     """Load per-gameweek data for all players and managers."""
 
     frames = []
@@ -264,10 +253,10 @@ def load_elements(seasons: list[str]) -> pl.LazyFrame:
                 ).with_columns(pl.lit(season).alias("season"))
             )
 
-    elements = pl.concat(frames, how="diagonal_relaxed")
+    elements: pl.LazyFrame = pl.concat(frames, how="diagonal_relaxed")
 
     # Add the "starts" column when unavailable
-    if all(season < "2022-23" for season in seasons):
+    if all(season < 2022 for season in seasons):
         elements = elements.with_columns(pl.lit(None).cast(pl.Int64).alias("starts"))
 
     # Remove discontinued features
@@ -302,7 +291,7 @@ def load_elements(seasons: list[str]) -> pl.LazyFrame:
     return elements
 
 
-def load_fixtures(seasons: list[str]) -> pl.LazyFrame:
+def load_fixtures(seasons: list[int]) -> pl.LazyFrame:
     """Load fixture information."""
     frames = [
         pl.scan_csv(
@@ -331,7 +320,7 @@ def load_fixtures(seasons: list[str]) -> pl.LazyFrame:
     return fixtures
 
 
-def load_static_elements(season: str, gameweek: int) -> pl.LazyFrame:
+def load_static_elements(season: int, gameweek: int) -> pl.LazyFrame:
     """Load static elements data for the given season and gameweek."""
     bootstrap_static = load_bootstrap_static(season, gameweek)
     schema_overrides = {
@@ -359,8 +348,8 @@ def load_static_elements(season: str, gameweek: int) -> pl.LazyFrame:
         pl.lit(season).alias("season"),
         pl.lit(gameweek).alias("round"),
     )
-    # Add availability columns for seasons before the 2021-22 season
-    if season < "2021-22":
+    # Add availability columns for seasons before the 2021/2022 season
+    if season < 2021:
         static_elements = static_elements.with_columns(
             pl.lit(None).cast(pl.Int64).alias("chance_of_playing_next_round"),
             pl.lit(None).cast(pl.String).alias("status"),
@@ -374,7 +363,7 @@ def load_static_elements(season: str, gameweek: int) -> pl.LazyFrame:
     return static_elements.lazy()
 
 
-def load_static_teams(season: str, gameweek: int) -> pl.LazyFrame:
+def load_static_teams(season: int, gameweek: int) -> pl.LazyFrame:
     """Load static teams data for the given season and gameweek."""
     bootstrap_static = load_bootstrap_static(season, gameweek)
     static_teams = pl.from_dicts(bootstrap_static["teams"])
@@ -382,8 +371,8 @@ def load_static_teams(season: str, gameweek: int) -> pl.LazyFrame:
         pl.lit(season).alias("season"),
         pl.lit(gameweek).alias("round"),
     )
-    # Add strength columns for seasons before the 2021-22 season
-    if season < "2021-22":
+    # Add strength columns for seasons before the 2021-2022 season
+    if season < 2021:
         static_teams = static_teams.with_columns(
             pl.lit(None).cast(pl.Int64).alias("strength"),
             pl.lit(None).cast(pl.Int64).alias("strength_attack_home"),
@@ -396,14 +385,14 @@ def load_static_teams(season: str, gameweek: int) -> pl.LazyFrame:
     return static_teams.lazy()
 
 
-def load_bootstrap_static(season: str, gameweek: int) -> dict:
+def load_bootstrap_static(season: int, gameweek: int) -> dict:
     """Load bootstrap static data for the given season and gameweek."""
     path = DATA_DIR / f"fpl/{season}/static/{gameweek}.json.xz"
     with lzma.open(path, "rt", encoding="utf-8") as f:
         return json.load(f)
 
 
-def get_gameweeks(season: str) -> list[int]:
+def get_gameweeks(season: int) -> list[int]:
     """Scan the data directory for all gameweeks with static data."""
 
     path = DATA_DIR / f"fpl/{season}/static"

@@ -236,33 +236,29 @@ def test_make_automatic_substitutions():
 
 
 def test_remove_upcoming_data():
-    elements = load_elements(["2016-17", "2017-18"])
+    elements = load_elements([2016, 2017])
 
     # Test removing data on or after the first gameweek
-    filtered_elements = remove_upcoming_data(elements, "2017-18", 1)
+    filtered_elements = remove_upcoming_data(elements, 2017, 1)
     filtered_elements = filtered_elements.collect()
     assert filtered_elements.get_column("round").max() == 38
-    assert filtered_elements.get_column("season").max() == "2016-17"
+    assert filtered_elements.get_column("season").max() == 2016
 
     # Test removing data from the middle of the season
-    filtered_elements = remove_upcoming_data(elements, "2017-18", 20)
+    filtered_elements = remove_upcoming_data(elements, 2017, 20)
     filtered_elements = filtered_elements.collect()
     assert (
-        filtered_elements.filter(pl.col("season") == "2016-17")
-        .get_column("round")
-        .max()
+        filtered_elements.filter(pl.col("season") == 2016).get_column("round").max()
         == 38
     )
     assert (
-        filtered_elements.filter(pl.col("season") == "2017-18")
-        .get_column("round")
-        .max()
+        filtered_elements.filter(pl.col("season") == 2017).get_column("round").max()
         == 19
     )
 
 
 def test_load_results():
-    season = "2023-24"
+    season = 2023
     results = load_results(season).collect()
 
     # Erling Haaland (355) scored 15 points in gameweek 37
@@ -367,7 +363,7 @@ def test_calculate_transfer_cost():
 
 
 def test_simulator():
-    season = "2024-25"
+    season = 2024
     entry_id = 3291882
 
     # Load entry data

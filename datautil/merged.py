@@ -10,8 +10,8 @@ from datautil.utils import get_matches_view
 
 
 def load_merged(
-    seasons: list[str],
-    current_season: str | None = None,
+    seasons: list[int],
+    current_season: int | None = None,
     upcoming_gameweeks: list[int] | None = None,
 ) -> tuple[pl.LazyFrame, pl.LazyFrame, pl.LazyFrame]:
     """Load merged player, team, and manager data."""
@@ -76,7 +76,7 @@ def merge_players(
         uds_players.select(
             [
                 pl.col("fpl_code").alias("code"),
-                pl.col("fpl_season").alias("season"),
+                pl.col("season"),
                 pl.col("fpl_fixture_id").alias("fixture"),
                 *[
                     pl.col(column).alias(alias)
@@ -133,7 +133,7 @@ def merge_teams(
 
     fpl_teams = fpl_teams.join(
         uds_teams.select(
-            pl.col("fpl_season").alias("season"),
+            pl.col("season"),
             pl.col("fpl_fixture_id").alias("fixture_id"),
             pl.col("fpl_code").alias("code"),
             *[

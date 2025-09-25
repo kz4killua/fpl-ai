@@ -18,11 +18,10 @@ from datautil.utils import calculate_implied_probabilities, get_seasons, get_tea
 
 
 def test_load_clubelo():
-    # Load clubelo ratings
-    df = load_clubelo(datetime.max)
-    df = df.collect()
+    # Load clubelo data
+    df = load_clubelo(datetime.max).collect()
 
-    # Check that FPL team codes are mapped correctly
+    # Test mappings for FPL codes
     expected = pl.DataFrame(
         {
             "Club": ["Arsenal", "Chelsea", "Liverpool"],
@@ -34,15 +33,12 @@ def test_load_clubelo():
         expected,
         on=["Club"],
     )
-
-    # Check that no null values are present in the fpl_code column
     assert df.get_column("fpl_code").null_count() == 0
 
 
 def test_load_fpl():
     # Load FPL data
-    seasons = ["2016-17", "2024-25"]
-    players, teams, managers = load_fpl(seasons)
+    players, teams, managers = load_fpl([2016, 2024])
     players = players.collect()
     teams = teams.collect()
     managers = managers.collect()
@@ -50,7 +46,7 @@ def test_load_fpl():
     # Test mappings for player element types and teams
     expected = pl.DataFrame(
         {
-            "season": ["2016-17", "2016-17", "2016-17", "2016-17"],
+            "season": [2016, 2016, 2016, 2016],
             "element": [73, 78, 12, 403],
             "fixture": [10, 10, 8, 3],
             "code": [60772, 19419, 37265, 78830],
@@ -88,7 +84,7 @@ def test_load_fpl():
     # Test mappings for player availability
     expected = pl.DataFrame(
         {
-            "season": ["2024-25", "2024-25", "2024-25", "2024-25"],
+            "season": [2024, 2024, 2024, 2024],
             "element": [351, 351, 351, 351],
             "fixture": [288, 298, 308, 358],
             "round": [29, 30, 31, 36],
@@ -107,7 +103,7 @@ def test_load_fpl():
     # Test mappings for team match details
     expected = pl.DataFrame(
         {
-            "season": ["2024-25", "2024-25", "2024-25", "2024-25"],
+            "season": [2024, 2024, 2024, 2024],
             "round": [1, 2, 3, 4],
             "id": [13, 13, 13, 13],
             "code": [43, 43, 43, 43],
@@ -125,7 +121,7 @@ def test_load_fpl():
     # Test mappings for team codes across seasons
     expected = pl.DataFrame(
         {
-            "season": ["2016-17", "2016-17", "2024-25", "2024-25"],
+            "season": [2016, 2016, 2024, 2024],
             "id": [10, 20, 10, 20],
             "code": [43, 21, 40, 39],
         }
@@ -139,7 +135,7 @@ def test_load_fpl():
     # Test mappings for team strengths
     expected = pl.DataFrame(
         {
-            "season": ["2024-25", "2024-25", "2024-25", "2024-25"],
+            "season": [2024, 2024, 2024, 2024],
             "id": [13, 13, 13, 13],
             "round": [1, 11, 21, 31],
             "strength_overall_home": [1355, 1355, 1220, 1230],
@@ -151,7 +147,7 @@ def test_load_fpl():
     # Test that the correct number of managers is returned
     assert (
         len(
-            managers.filter(pl.col("season") == "2024-25")
+            managers.filter(pl.col("season") == 2024)
             .get_column("element")
             .unique()
             .to_list()
@@ -161,9 +157,8 @@ def test_load_fpl():
 
 
 def test_load_understat():
-    # Load data for the 2021-22 season
-    seasons = ["2021-22"]
-    players, teams = load_understat(seasons, datetime.max)
+    # Load understat data
+    players, teams = load_understat([2021], datetime.max)
     players = players.collect()
     teams = teams.collect()
 
@@ -177,7 +172,6 @@ def test_load_understat():
     expected = pl.DataFrame(
         {
             "season": [2021, 2021],
-            "fpl_season": ["2021-22", "2021-22"],
             "id": [453, 447],
             "fpl_code": [85971, 61366],
             "fixture_id": [16385, 16385],
@@ -194,7 +188,6 @@ def test_load_understat():
     expected = pl.DataFrame(
         {
             "season": [2021, 2021],
-            "fpl_season": ["2021-22", "2021-22"],
             "id": [88, 82],
             "fpl_code": [43, 6],
             "fixture_id": [16385, 16385],
@@ -236,8 +229,8 @@ def test_load_understat():
 
 def test_load_merged():
     # Load data, including for upcoming fixtures
-    seasons = ["2024-25", "2025-26"]
-    current_season = "2025-26"
+    seasons = [2024, 2025]
+    current_season = 2025
     upcoming_gameweeks = [1, 2, 3]
     players, matches, managers = load_merged(
         seasons, current_season, upcoming_gameweeks
@@ -250,7 +243,7 @@ def test_load_merged():
     # Test non-upcoming player mappings
     expected = pl.DataFrame(
         {
-            "season": ["2024-25", "2024-25", "2024-25", "2024-25"],
+            "season": [2024, 2024, 2024, 2024],
             "element": [351, 351, 351, 351],
             "round": [1, 2, 3, 4],
             "uds_xG": [0.66, 1.84, 1.31, 0.73],
@@ -267,7 +260,7 @@ def test_load_merged():
     # Test non-upcoming team mappings
     expected = pl.DataFrame(
         {
-            "season": ["2024-25", "2024-25", "2024-25", "2024-25"],
+            "season": [2024, 2024, 2024, 2024],
             "code": [43, 43, 43, 43],
             "id": [13, 13, 13, 13],
             "round": [1, 2, 3, 4],
@@ -286,7 +279,7 @@ def test_load_merged():
     # Test upcoming player mappings
     expected = pl.DataFrame(
         {
-            "season": ["2024-25", "2025-26", "2025-26", "2025-26"],
+            "season": [2024, 2025, 2025, 2025],
             "code": [118748, 118748, 118748, 118748],
             "round": [38, 1, 2, 3],
             "element": [328, 381, 381, 381],
@@ -309,7 +302,7 @@ def test_load_merged():
     # Test upcoming team mappings
     expected = pl.DataFrame(
         {
-            "season": ["2024-25", "2025-26", "2025-26", "2025-26"],
+            "season": [2024, 2025, 2025, 2025],
             "round": [38, 1, 2, 3],
             "code": [14, 14, 14, 14],
             "id": [12, 12, 12, 12],
@@ -348,25 +341,11 @@ def test_load_merged():
 
 
 def test_get_seasons():
-    current_season = "2023-24"
-    expected = [
-        "2016-17",
-        "2017-18",
-        "2018-19",
-        "2019-20",
-        "2020-21",
-        "2021-22",
-        "2022-23",
-        "2023-24",
-    ]
-    assert get_seasons(current_season) == expected
+    expected = [2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023]
+    assert get_seasons(2023) == expected
 
-    expected = [
-        "2021-22",
-        "2022-23",
-        "2023-24",
-    ]
-    assert get_seasons(current_season, 3) == expected
+    expected = [2021, 2022, 2023]
+    assert get_seasons(2023, 3) == expected
 
 
 def test_get_upcoming_gameweeks():
@@ -376,7 +355,7 @@ def test_get_upcoming_gameweeks():
 
 def test_get_upcoming_fixtures():
     upcoming_gameweeks = [1, 2, 3, 4, 5]
-    season = "2016-17"
+    season = 2016
     fixtures = load_fixtures([season])
     upcoming_fixtures = get_upcoming_fixtures(fixtures, season, upcoming_gameweeks)
     upcoming_fixtures = upcoming_fixtures.collect()

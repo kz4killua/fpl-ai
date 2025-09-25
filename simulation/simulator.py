@@ -24,7 +24,7 @@ from .utils import (
 
 
 class Simulator:
-    def __init__(self, season: str):
+    def __init__(self, season: int):
         self.season = season
 
         # Load fixture data

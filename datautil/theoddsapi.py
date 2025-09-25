@@ -4,12 +4,12 @@ import lzma
 import polars as pl
 
 from datautil.constants import DATA_DIR
-from datautil.utils import calculate_implied_probabilities, convert_season_to_year
+from datautil.utils import calculate_implied_probabilities
 
 
-def load_theoddsapi(season: str, gameweek: int) -> pl.LazyFrame:
+def load_theoddsapi(season: int, gameweek: int) -> pl.LazyFrame:
     """Load upcoming odds data from the-odds-api.com for a given season and gameweek."""
-    path = DATA_DIR / f"theoddsapi/{convert_season_to_year(season)}/{gameweek}.json.xz"
+    path = DATA_DIR / f"theoddsapi/{season}/{gameweek}.json.xz"
     with lzma.open(path, "rt", encoding="utf-8") as f:
         data = json.load(f)
 

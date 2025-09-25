@@ -36,7 +36,7 @@ def objective(trial: optuna.Trial) -> float:
 
 def evaluate(trial: optuna.Trial, parameters: dict) -> float:
     results = []
-    for season in ["2021-22", "2022-23", "2023-24"]:
+    for season in [2021, 2022, 2023]:
         # Simulate the season and get results
         random.seed(trial.number)
         wildcard_gameweeks = [random.randint(3, 19), random.randint(20, 36)]

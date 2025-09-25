@@ -7,9 +7,9 @@ from datautil.theoddsapi import load_theoddsapi
 
 
 def load_market_probabilities(
-    seasons: list[str],
+    seasons: list[int],
     cutoff_time: datetime,
-    current_season: str | None = None,
+    current_season: int | None = None,
     next_gameweek: int | None = None,
 ):
     """Unified data loader for historical and upcoming market odds."""

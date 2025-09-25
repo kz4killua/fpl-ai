@@ -2,7 +2,7 @@ import polars as pl
 
 
 def get_upcoming_elements(
-    season: str,
+    season: int,
     gameweeks: list[int],
     fixtures: pl.LazyFrame,
     static_elements: pl.LazyFrame,
@@ -73,7 +73,7 @@ def get_upcoming_elements(
 
 
 def get_upcoming_static_teams(
-    season: str,
+    season: int,
     upcoming_gameweeks: list[int],
     static_teams: pl.LazyFrame,
 ) -> pl.LazyFrame:
@@ -113,7 +113,7 @@ def get_upcoming_static_teams(
 
 
 def get_upcoming_static_elements(
-    season: str,
+    season: int,
     upcoming_gameweeks: list[int],
     static_elements: pl.LazyFrame,
 ) -> pl.LazyFrame:
@@ -173,7 +173,7 @@ def get_upcoming_static_elements(
 
 
 def get_upcoming_fixtures(
-    fixtures: pl.LazyFrame, season: str, upcoming_gameweeks: list[int]
+    fixtures: pl.LazyFrame, season: int, upcoming_gameweeks: list[int]
 ) -> pl.LazyFrame:
     """Get fixtures for the upcoming gameweeks."""
     df = fixtures.filter(
@@ -200,7 +200,7 @@ def get_upcoming_gameweeks(
 
 def remove_upcoming_data(
     df: pl.LazyFrame,
-    season: str,
+    season: int,
     next_gameweek: int,
     season_column: str = "season",
     gameweek_column: str = "round",
@@ -214,7 +214,7 @@ def remove_upcoming_data(
 
 def mask_upcoming_data(
     df: pl.LazyFrame,
-    season: str,
+    season: int,
     next_gameweek: int,
     columns: list[str],
     season_column: str = "season",
@@ -235,7 +235,7 @@ def mask_upcoming_data(
 
 
 def get_upcoming_condition(
-    season: str,
+    season: int,
     next_gameweek: int,
     season_column: str = "season",
     gameweek_column: str = "round",

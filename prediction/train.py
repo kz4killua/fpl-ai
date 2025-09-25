@@ -9,7 +9,7 @@ from prediction.utils import save_model
 
 def train():
     # Load player and match data
-    seasons = get_seasons("2024-25")
+    seasons = get_seasons(2024)
     players, matches, managers = load_merged(seasons)
     players = players.collect()
     matches = matches.collect()
@@ -21,7 +21,7 @@ def train():
 
     # Fit and save models for simulations
     for season in seasons:
-        if season < "2021-22":
+        if season < 2021:
             continue
 
         # Only train on seasons before the current one

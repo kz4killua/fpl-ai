@@ -14,7 +14,7 @@ from .utils import get_selling_prices
 
 
 def simulate(
-    season: str,
+    season: int,
     wildcard_gameweeks: list[int],
     parameters: dict[str, float] | None = None,
     log: bool = False,

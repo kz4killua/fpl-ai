@@ -4,10 +4,9 @@ from datetime import datetime
 import polars as pl
 
 from datautil.constants import DATA_DIR
-from datautil.utils import convert_season_to_year, convert_year_col_to_season_col
 
 
-def load_understat(seasons: list[str], cutoff_time: datetime):
+def load_understat(seasons: list[int], cutoff_time: datetime):
     """Loads local understat data for the given seasons."""
 
     # Load local data
@@ -17,20 +16,6 @@ def load_understat(seasons: list[str], cutoff_time: datetime):
     player_ids = load_player_ids()
     team_ids = load_team_ids()
     fixture_ids = load_fixture_ids(seasons)
-
-    # Convert understat seasons to FPL seasons
-    players = players.with_columns(
-        convert_year_col_to_season_col("season").alias("fpl_season")
-    )
-    teams = teams.with_columns(
-        convert_year_col_to_season_col("season").alias("fpl_season")
-    )
-    fixtures = fixtures.with_columns(
-        convert_year_col_to_season_col("season").alias("fpl_season")
-    )
-    fixture_ids = fixture_ids.with_columns(
-        convert_year_col_to_season_col("season").alias("fpl_season")
-    )
 
     # Add FPL player codes to players
     players = players.join(
@@ -43,13 +28,13 @@ def load_understat(seasons: list[str], cutoff_time: datetime):
     players = players.join(
         fixture_ids.select(
             [
-                pl.col("fpl_season"),
+                pl.col("season"),
                 pl.col("understat_id").alias("fixture_id"),
                 pl.col("fpl_id").alias("fpl_fixture_id"),
             ]
         ),
         how="left",
-        on=["fpl_season", "fixture_id"],
+        on=["season", "fixture_id"],
     )
 
     # Any unmapped fixtures are for matches outside the EPL. Remove them.
@@ -71,28 +56,17 @@ def load_understat(seasons: list[str], cutoff_time: datetime):
     ).drop(["ppda", "ppda_allowed"])
 
     # Add understat fixture IDs to teams
-    teams = teams.join(
-        fixtures.select(
-            [
-                pl.col("h").alias("id"),
+    for column in ["h", "a"]:
+        teams = teams.join(
+            fixtures.select(
+                pl.col(column).alias("id"),
                 pl.col("datetime").alias("date"),
-                pl.col("id").alias("fixture_id_h"),
-            ]
-        ),
-        how="left",
-        on=["id", "date"],
-    )
-    teams = teams.join(
-        fixtures.select(
-            [
-                pl.col("a").alias("id"),
-                pl.col("datetime").alias("date"),
-                pl.col("id").alias("fixture_id_a"),
-            ]
-        ),
-        how="left",
-        on=["id", "date"],
-    )
+                pl.col("id").alias(f"fixture_id_{column}"),
+            ),
+            how="left",
+            on=["id", "date"],
+        )
+
     teams = teams.with_columns(
         pl.when(pl.col("h_a") == "h")
         .then(pl.col("fixture_id_h"))
@@ -105,13 +79,13 @@ def load_understat(seasons: list[str], cutoff_time: datetime):
     teams = teams.join(
         fixture_ids.select(
             [
-                pl.col("fpl_season"),
+                pl.col("season"),
                 pl.col("understat_id").alias("fixture_id"),
                 pl.col("fpl_id").alias("fpl_fixture_id"),
             ]
         ),
         how="left",
-        on=["fpl_season", "fixture_id"],
+        on=["season", "fixture_id"],
     )
 
     # Add FPL team codes to teams
@@ -133,9 +107,8 @@ def load_understat(seasons: list[str], cutoff_time: datetime):
     return players, teams
 
 
-def load_players(seasons: list[str]) -> pl.LazyFrame:
+def load_players(seasons: list[int]) -> pl.LazyFrame:
     """Load player match data."""
-    seasons = list(map(convert_season_to_year, seasons))
     return (
         pl.scan_csv(
             DATA_DIR / "understat/player/matches/*.csv",
@@ -154,9 +127,8 @@ def load_players(seasons: list[str]) -> pl.LazyFrame:
     )
 
 
-def load_teams(seasons: list[str]) -> pl.LazyFrame:
+def load_teams(seasons: list[int]) -> pl.LazyFrame:
     """Load team data."""
-    seasons = list(map(convert_season_to_year, seasons))
 
     frames = []
     for season in seasons:
@@ -177,7 +149,6 @@ def load_teams(seasons: list[str]) -> pl.LazyFrame:
 
 def load_fixtures(seasons: list[str]) -> pl.LazyFrame:
     """Load fixture data."""
-    seasons = list(map(convert_season_to_year, seasons))
 
     frames = []
     for season in seasons:
@@ -208,7 +179,6 @@ def load_team_ids() -> pl.LazyFrame:
 
 def load_fixture_ids(seasons: list[str]) -> pl.LazyFrame:
     """Load FPL-to-understat fixture ID mappings."""
-    seasons = list(map(convert_season_to_year, seasons))
 
     frames = []
     for season in seasons:
@@ -223,4 +193,5 @@ def load_fixture_ids(seasons: list[str]) -> pl.LazyFrame:
                     pl.lit(season).alias("season"),
                 )
             )
+
     return pl.concat(frames, how="diagonal")

@@ -148,7 +148,7 @@ def make_automatic_substitutions(roles: dict, minutes: dict, positions: dict) ->
     return roles
 
 
-def load_results(season: str) -> pl.LazyFrame:
+def load_results(season: int) -> pl.LazyFrame:
     """Load player points and minutes for each gameweek in the given season."""
     elements = load_elements([season])
     results = (
