@@ -9,11 +9,11 @@ def make_predictions(
     """Predict player points for each gameweek."""
     # Predict total points for each player in each fixture
     predictions = model.predict(players, matches)
-    df = players.select(["season", "round", "element"]).with_columns(
+    df = players.select(["season", "gameweek", "element"]).with_columns(
         predictions.alias("total_points")
     )
     # Sum up the number of points for each player in each gameweek
-    df = df.group_by(["season", "round", "element"]).agg(
+    df = df.group_by(["season", "gameweek", "element"]).agg(
         pl.col("total_points").sum(),
     )
     return df

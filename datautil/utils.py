@@ -79,7 +79,7 @@ def get_matches_view(
 
     fixed_columns = [
         "season",
-        "round",
+        "gameweek",
         "fixture_id",
         "kickoff_time",
         "was_home",
@@ -102,7 +102,7 @@ def get_matches_view(
         }
     )
 
-    join_keys = ["season", "round", "fixture_id"]
+    join_keys = ["season", "gameweek", "fixture_id"]
     drop = list(set(fixed_columns) - set(join_keys))
     matches = home_teams.join(away_teams.drop(drop), on=join_keys, how="inner")
     return matches

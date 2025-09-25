@@ -64,7 +64,7 @@ def load_theoddsapi(season: int, gameweek: int) -> pl.LazyFrame:
 
     df = pl.DataFrame(rows, schema=schema).with_columns(
         pl.lit(season).alias("season"),
-        pl.lit(gameweek).alias("round"),
+        pl.lit(gameweek).alias("gameweek"),
     )
 
     # Convert odds to implied probabilities

@@ -241,18 +241,18 @@ def test_remove_upcoming_data():
     # Test removing data on or after the first gameweek
     filtered_elements = remove_upcoming_data(elements, 2017, 1)
     filtered_elements = filtered_elements.collect()
-    assert filtered_elements.get_column("round").max() == 38
+    assert filtered_elements.get_column("gameweek").max() == 38
     assert filtered_elements.get_column("season").max() == 2016
 
     # Test removing data from the middle of the season
     filtered_elements = remove_upcoming_data(elements, 2017, 20)
     filtered_elements = filtered_elements.collect()
     assert (
-        filtered_elements.filter(pl.col("season") == 2016).get_column("round").max()
+        filtered_elements.filter(pl.col("season") == 2016).get_column("gameweek").max()
         == 38
     )
     assert (
-        filtered_elements.filter(pl.col("season") == 2017).get_column("round").max()
+        filtered_elements.filter(pl.col("season") == 2017).get_column("gameweek").max()
         == 19
     )
 
@@ -262,14 +262,14 @@ def test_load_results():
     results = load_results(season).collect()
 
     # Erling Haaland (355) scored 15 points in gameweek 37
-    r1 = results.filter((pl.col("element") == 355) & (pl.col("round") == 37))
+    r1 = results.filter((pl.col("element") == 355) & (pl.col("gameweek") == 37))
     assert r1.select(["total_points", "minutes"]).to_dicts()[0] == {
         "total_points": 15,
         "minutes": 171,
     }
 
     # Josko Gvardiol (616) scored 27 points in gameweek 37
-    r2 = results.filter((pl.col("element") == 616) & (pl.col("round") == 37))
+    r2 = results.filter((pl.col("element") == 616) & (pl.col("gameweek") == 37))
     assert r2.select(["total_points", "minutes"]).to_dicts()[0] == {
         "total_points": 27,
         "minutes": 180,
@@ -382,7 +382,7 @@ def test_simulator():
         roles = get_simulator_roles(picks)
         simulator.update(roles, wildcard_gameweeks, log=True)
         assert simulator.season_points == picks["entry_history"]["total_points"], (
-            f"Total points mismatch in round {simulator.next_gameweek}. "
+            f"Total points mismatch in gameweek {simulator.next_gameweek}. "
             f"Expected {picks['entry_history']['total_points']}, "
             f"got {simulator.season_points}."
         )

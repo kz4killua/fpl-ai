@@ -59,17 +59,17 @@ def get_best_roles(
         next_gameweek, OPTIMIZATION_WINDOW_SIZE, last_gameweek
     )
     players = players.filter(
-        (pl.col("season") == season) & (pl.col("round").is_in(upcoming_gameweeks))
+        (pl.col("season") == season) & (pl.col("gameweek").is_in(upcoming_gameweeks))
     )
     matches = matches.filter(
-        (pl.col("season") == season) & (pl.col("round").is_in(upcoming_gameweeks))
+        (pl.col("season") == season) & (pl.col("gameweek").is_in(upcoming_gameweeks))
     )
 
     # Predict total points
     predictions = make_predictions(model, players, matches)
 
     # Map each prediction to an ID and gameweek
-    predictions = get_mapper(predictions, ["element", "round"], "total_points")
+    predictions = get_mapper(predictions, ["element", "gameweek"], "total_points")
     for player in static_elements["id"]:
         for gameweek in upcoming_gameweeks:
             if (player, gameweek) not in predictions:

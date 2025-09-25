@@ -11,13 +11,13 @@ def get_upcoming_elements(
 
     # Select the most recent static teams data
     static_elements = static_elements.filter(
-        pl.col("season").eq(season) & pl.col("round").eq(min(gameweeks))
+        pl.col("season").eq(season) & pl.col("gameweek").eq(min(gameweeks))
     )
 
     # Select relevant columns to begin the transformation
     df = upcoming_fixtures.select(
         pl.col("season"),
-        pl.col("event").alias("round"),
+        pl.col("gameweek"),
         pl.col("id").alias("fixture"),
         pl.col("kickoff_time"),
         pl.col("team_a"),
@@ -56,7 +56,7 @@ def get_upcoming_elements(
     # Add values for each element
     df = df.join(
         static_elements.filter(
-            pl.col("season").eq(season) & pl.col("round").eq(min(gameweeks))
+            pl.col("season").eq(season) & pl.col("gameweek").eq(min(gameweeks))
         ).select(
             pl.col("season"),
             pl.col("id").alias("element"),
@@ -79,13 +79,13 @@ def get_upcoming_static_teams(
 ) -> pl.LazyFrame:
     # Select the most recent static teams data
     static_teams = static_teams.filter(
-        pl.col("season").eq(season) & pl.col("round").eq(min(upcoming_gameweeks))
+        pl.col("season").eq(season) & pl.col("gameweek").eq(min(upcoming_gameweeks))
     )
 
     # Keep only columns that we can reasonably assume as constant
     static_teams = static_teams.select(
         "season",
-        "round",
+        "gameweek",
         "code",
         "id",
         "name",
@@ -103,7 +103,7 @@ def get_upcoming_static_teams(
     # Duplicate for each upcoming gameweek
     df = pl.concat(
         [
-            static_teams.with_columns(pl.lit(gameweek).alias("round"))
+            static_teams.with_columns(pl.lit(gameweek).alias("gameweek"))
             for gameweek in upcoming_gameweeks
         ],
         how="vertical",
@@ -119,13 +119,13 @@ def get_upcoming_static_elements(
 ) -> pl.LazyFrame:
     # Select the most recent static elements data
     static_elements = static_elements.filter(
-        pl.col("season").eq(season) & pl.col("round").eq(min(upcoming_gameweeks))
+        pl.col("season").eq(season) & pl.col("gameweek").eq(min(upcoming_gameweeks))
     )
 
     # Keep only columns that we can reasonably assume as constant
     df = static_elements.select(
         "season",
-        "round",
+        "gameweek",
         "code",
         "id",
         "team",
@@ -146,7 +146,7 @@ def get_upcoming_static_elements(
     # Duplicate for each upcoming gameweek
     df = pl.concat(
         [
-            df.with_columns(pl.lit(gameweek).alias("round"))
+            df.with_columns(pl.lit(gameweek).alias("gameweek"))
             for gameweek in upcoming_gameweeks
         ],
         how="vertical",
@@ -156,16 +156,16 @@ def get_upcoming_static_elements(
     df = df.join(
         static_elements.select(
             "season",
-            "round",
+            "gameweek",
             "code",
             "status",
             "chance_of_playing_next_round",
             "news",
             "news_added",
         ).filter(
-            pl.col("season").eq(season) & pl.col("round").eq(min(upcoming_gameweeks))
+            pl.col("season").eq(season) & pl.col("gameweek").eq(min(upcoming_gameweeks))
         ),
-        on=["season", "round", "code"],
+        on=["season", "gameweek", "code"],
         how="left",
     )
 
@@ -177,7 +177,7 @@ def get_upcoming_fixtures(
 ) -> pl.LazyFrame:
     """Get fixtures for the upcoming gameweeks."""
     df = fixtures.filter(
-        (pl.col("event").is_in(upcoming_gameweeks)) & (pl.col("season") == season)
+        (pl.col("gameweek").is_in(upcoming_gameweeks)) & (pl.col("season") == season)
     )
 
     # Remove upcoming scores as they should be unknown
@@ -202,13 +202,9 @@ def remove_upcoming_data(
     df: pl.LazyFrame,
     season: int,
     next_gameweek: int,
-    season_column: str = "season",
-    gameweek_column: str = "round",
 ) -> pl.LazyFrame:
     """Remove all records on or after the given gameweek."""
-    upcoming = get_upcoming_condition(
-        season, next_gameweek, season_column, gameweek_column
-    )
+    upcoming = get_upcoming_condition(season, next_gameweek)
     return df.filter(~upcoming)
 
 
@@ -217,13 +213,9 @@ def mask_upcoming_data(
     season: int,
     next_gameweek: int,
     columns: list[str],
-    season_column: str = "season",
-    gameweek_column: str = "round",
 ) -> pl.LazyFrame:
     """Set upcoming values to `None`."""
-    upcoming = get_upcoming_condition(
-        season, next_gameweek, season_column, gameweek_column
-    )
+    upcoming = get_upcoming_condition(season, next_gameweek)
 
     expressions = []
     for column in columns:
@@ -234,13 +226,8 @@ def mask_upcoming_data(
     return df.with_columns(expressions)
 
 
-def get_upcoming_condition(
-    season: int,
-    next_gameweek: int,
-    season_column: str = "season",
-    gameweek_column: str = "round",
-):
+def get_upcoming_condition(season: int, next_gameweek: int):
     """Return a Polars expression matching upcoming data."""
-    return (pl.col(season_column) > season) | (
-        (pl.col(season_column) == season) & (pl.col(gameweek_column) >= next_gameweek)
+    return (pl.col("season") > season) | (
+        (pl.col("season") == season) & (pl.col("gameweek") >= next_gameweek)
     )

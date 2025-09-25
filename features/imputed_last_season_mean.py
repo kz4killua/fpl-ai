@@ -38,7 +38,7 @@ def compute_imputed_last_season_mean(df: pl.DataFrame, column: str) -> pl.DataFr
             & pl.col(column).is_not_null()
             &
             # Note: This is important to prevent data leakage.
-            pl.col("round")
+            pl.col("gameweek")
             == 1
         )
 

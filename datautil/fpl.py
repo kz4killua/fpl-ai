@@ -54,13 +54,11 @@ def load_fpl(
             current_season,
             min(upcoming_gameweeks),
             ["team_h_score", "team_a_score"],
-            gameweek_column="event",
         )
         fixtures = remove_upcoming_data(
             fixtures,
             current_season,
             max(upcoming_gameweeks) + 1,
-            gameweek_column="event",
         )
 
         # Create records for upcoming gameweeks
@@ -99,14 +97,14 @@ def load_fpl(
         static_elements.select(
             [
                 pl.col("season"),
-                pl.col("round"),
+                pl.col("gameweek"),
                 pl.col("id").alias("element"),
                 pl.col("element_type"),
                 pl.col("code"),
             ]
         ),
         how="left",
-        on=["season", "round", "element"],
+        on=["season", "gameweek", "element"],
     )
 
     # Add "team" to elements
@@ -136,13 +134,13 @@ def load_fpl(
             static_teams.select(
                 [
                     pl.col("season"),
-                    pl.col("round"),
+                    pl.col("gameweek"),
                     pl.col("id").alias(column),
                     pl.col("code").alias(f"{column}_code"),
                 ]
             ),
             how="left",
-            on=["season", "round", column],
+            on=["season", "gameweek", column],
         )
 
     # Split elements into players and managers
@@ -169,7 +167,7 @@ def load_fpl(
         static_elements.select(
             [
                 "season",
-                "round",
+                "gameweek",
                 "code",
                 "chance_of_playing_next_round",
                 "status",
@@ -180,7 +178,7 @@ def load_fpl(
                 "penalties_order",
             ]
         ),
-        on=["season", "round", "code"],
+        on=["season", "gameweek", "code"],
         how="left",
     )
 
@@ -188,7 +186,7 @@ def load_fpl(
     matches = fixtures.select(
         pl.col("season"),
         pl.col("id").alias("fixture_id"),
-        pl.col("event").alias("round"),
+        pl.col("gameweek"),
         pl.col("kickoff_time"),
         pl.col("team_h").alias("team_h_id"),
         pl.col("team_a").alias("team_a_id"),
@@ -206,13 +204,13 @@ def load_fpl(
         static_teams.select(
             [
                 pl.col("season"),
-                pl.col("round"),
+                pl.col("gameweek"),
                 pl.col("id"),
                 pl.col("code"),
             ]
         ),
         how="left",
-        on=["season", "round", "id"],
+        on=["season", "gameweek", "id"],
     )
 
     # Add team strength information
@@ -220,7 +218,7 @@ def load_fpl(
         static_teams.select(
             [
                 pl.col("season"),
-                pl.col("round"),
+                pl.col("gameweek"),
                 pl.col("id"),
                 pl.col("strength"),
                 pl.col("strength_attack_home"),
@@ -232,7 +230,7 @@ def load_fpl(
             ]
         ),
         how="left",
-        on=["season", "round", "id"],
+        on=["season", "gameweek", "id"],
     )
 
     return players, teams, managers
@@ -288,6 +286,10 @@ def load_elements(seasons: list[int]) -> pl.LazyFrame:
         ],
         strict=False,
     )
+
+    # Rename columns for consistency
+    elements = elements.rename({"round": "gameweek"})
+
     return elements
 
 
@@ -306,14 +308,14 @@ def load_fixtures(seasons: list[int]) -> pl.LazyFrame:
     # Only load columns that are available to all seasons
     fixtures = fixtures.select(
         [
-            "season",
-            "id",
-            "event",
-            "kickoff_time",
-            "team_h",
-            "team_a",
-            "team_h_score",
-            "team_a_score",
+            pl.col("season"),
+            pl.col("id"),
+            pl.col("event").alias("gameweek"),
+            pl.col("kickoff_time"),
+            pl.col("team_h"),
+            pl.col("team_a"),
+            pl.col("team_h_score"),
+            pl.col("team_a_score"),
         ]
     )
 
@@ -346,7 +348,7 @@ def load_static_elements(season: int, gameweek: int) -> pl.LazyFrame:
     )
     static_elements = static_elements.with_columns(
         pl.lit(season).alias("season"),
-        pl.lit(gameweek).alias("round"),
+        pl.lit(gameweek).alias("gameweek"),
     )
     # Add availability columns for seasons before the 2021/2022 season
     if season < 2021:
@@ -369,7 +371,7 @@ def load_static_teams(season: int, gameweek: int) -> pl.LazyFrame:
     static_teams = pl.from_dicts(bootstrap_static["teams"])
     static_teams = static_teams.with_columns(
         pl.lit(season).alias("season"),
-        pl.lit(gameweek).alias("round"),
+        pl.lit(gameweek).alias("gameweek"),
     )
     # Add strength columns for seasons before the 2021-2022 season
     if season < 2021:

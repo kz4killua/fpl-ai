@@ -87,7 +87,7 @@ def test_load_fpl():
             "season": [2024, 2024, 2024, 2024],
             "element": [351, 351, 351, 351],
             "fixture": [288, 298, 308, 358],
-            "round": [29, 30, 31, 36],
+            "gameweek": [29, 30, 31, 36],
             "status": ["a", "i", "i", "a"],
         }
     )
@@ -104,7 +104,7 @@ def test_load_fpl():
     expected = pl.DataFrame(
         {
             "season": [2024, 2024, 2024, 2024],
-            "round": [1, 2, 3, 4],
+            "gameweek": [1, 2, 3, 4],
             "id": [13, 13, 13, 13],
             "code": [43, 43, 43, 43],
             "was_home": [False, True, False, True],
@@ -115,7 +115,7 @@ def test_load_fpl():
     assert_mappings_correct(
         teams,
         expected,
-        on=["season", "round", "id"],
+        on=["season", "gameweek", "id"],
     )
 
     # Test mappings for team codes across seasons
@@ -137,12 +137,12 @@ def test_load_fpl():
         {
             "season": [2024, 2024, 2024, 2024],
             "id": [13, 13, 13, 13],
-            "round": [1, 11, 21, 31],
+            "gameweek": [1, 11, 21, 31],
             "strength_overall_home": [1355, 1355, 1220, 1230],
             "strength_overall_away": [1380, 1370, 1290, 1250],
         }
     )
-    assert_mappings_correct(teams, expected, on=["season", "id", "round"])
+    assert_mappings_correct(teams, expected, on=["season", "id", "gameweek"])
 
     # Test that the correct number of managers is returned
     assert (
@@ -245,7 +245,7 @@ def test_load_merged():
         {
             "season": [2024, 2024, 2024, 2024],
             "element": [351, 351, 351, 351],
-            "round": [1, 2, 3, 4],
+            "gameweek": [1, 2, 3, 4],
             "uds_xG": [0.66, 1.84, 1.31, 0.73],
             "uds_xA": [0.00, 0.00, 0.41, 0.00],
         }
@@ -253,7 +253,7 @@ def test_load_merged():
     assert_mappings_correct(
         players,
         expected,
-        on=["season", "element", "round"],
+        on=["season", "element", "gameweek"],
         atol=1e-2,
     )
 
@@ -263,7 +263,7 @@ def test_load_merged():
             "season": [2024, 2024, 2024, 2024],
             "code": [43, 43, 43, 43],
             "id": [13, 13, 13, 13],
-            "round": [1, 2, 3, 4],
+            "gameweek": [1, 2, 3, 4],
             "uds_xG": [1.18, 3.08, 3.19, 1.55],
             "uds_xGA": [1.06, 0.48, 0.95, 1.05],
             "clb_elo": [2050.57299805, 2055.97094727, 2056.84448242, 2060.20605469],
@@ -272,7 +272,7 @@ def test_load_merged():
     assert_mappings_correct(
         teams,
         expected,
-        on=["season", "code", "round"],
+        on=["season", "code", "gameweek"],
         atol=1e-2,
     )
 
@@ -281,7 +281,7 @@ def test_load_merged():
         {
             "season": [2024, 2025, 2025, 2025],
             "code": [118748, 118748, 118748, 118748],
-            "round": [38, 1, 2, 3],
+            "gameweek": [38, 1, 2, 3],
             "element": [328, 381, 381, 381],
             "value": [136, 145, 145, 145],
             "team": [12, 12, 12, 12],
@@ -295,7 +295,7 @@ def test_load_merged():
     assert_mappings_correct(
         players,
         expected,
-        on=["season", "code", "round"],
+        on=["season", "code", "gameweek"],
         atol=1e-2,
     )
 
@@ -303,7 +303,7 @@ def test_load_merged():
     expected = pl.DataFrame(
         {
             "season": [2024, 2025, 2025, 2025],
-            "round": [38, 1, 2, 3],
+            "gameweek": [38, 1, 2, 3],
             "code": [14, 14, 14, 14],
             "id": [12, 12, 12, 12],
             "was_home": [1, 1, 0, 1],
@@ -315,21 +315,21 @@ def test_load_merged():
     assert_mappings_correct(
         teams,
         expected,
-        on=["season", "code", "round"],
+        on=["season", "code", "gameweek"],
         atol=1e-2,
     )
 
     # Test that the correct number of rows (for upcoming players) is returned
     assert players.filter(
         pl.col("season").eq(current_season)
-        & pl.col("round").is_in(upcoming_gameweeks)
+        & pl.col("gameweek").is_in(upcoming_gameweeks)
         & pl.col("code").eq(118748)
     ).height == len(upcoming_gameweeks)
 
     # Test that the correct number of rows (for upcoming teams) is returned
     assert teams.filter(
         pl.col("season").eq(current_season)
-        & pl.col("round").is_in(upcoming_gameweeks)
+        & pl.col("gameweek").is_in(upcoming_gameweeks)
         & pl.col("code").eq(14)
     ).height == len(upcoming_gameweeks)
 
@@ -360,8 +360,8 @@ def test_get_upcoming_fixtures():
     upcoming_fixtures = get_upcoming_fixtures(fixtures, season, upcoming_gameweeks)
     upcoming_fixtures = upcoming_fixtures.collect()
     assert upcoming_fixtures.height == 50
-    assert upcoming_fixtures.get_column("event").min() == 1
-    assert upcoming_fixtures.get_column("event").max() == 5
+    assert upcoming_fixtures.get_column("gameweek").min() == 1
+    assert upcoming_fixtures.get_column("gameweek").max() == 5
 
 
 def test_calculate_implied_probabilities():

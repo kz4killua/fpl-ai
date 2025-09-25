@@ -29,7 +29,7 @@ class Simulator:
 
         # Load fixture data
         self.fixtures = load_fixtures([self.season]).collect()
-        self.gameweeks = self.fixtures.get_column("event").unique().sort().to_list()
+        self.gameweeks = self.fixtures.get_column("gameweek").unique().sort().to_list()
         self.first_gameweek = self.gameweeks[0]
         self.last_gameweek = self.gameweeks[-1]
 
@@ -87,7 +87,7 @@ class Simulator:
             raise ValueError("No gameweeks left to simulate.")
 
         # Get the results of the gameweek
-        gameweek_results = self.results.filter(pl.col("round") == self.next_gameweek)
+        gameweek_results = self.results.filter(pl.col("gameweek") == self.next_gameweek)
         minutes = get_mapper(gameweek_results, "element", "minutes")
         total_points = get_mapper(gameweek_results, "element", "total_points")
         element_types = get_mapper(self.static_elements, "id", "element_type")

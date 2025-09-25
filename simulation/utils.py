@@ -152,12 +152,12 @@ def load_results(season: int) -> pl.LazyFrame:
     """Load player points and minutes for each gameweek in the given season."""
     elements = load_elements([season])
     results = (
-        elements.group_by(["season", "element", "round"])
+        elements.group_by(["season", "element", "gameweek"])
         .agg(pl.col("total_points").sum(), pl.col("minutes").sum())
         .select(
             pl.col("season"),
             pl.col("element"),
-            pl.col("round"),
+            pl.col("gameweek"),
             pl.col("total_points"),
             pl.col("minutes"),
         )
