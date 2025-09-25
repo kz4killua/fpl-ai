@@ -72,10 +72,10 @@ def load_market_probabilities(
 def average_implied_probabilities(df: pl.LazyFrame, bookmakers: list[tuple]):
     """Average the implied probabilities from different bookmakers."""
 
-    schema = set(df.collect_schema().names())
+    columns = set(df.collect_schema().names())
     for bookmaker in bookmakers:
         for column in bookmaker:
-            if column not in schema:
+            if column not in columns:
                 df = df.with_columns(pl.lit(None).cast(pl.Float64).alias(column))
 
     return df.with_columns(
