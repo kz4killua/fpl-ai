@@ -50,7 +50,7 @@ def get_teams_view(matches: pl.LazyFrame) -> pl.LazyFrame:
     """Convert per-match data to per-team data."""
 
     fixed_columns, home_columns, away_columns = [], [], []
-    for column in matches.columns:
+    for column in get_columns(matches):
         if column.startswith("team_h_"):
             home_columns.append(column)
         elif column.startswith("team_a_"):
@@ -90,14 +90,14 @@ def get_matches_view(
     home_teams = teams.filter(pl.col("was_home") == 1).rename(
         {
             column: f"team_h_{column}"
-            for column in teams.columns
+            for column in get_columns(teams)
             if column not in fixed_columns
         }
     )
     away_teams = teams.filter(pl.col("was_home") == 0).rename(
         {
             column: f"team_a_{column}"
-            for column in teams.columns
+            for column in get_columns(teams)
             if column not in fixed_columns
         }
     )
@@ -106,3 +106,13 @@ def get_matches_view(
     drop = list(set(fixed_columns) - set(join_keys))
     matches = home_teams.join(away_teams.drop(drop), on=join_keys, how="inner")
     return matches
+
+
+def get_columns(df: pl.LazyFrame | pl.DataFrame) -> list[str]:
+    """Get the list of columns in a Polars DataFrame or LazyFrame."""
+    if isinstance(df, pl.LazyFrame):
+        return df.collect_schema().names()
+    elif isinstance(df, pl.DataFrame):
+        return df.columns
+    else:
+        raise ValueError("Argument 'df' must be a Polars DataFrame or LazyFrame")

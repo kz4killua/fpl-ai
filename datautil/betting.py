@@ -4,6 +4,7 @@ import polars as pl
 
 from datautil.footballdata import load_footballdata
 from datautil.theoddsapi import load_theoddsapi
+from datautil.utils import get_columns
 
 
 def load_market_probabilities(
@@ -72,7 +73,7 @@ def load_market_probabilities(
 def average_implied_probabilities(df: pl.LazyFrame, bookmakers: list[tuple]):
     """Average the implied probabilities from different bookmakers."""
 
-    columns = set(df.collect_schema().names())
+    columns = get_columns(df)
     for bookmaker in bookmakers:
         for column in bookmaker:
             if column not in columns:
