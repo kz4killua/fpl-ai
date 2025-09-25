@@ -1,7 +1,7 @@
 [project]
-name = "fpl-ai-dev"
+name = "fpl-ai"
 version = "0.1.0"
-description = "AI for Fantasy Premier League"
+description = "An AI for Fantasy Premier League"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -9,7 +9,7 @@ dependencies = [
     "numpy>=2.2.5",
     "ortools>=9.12.4544",
     "polars>=1.29.0",
-    "requests>=2.32.3",
+    "requests>=2.32.5",
     "scikit-learn>=1.6.1",
 ]
 
