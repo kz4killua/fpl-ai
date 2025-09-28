@@ -360,7 +360,7 @@ def load_static_elements(season: int, gameweek: int) -> pl.LazyFrame:
         )
     else:
         static_elements = static_elements.with_columns(
-            pl.col("news_added").str.to_datetime()
+            pl.col("news_added").str.to_datetime(time_zone="UTC")
         )
     return static_elements.lazy()
 
