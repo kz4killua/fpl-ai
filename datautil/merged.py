@@ -19,15 +19,7 @@ def load_merged(
     # Get the cutoff time for loaded data
     if upcoming_gameweeks:
         next_gameweek = min(upcoming_gameweeks)
-        bootstrap_static = load_bootstrap_static(current_season, next_gameweek)
-        for event in bootstrap_static["events"]:
-            if event["id"] == next_gameweek:
-                cutoff_time = datetime.fromisoformat(event["deadline_time"])
-                break
-        else:
-            raise ValueError(
-                f"Could not find cutoff time for gameweek {next_gameweek}."
-            )
+        cutoff_time = get_deadline_time(current_season, next_gameweek)
     else:
         next_gameweek = None
         cutoff_time = datetime.max.replace(tzinfo=UTC)
@@ -179,3 +171,15 @@ def merge_matches(matches: pl.LazyFrame, market_probabilities: pl.LazyFrame):
         how="left",
     )
     return matches
+
+
+def get_deadline_time(season: int, gameweek: int) -> datetime:
+    """Returns the deadline time for a given gameweek."""
+    bootstrap_static = load_bootstrap_static(season, gameweek)
+    for event in bootstrap_static["events"]:
+        if event["id"] == gameweek:
+            return datetime.fromisoformat(event["deadline_time"])
+    else:
+        raise ValueError(
+            f"Could not find cutoff time for gameweek {gameweek}."
+        )
