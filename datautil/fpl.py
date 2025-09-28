@@ -7,10 +7,10 @@ import polars as pl
 from datautil.constants import DATA_DIR
 from datautil.upcoming import (
     get_upcoming_elements,
+    get_upcoming_fixtures,
     get_upcoming_static_elements,
     get_upcoming_static_teams,
-    mask_upcoming_data,
-    remove_upcoming_data,
+    remove_upcoming,
 )
 from datautil.utils import get_teams_view
 from game.rules import DEF, FWD, GKP, MID, MNG
@@ -48,22 +48,12 @@ def load_fpl(
         if current_season not in seasons:
             raise ValueError(f"Season '{current_season}' is not loaded.")
 
-        # Mask fixture results for upcoming gameweeks
-        fixtures = mask_upcoming_data(
-            fixtures,
-            current_season,
-            min(upcoming_gameweeks),
-            ["team_h_score", "team_a_score"],
+        # Create safe records for upcoming gameweeks
+        upcoming_fixtures = get_upcoming_fixtures(
+            fixtures, current_season, upcoming_gameweeks
         )
-        fixtures = remove_upcoming_data(
-            fixtures,
-            current_season,
-            max(upcoming_gameweeks) + 1,
-        )
-
-        # Create records for upcoming gameweeks
         upcoming_elements = get_upcoming_elements(
-            current_season, upcoming_gameweeks, fixtures, static_elements
+            current_season, upcoming_gameweeks, upcoming_fixtures, static_elements
         )
         upcoming_static_teams = get_upcoming_static_teams(
             current_season, upcoming_gameweeks, static_teams
@@ -72,18 +62,18 @@ def load_fpl(
             current_season, upcoming_gameweeks, static_elements
         )
 
-        # Remove already loaded upcoming records
-        elements = remove_upcoming_data(
-            elements, current_season, min(upcoming_gameweeks)
-        )
-        static_elements = remove_upcoming_data(
+        # Remove any existing records for upcoming gameweeks
+        fixtures = remove_upcoming(fixtures, current_season, min(upcoming_gameweeks))
+        elements = remove_upcoming(elements, current_season, min(upcoming_gameweeks))
+        static_elements = remove_upcoming(
             static_elements, current_season, min(upcoming_gameweeks)
         )
-        static_teams = remove_upcoming_data(
+        static_teams = remove_upcoming(
             static_teams, current_season, min(upcoming_gameweeks)
         )
 
-        # Add created upcoming records
+        # Add safe records for upcoming gameweeks
+        fixtures = pl.concat([fixtures, upcoming_fixtures], how="diagonal_relaxed")
         elements = pl.concat([elements, upcoming_elements], how="diagonal_relaxed")
         static_elements = pl.concat(
             [static_elements, upcoming_static_elements], how="diagonal_relaxed"

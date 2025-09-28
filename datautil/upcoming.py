@@ -1,14 +1,14 @@
 import polars as pl
 
+from datautil.utils import get_columns
+
 
 def get_upcoming_elements(
     season: int,
     gameweeks: list[int],
-    fixtures: pl.LazyFrame,
+    upcoming_fixtures: pl.LazyFrame,
     static_elements: pl.LazyFrame,
 ) -> pl.LazyFrame:
-    upcoming_fixtures = get_upcoming_fixtures(fixtures, season, gameweeks)
-
     # Select the most recent static teams data
     static_elements = static_elements.filter(
         pl.col("season").eq(season) & pl.col("gameweek").eq(min(gameweeks))
@@ -179,13 +179,15 @@ def get_upcoming_fixtures(
     df = fixtures.filter(
         (pl.col("gameweek").is_in(upcoming_gameweeks)) & (pl.col("season") == season)
     )
-
-    # Remove upcoming scores as they should be unknown
-    df = df.with_columns(
-        pl.lit(None).alias("team_a_score"),
-        pl.lit(None).alias("team_h_score"),
+    # Remove any columns that would leak future information
+    df = df.select(
+        "season",
+        "gameweek",
+        "id",
+        "kickoff_time",
+        "team_h",
+        "team_a",
     )
-
     return df
 
 
@@ -198,7 +200,7 @@ def get_upcoming_gameweeks(
     )
 
 
-def remove_upcoming_data(
+def remove_upcoming(
     df: pl.LazyFrame,
     season: int,
     next_gameweek: int,
@@ -208,20 +210,29 @@ def remove_upcoming_data(
     return df.filter(~upcoming)
 
 
-def mask_upcoming_data(
+def mask_upcoming(
     df: pl.LazyFrame,
     season: int,
     next_gameweek: int,
-    columns: list[str],
+    remove: list[str] | None = None,
+    keep: list[str] | None = None,
 ) -> pl.LazyFrame:
-    """Set upcoming values to `None`."""
+    """Set upcoming values to null."""
+
+    if (remove is None) == (keep is None):
+        raise ValueError("Exactly one of `remove` or `keep` must be specified.")
+
     upcoming = get_upcoming_condition(season, next_gameweek)
 
-    expressions = []
-    for column in columns:
-        expressions.append(
+    def masked(column: str) -> pl.Expr:
+        return (
             pl.when(upcoming).then(pl.lit(None)).otherwise(pl.col(column)).alias(column)
         )
+
+    if remove is not None:
+        expressions = [masked(c) for c in remove]
+    else:
+        expressions = [c if c in keep else masked(c) for c in get_columns(df)]
 
     return df.with_columns(expressions)
 
