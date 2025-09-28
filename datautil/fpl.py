@@ -10,7 +10,7 @@ from datautil.upcoming import (
     get_upcoming_fixtures,
     get_upcoming_static_elements,
     get_upcoming_static_teams,
-    remove_upcoming,
+    remove_future,
 )
 from datautil.utils import get_teams_view
 from game.rules import DEF, FWD, GKP, MID, MNG
@@ -62,13 +62,13 @@ def load_fpl(
             current_season, upcoming_gameweeks, static_elements
         )
 
-        # Remove any existing records for upcoming gameweeks
-        fixtures = remove_upcoming(fixtures, current_season, min(upcoming_gameweeks))
-        elements = remove_upcoming(elements, current_season, min(upcoming_gameweeks))
-        static_elements = remove_upcoming(
+        # Remove any existing records for future gameweeks
+        fixtures = remove_future(fixtures, current_season, min(upcoming_gameweeks))
+        elements = remove_future(elements, current_season, min(upcoming_gameweeks))
+        static_elements = remove_future(
             static_elements, current_season, min(upcoming_gameweeks)
         )
-        static_teams = remove_upcoming(
+        static_teams = remove_future(
             static_teams, current_season, min(upcoming_gameweeks)
         )
 

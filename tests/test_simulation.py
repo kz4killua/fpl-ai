@@ -3,7 +3,7 @@ import json
 import polars as pl
 
 from datautil.fpl import load_elements
-from datautil.upcoming import remove_upcoming_data
+from datautil.upcoming import remove_future
 from game.rules import DEF, FWD, GKP, MID
 from simulation.simulate import Simulator
 from simulation.utils import (
@@ -235,17 +235,17 @@ def test_make_automatic_substitutions():
         assert substituted_roles == test_case["expected"]
 
 
-def test_remove_upcoming_data():
+def test_remove_future():
     elements = load_elements([2016, 2017])
 
     # Test removing data on or after the first gameweek
-    filtered_elements = remove_upcoming_data(elements, 2017, 1)
+    filtered_elements = remove_future(elements, 2017, 1)
     filtered_elements = filtered_elements.collect()
     assert filtered_elements.get_column("gameweek").max() == 38
     assert filtered_elements.get_column("season").max() == 2016
 
     # Test removing data from the middle of the season
-    filtered_elements = remove_upcoming_data(elements, 2017, 20)
+    filtered_elements = remove_future(elements, 2017, 20)
     filtered_elements = filtered_elements.collect()
     assert (
         filtered_elements.filter(pl.col("season") == 2016).get_column("gameweek").max()
