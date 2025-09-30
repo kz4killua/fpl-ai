@@ -1,88 +1,56 @@
 import json
 import lzma
+import warnings
+from datetime import datetime
 
 import polars as pl
 
 from datautil.constants import DATA_DIR
-from datautil.utils import calculate_implied_probabilities
+from datautil.fpl import get_gameweeks
 
 
-def load_theoddsapi(season: int, gameweek: int) -> pl.LazyFrame:
-    """Load upcoming odds data from the-odds-api.com for a given season and gameweek."""
-    path = DATA_DIR / f"theoddsapi/{season}/{gameweek}.json.xz"
-    with lzma.open(path, "rt", encoding="utf-8") as f:
-        data = json.load(f)
+def load_theoddsapi(
+    seasons: list[int],
+    current_season: int,
+    next_gameweek: int,
+    cutoff_time: datetime | None = None,
+):
+    """Load odds data from the-odds-api.com."""
 
-    # Remove duplicates by picking the occurence of each match with the most bookmakers
+    # Load odds data for all season and gameweek combinations
     unique_matches = dict()
-    for match in data:
-        match_key = (match["home_team"], match["away_team"])
-        if match_key not in unique_matches:
-            unique_matches[match_key] = match
-        else:
-            unique_matches[match_key] = max(
-                match, unique_matches[match_key], key=lambda x: len(x["bookmakers"])
+    for season in sorted(season for season in seasons if season >= 2021):
+        for gameweek in sorted(get_gameweeks(season)):
+            if season == current_season and gameweek > next_gameweek:
+                break
+            # Important: Sorted order prevents overwriting future data with past data
+            unique_matches.update(
+                _load_theoddsapi(season, gameweek, cutoff_time=cutoff_time)
             )
 
-    # Keep a list of bookmakers for calculating implied probabilities later
-    bookmaker_keys = set()
-
-    rows = []
-    for match in unique_matches.values():
-        home_team = match["home_team"]
-        away_team = match["away_team"]
-        odds = {
-            "home": home_team,
-            "away": away_team,
-        }
-
-        for bookmaker in match["bookmakers"]:
-            bookmaker_keys.add(bookmaker["key"])
-
-            for market in bookmaker["markets"]:
-                # We only care about head-to-head (h2h) markets for now
-                if market["key"] == "h2h":
-                    for outcome in market["outcomes"]:
-                        if outcome["name"] == home_team:
-                            odds[f"{bookmaker['key']}_home"] = outcome["price"]
-                        elif outcome["name"] == away_team:
-                            odds[f"{bookmaker['key']}_away"] = outcome["price"]
-                        elif outcome["name"] == "Draw":
-                            odds[f"{bookmaker['key']}_draw"] = outcome["price"]
-
-        rows.append(odds)
-
-    # Declare schema (in case of missing data e.g. Gameweek 1 for 2022-23)
-    schema = {
-        "home": pl.String,
-        "away": pl.String,
+    # Construct a Polars DataFrame from the unique matches
+    data = {
+        "season": [],
+        "team_h": [],
+        "team_a": [],
+        "commence_time": [],
+        "bookmakers": [],
     }
-    for bookmaker_key in bookmaker_keys:
-        schema[f"{bookmaker_key}_home"] = pl.Float64
-        schema[f"{bookmaker_key}_away"] = pl.Float64
-        schema[f"{bookmaker_key}_draw"] = pl.Float64
-
-    df = pl.DataFrame(rows, schema=schema).with_columns(
-        pl.lit(season).alias("season"),
-        pl.lit(gameweek).alias("gameweek"),
-    )
-
-    # Convert odds to implied probabilities
-    for bookmaker_key in bookmaker_keys:
-        implied_home, implied_away, implied_draw = calculate_implied_probabilities(
-            pl.col(f"{bookmaker_key}_home"),
-            pl.col(f"{bookmaker_key}_away"),
-            pl.col(f"{bookmaker_key}_draw"),
+    for match_key, match_data in unique_matches.items():
+        season, team_h, team_a = match_key
+        data["season"].append(season)
+        data["team_h"].append(team_h)
+        data["team_a"].append(team_a)
+        data["commence_time"].append(
+            datetime.fromisoformat(match_data["commence_time"])
         )
-        df = df.with_columns(
-            implied_home.alias(f"{bookmaker_key}_home_implied"),
-            implied_away.alias(f"{bookmaker_key}_away_implied"),
-            implied_draw.alias(f"{bookmaker_key}_draw_implied"),
-        )
+        data["bookmakers"].append(match_data["bookmakers"])
 
-    # Add FPL codes for home and away teams
+    df = pl.DataFrame(data)
+
+    # Add team codes
     team_ids = pl.read_csv(DATA_DIR / "theoddsapi/team_ids.csv")
-    for column in ["home", "away"]:
+    for column in ["team_h", "team_a"]:
         df = df.join(
             team_ids.select(
                 pl.col("theoddsapi_name").alias(column),
@@ -93,3 +61,48 @@ def load_theoddsapi(season: int, gameweek: int) -> pl.LazyFrame:
         )
 
     return df.lazy()
+
+
+def _load_theoddsapi(
+    season: int, gameweek: int, cutoff_time: datetime | None = None
+) -> pl.LazyFrame:
+    """Load odds data from the-odds-api.com for a given season and gameweek."""
+
+    path = DATA_DIR / f"theoddsapi/{season}/{gameweek}.json.xz"
+    with lzma.open(path, "rt", encoding="utf-8") as f:
+        data = json.load(f)
+
+    # Filter out any bookmaker data updated after the cutoff time
+    # This should not happen if data is being collected correctly
+    if cutoff_time:
+        for match in data:
+            bookmakers = []
+            for bookmaker in match["bookmakers"]:
+                last_update = datetime.fromisoformat(bookmaker["last_update"])
+                if last_update <= cutoff_time:
+                    bookmakers.append(bookmaker)
+                else:
+                    warnings.warn(
+                        "Ignoring bookmaker data updated after cutoff time. ",
+                        stacklevel=2,
+                    )
+            match["bookmakers"] = bookmakers
+
+    # Remove duplicates by picking the occurence of each match with the most bookmakers
+    unique_matches = dict()
+    for match in data:
+        match_key = (season, match["home_team"], match["away_team"])
+        if match_key not in unique_matches:
+            unique_matches[match_key] = match
+        else:
+            warnings.warn(
+                f"Found multiple occurences for {match['home_team']} vs "
+                f"{match['away_team']} in the {season} season, gameweek {gameweek}. "
+                f"Keeping the one with the most bookmakers...",
+                stacklevel=2,
+            )
+            unique_matches[match_key] = max(
+                match, unique_matches[match_key], key=lambda x: len(x["bookmakers"])
+            )
+
+    return unique_matches

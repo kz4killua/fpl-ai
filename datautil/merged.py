@@ -2,9 +2,9 @@ from datetime import UTC, datetime
 
 import polars as pl
 
-from datautil.betting import load_market_probabilities
 from datautil.clubelo import load_clubelo
 from datautil.fpl import load_bootstrap_static, load_fpl
+from datautil.theoddsapi import load_theoddsapi
 from datautil.understat import load_understat
 from datautil.utils import get_matches_view
 
@@ -30,15 +30,13 @@ def load_merged(
     )
     uds_players, uds_teams = load_understat(seasons, cutoff_time)
     clb_teams = load_clubelo(cutoff_time)
-    market_probabilities = load_market_probabilities(
-        seasons, cutoff_time, current_season, next_gameweek
-    )
+    toa_matches = load_theoddsapi(seasons, current_season, next_gameweek, cutoff_time)
 
     # Merge all data sources
     players = merge_players(fpl_players, uds_players, cutoff_time)
     teams = merge_teams(fpl_teams, uds_teams, clb_teams)
     matches = get_matches_view(teams)
-    matches = merge_matches(matches, market_probabilities)
+    matches = merge_matches(matches, toa_matches)
     managers = fpl_managers
 
     return players, matches, managers
@@ -157,15 +155,15 @@ def merge_teams(
     return fpl_teams
 
 
-def merge_matches(matches: pl.LazyFrame, market_probabilities: pl.LazyFrame):
+def merge_matches(matches: pl.LazyFrame, toa_matches: pl.LazyFrame):
     matches = matches.join(
-        market_probabilities.select(
+        toa_matches.select(
             pl.col("season"),
-            pl.col("home_team_code").alias("team_h_code"),
-            pl.col("away_team_code").alias("team_a_code"),
-            pl.col("home_market_probability"),
-            pl.col("away_market_probability"),
-            pl.col("draw_market_probability"),
+            pl.col("team_h_fpl_code").alias("team_h_code"),
+            pl.col("team_a_fpl_code").alias("team_a_code"),
+            pl.col("team_h").alias("team_h_toa_name"),
+            pl.col("team_a").alias("team_a_toa_name"),
+            pl.col("bookmakers").alias("toa_bookmakers"),
         ),
         on=["season", "team_h_code", "team_a_code"],
         how="left",
@@ -180,6 +178,4 @@ def get_deadline_time(season: int, gameweek: int) -> datetime:
         if event["id"] == gameweek:
             return datetime.fromisoformat(event["deadline_time"])
     else:
-        raise ValueError(
-            f"Could not find cutoff time for gameweek {gameweek}."
-        )
+        raise ValueError(f"Could not find cutoff time for gameweek {gameweek}.")

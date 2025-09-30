@@ -8,16 +8,16 @@ from .assists import make_assists_predictor
 from .bonus import predict_bonus
 from .bps import make_bps_predictor
 from .goals_scored import make_goals_scored_predictor
-from .match import make_match_predictor
 from .minutes import make_minutes_predictor
 from .saves import make_saves_predictor
+from .team_goals_scored import make_team_goals_scored_predictor
 from .total_points import make_total_points_predictor
 
 
 class PredictionModel:
     def __init__(self):
         self.minutes_predictor = make_minutes_predictor()
-        self.match_predictor = make_match_predictor()
+        self.team_goals_scored_predictor = make_team_goals_scored_predictor()
         self.goals_scored_predictor = make_goals_scored_predictor()
         self.assists_predictor = make_assists_predictor()
         self.saves_predictor = make_saves_predictor()
@@ -87,7 +87,9 @@ class PredictionModel:
 
     def _fit_matches(self, matches: pl.DataFrame):
         return self._fit_model(
-            self.match_predictor, matches, ["team_h_scored", "team_a_scored"]
+            self.team_goals_scored_predictor,
+            matches,
+            ["team_h_scored", "team_a_scored"],
         )
 
     def _fit_goals_scored(self, players: pl.DataFrame):
@@ -211,7 +213,7 @@ class PredictionModel:
 
     def _predict_matches(self, matches: pl.DataFrame):
         # Make predictions for home and away goals
-        predictions = self.match_predictor.predict(matches)
+        predictions = self.team_goals_scored_predictor.predict(matches)
         predicted_team_h_scored = predictions[:, 0]
         predicted_team_a_scored = predictions[:, 1]
         # Predict clean sheets assuming a Poisson distribution for goals

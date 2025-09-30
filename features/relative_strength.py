@@ -6,15 +6,6 @@ def compute_relative_strength(df: pl.LazyFrame):
 
     expressions = []
 
-    # Calculate expected win probabilities for both sides based on clubelo ratings
-    team_h_elo_win_probability = calculate_elo_win_probability(
-        pl.col("team_h_clb_elo"), pl.col("team_a_clb_elo")
-    ).alias("team_h_clb_elo_win_probability")
-    team_a_elo_win_probability = (1 - team_h_elo_win_probability).alias(
-        "team_a_clb_elo_win_probability"
-    )
-    expressions.extend([team_h_elo_win_probability, team_a_elo_win_probability])
-
     # Compare each team's attack strength with the opponent's defense strength
     team_h_relative_strength_attack = (
         pl.col("team_h_strength_attack_home") / pl.col("team_a_strength_defence_away")
@@ -61,8 +52,3 @@ def compute_relative_strength(df: pl.LazyFrame):
         )
 
     return df.with_columns(expressions)
-
-
-def calculate_elo_win_probability(team_h_elo: pl.Expr, team_a_elo: pl.Expr) -> pl.Expr:
-    """Calculate the win probability for the home team based on clubelo.com ratings."""
-    return 1 / (10 ** ((team_a_elo - team_h_elo) / 400) + 1)

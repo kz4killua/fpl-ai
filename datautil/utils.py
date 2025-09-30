@@ -33,19 +33,6 @@ def get_mapper(df: pl.DataFrame, from_col: str | Iterable[str], to_col: str) -> 
     return mapper
 
 
-def calculate_implied_probabilities(home: pl.Expr, away: pl.Expr, draw: pl.Expr):
-    """Convert bookmaker odds to implied probabilities, adjusted for overround."""
-    implied_home = 1 / home
-    implied_away = 1 / away
-    implied_draw = 1 / draw
-    overround = implied_home + implied_away + implied_draw
-
-    normalized_home = implied_home / overround
-    normalized_away = implied_away / overround
-    normalized_draw = implied_draw / overround
-    return normalized_home, normalized_away, normalized_draw
-
-
 def get_teams_view(matches: pl.LazyFrame) -> pl.LazyFrame:
     """Convert per-match data to per-team data."""
 
@@ -116,3 +103,17 @@ def get_columns(df: pl.LazyFrame | pl.DataFrame) -> list[str]:
         return df.columns
     else:
         raise ValueError("Argument 'df' must be a Polars DataFrame or LazyFrame")
+
+
+def force_dataframe(df: pl.DataFrame | pl.LazyFrame) -> pl.DataFrame:
+    """Ensure the input is a Polars DataFrame."""
+    if isinstance(df, pl.LazyFrame):
+        return df.collect()
+    return df
+
+
+def force_lazyframe(df: pl.DataFrame | pl.LazyFrame) -> pl.LazyFrame:
+    """Ensure the input is a Polars LazyFrame."""
+    if isinstance(df, pl.DataFrame):
+        return df.lazy()
+    return df

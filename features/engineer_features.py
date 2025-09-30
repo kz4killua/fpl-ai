@@ -2,6 +2,7 @@ import polars as pl
 
 from datautil.utils import get_matches_view, get_teams_view
 from features.balanced_mean import compute_balanced_mean
+from features.clb_features import compute_clb_features
 from features.depth_rank import compute_depth_rank
 from features.depth_unavailability import compute_depth_unavailability
 from features.fatigue import compute_fatigue
@@ -13,6 +14,7 @@ from features.one_hot_minutes_category import compute_one_hot_minutes_category
 from features.per_90 import compute_per_90
 from features.rolling_std import compute_rolling_std
 from features.share import compute_share
+from features.toa_features import compute_toa_features
 
 from .availability import compute_availability
 from .last_season_mean import compute_last_season_mean
@@ -582,14 +584,17 @@ def engineer_match_features(matches: pl.LazyFrame) -> pl.LazyFrame:
     teams = compute_last_season_mean(teams, ["scored", "conceded", "uds_xG", "uds_xGA"])
 
     # Add match level features
-    matches = get_matches_view(
-        teams,
-        extra_fixed_columns=[
-            "home_market_probability",
-            "away_market_probability",
-            "draw_market_probability",
-        ],
-    )
+    matches = get_matches_view(teams, extra_fixed_columns=["toa_bookmakers"])
     matches = compute_relative_strength(matches)
+    matches = compute_clb_features(matches)
+
+    bookmaker_weights = {
+        "pinnacle": 1.0,
+        "betfair_ex_uk": 0.5,
+        "smarkets": 0.1,
+        "skybet": 0.1,
+        "matchbook": 0.1,
+    }
+    matches = compute_toa_features(matches, bookmaker_weights)
 
     return matches
