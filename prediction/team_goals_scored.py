@@ -80,7 +80,7 @@ def make_base_team_goals_scored_predictor():
         "team_a_relative_uds_xG_rolling_mean_40",
     ]
     model = MultiOutputRegressor(
-        PoissonRegressor(alpha=2.0),
+        PoissonRegressor(alpha=1.0),
     )
     return Pipeline(
         [
