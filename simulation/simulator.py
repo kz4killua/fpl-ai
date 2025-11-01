@@ -3,9 +3,10 @@ from collections import defaultdict
 import polars as pl
 
 from game.rules import DEF, ELEMENT_TYPES, FWD, GKP, MID, MNG
+from game.utils import format_currency
 from loaders.fpl import load_fixtures, load_static_elements, load_static_teams
 from loaders.merged import load_merged
-from loaders.utils import get_mapper, get_seasons
+from loaders.utils import get_mapper, get_seasons, print_table
 
 from .utils import (
     calculate_budget,
@@ -187,111 +188,76 @@ def print_gameweek_summary(
 ):
     """Prints a report of the gameweek's activity and performance."""
 
-    element_type_names = ELEMENT_TYPES
-
     print(f"Gameweek {gameweek}: {gameweek_points} points")
 
     # Print the starting XI, including substitutions and captains
     print("Starting XI:")
 
-    headers = ["", "", "Position", "Name", "Points"]
-    data = []
+    table = []
     for player in sorted(substituted_roles["starting_xi"], key=element_types.get):
-        row = []
+        row = {
+            "Position": ELEMENT_TYPES[element_types[player]],
+            "Name": web_names[player],
+            "Points": total_points[player],
+        }
 
         if player not in selected_roles["starting_xi"]:
-            row.append("->")
-        else:
-            row.append("  ")
-
+            row["Name"] = "-> " + row["Name"]
         if player == substituted_roles["captain"]:
-            row.append("(C)")
-        elif player == substituted_roles["vice_captain"]:
-            row.append("(V)")
-        else:
-            row.append("   ")
+            row["Name"] = "(C) " + row["Name"]
+        if player == substituted_roles["vice_captain"]:
+            row["Name"] = "(V) " + row["Name"]
 
-        row.append(element_type_names[element_types[player]])
-        row.append(web_names[player])
-        row.append(total_points[player])
+        table.append(row)
 
-        data.append(row)
-
-    print_table(data, headers)
+    print_table(table)
 
     # Print the reserve players, including substitutions and captains
     print("Reserves:")
 
-    headers = ["", "", "Position", "Name", "Points"]
-    data = []
+    table = []
     for player in [
         substituted_roles["reserve_gkp"],
         substituted_roles["reserve_out_1"],
         substituted_roles["reserve_out_2"],
         substituted_roles["reserve_out_3"],
     ]:
-        row = []
+        row = {
+            "Position": ELEMENT_TYPES[element_types[player]],
+            "Name": web_names[player],
+            "Points": total_points[player],
+        }
 
         if player in selected_roles["starting_xi"]:
-            row.append("<-")
-        else:
-            row.append("  ")
-
+            row["Name"] = "<- " + row["Name"]
         if player == selected_roles["captain"]:
-            row.append("(*C)")
-        elif player == selected_roles["vice_captain"]:
-            row.append("(*V)")
-        else:
-            row.append("    ")
+            row["Name"] = "(*C) " + row["Name"]
+        if player == selected_roles["vice_captain"]:
+            row["Name"] = "(*V) " + row["Name"]
 
-        row.append(element_type_names[element_types[player]])
-        row.append(web_names[player])
-        row.append(total_points[player])
+        table.append(row)
 
-        data.append(row)
-
-    print_table(data, headers)
+    print_table(row)
 
     # Print transfer activity and final budget
     print(f"Transfers ({transfer_cost} points) [Free transfers: {free_transfers}]")
-    for player in set(final_squad) - set(initial_squad):
-        print(f"-> {web_names[player]} ({format_currency(now_costs[player])})")
-    for player in set(initial_squad) - set(final_squad):
-        print(f"<- {web_names[player]} ({format_currency(selling_prices[player])})")
+
+    buy = set(final_squad) - set(initial_squad)
+    sell = set(initial_squad) - set(final_squad)
+    buy = sorted(buy, key=lambda x: element_types[x])
+    sell = sorted(sell, key=lambda x: element_types[x])
+
+    table = []
+    for p1, p2 in zip(buy, sell, strict=True):
+        row = {
+            "Buy": f"{web_names[p1]} ({format_currency(now_costs[p1])})",
+            "Sell": f"{web_names[p2]} ({format_currency(selling_prices[p2])})",
+        }
+
+        table.append(row)
+
+    print_table(table)
 
     print(f"Bank: {format_currency(final_budget)}")
     print(f"Team value: {format_currency(final_team_value)}")
     print()
-
-
-def format_currency(amount: int):
-    """Format game currency as a string."""
-    return f"${round(amount / 10, 1)}"
-
-
-def print_table(data, headers=None):
-    """Prints a table from a list of lists."""
-    if not data:
-        return
-    # Calculate column widths
-    column_widths = [
-        max(len(str(item)) for item in col)
-        for col in zip(*(data + ([headers] if headers else [])), strict=False)
-    ]
-    # Print header
-    if headers:
-        print(
-            " ".join(
-                header.ljust(width)
-                for header, width in zip(headers, column_widths, strict=False)
-            )
-        )
-        print("-" * sum(column_widths + [len(headers) - 1]))
-    # Print data rows
-    for row in data:
-        print(
-            " ".join(
-                str(item).ljust(width)
-                for item, width in zip(row, column_widths, strict=False)
-            )
-        )

@@ -117,3 +117,15 @@ def force_lazyframe(df: pl.DataFrame | pl.LazyFrame) -> pl.LazyFrame:
     if isinstance(df, pl.DataFrame):
         return df.lazy()
     return df
+
+
+def print_table(data: list[dict]):
+    """Prints a list of dictionaries as a table."""
+    df = pl.DataFrame(data)
+    with pl.Config() as cfg:
+        cfg.set_tbl_cols(-1)
+        cfg.set_tbl_rows(-1)
+        cfg.set_tbl_formatting("UTF8_FULL_CONDENSED")
+        cfg.set_tbl_hide_column_data_types(True)
+        cfg.set_tbl_hide_dataframe_shape(True)
+        print(df)
