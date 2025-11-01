@@ -101,7 +101,6 @@ def load_understat(seasons: list[int], cutoff_time: datetime):
     )
 
     # Filter records using the cutoff time
-    # TODO: Push this into the respective functions
     players = players.filter(pl.col("date") < cutoff_time.date())
     teams = teams.filter(pl.col("date") < cutoff_time.date())
 
