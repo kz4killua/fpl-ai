@@ -1,6 +1,6 @@
-from game.rules import (
-    CAPTAIN_MULTIPLIER,
-)
+from game.rules import CAPTAIN_MULTIPLIER
+from game.utils import format_currency
+from loaders.utils import print_table
 
 from .parameters import (
     BUDGET_VALUE,
@@ -34,9 +34,9 @@ def optimize_squad(
 ):
     """Runs optimization and returns the optimal squad roles for the next gameweek."""
 
+    # Prepare optimization data
+    initial_squad = set(initial_squad)
     players = list(set(p for (p, _) in total_points))
-
-    # Add gameweeks to player attributes
     teams = {(p, g): teams[p] for p in teams for g in upcoming_gameweeks}
     element_types = {
         (p, g): element_types[p] for p in element_types for g in upcoming_gameweeks
@@ -107,7 +107,7 @@ def optimize_squad(
         log=log,
     )
     if log:
-        print_optimization_solution(solution, web_names)
+        print_optimization_solution(solution, web_names, element_types)
 
     # Prepare roles for the next gameweek
     next_gameweek = upcoming_gameweeks[0]
@@ -123,7 +123,9 @@ def optimize_squad(
     return roles
 
 
-def print_optimization_solution(solution: dict, web_names: dict[int, str]):
+def print_optimization_solution(
+    solution: dict, web_names: dict[int, str], element_types: dict[tuple[int, int], int]
+):
     """Prints the solution in a readable format."""
 
     for gameweek in solution:
@@ -133,23 +135,23 @@ def print_optimization_solution(solution: dict, web_names: dict[int, str]):
         free_transfers = solution[gameweek]["free_transfers"][0]
         paid_transfers = solution[gameweek]["paid_transfers"][0]
 
+        print(f"Gameweek {gameweek} plan:")
+
         # Print purchases and sales
-        print(f"Gameweek {gameweek} optimization plan:")
         if not purchases and not sales:
-            print("  - No transfers made.")
+            print("- No transfers made")
         else:
-            if purchases:
-                print("  - Buy:")
-                for player in purchases:
-                    print(f"    - {web_names[player]}")
-            if sales:
-                print("  - Sell:")
-                for player in sales:
-                    print(f"    - {web_names[player]}")
+            purchases = sorted(purchases, key=lambda p: element_types[p, gameweek])
+            sales = sorted(sales, key=lambda p: element_types[p, gameweek])
+
+            table = []
+            for p1, p2 in zip(purchases, sales, strict=True):
+                table.append({"Buy": web_names[p1], "Sell": web_names[p2]})
+
+            print_table(table)
 
         # Print budget, free transfers, and paid transfers
-        print(f"  - Budget: {budget}")
-        print(f"  - Free transfers: {free_transfers}")
-        print(f"  - Paid transfers: {paid_transfers}")
-
-        print("")
+        print(f"- Bank: {format_currency(budget)}")
+        print(f"- Free transfers: {int(free_transfers)}")
+        print(f"- Paid transfers: {int(paid_transfers)}")
+        print()
