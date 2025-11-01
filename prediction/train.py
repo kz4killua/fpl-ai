@@ -18,6 +18,10 @@ def train():
     players = engineer_player_features(players)
     matches = engineer_match_features(matches)
 
+    # Collect lazyframes
+    players = force_dataframe(players)
+    matches = force_dataframe(matches)
+
     # Fit and save models for simulations
     for season in seasons:
         if season < 2021:
