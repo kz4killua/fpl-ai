@@ -256,8 +256,11 @@ def print_gameweek_summary(
 
         table.append(row)
 
-    print_table(table)
+    if table:
+        print_table(table)
+    else:
+        print("- No transfers made")
 
-    print(f"Bank: {format_currency(final_budget)}")
-    print(f"Team value: {format_currency(final_team_value)}")
+    print(f"- Bank: {format_currency(final_budget)}")
+    print(f"- Team value: {format_currency(final_team_value)}")
     print()
