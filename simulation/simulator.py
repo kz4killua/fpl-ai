@@ -237,7 +237,7 @@ def print_gameweek_summary(
 
         table.append(row)
 
-    print_table(row)
+    print_table(table)
 
     # Print transfer activity and final budget
     print(f"Transfers ({transfer_cost} points) [Free transfers: {free_transfers}]")
