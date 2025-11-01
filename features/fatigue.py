@@ -1,12 +1,11 @@
 import polars as pl
 
 
-def compute_fatigue(df: pl.DataFrame, window: int):
+def compute_fatigue(df: pl.LazyFrame, window: int):
     """Compute the total number of minutes played in the last N days."""
 
     # Sort by kickoff time if necessary
-    if not df.get_column("kickoff_time").is_sorted():
-        df = df.sort("kickoff_time")
+    df = df.sort("kickoff_time")
 
     # Compute rolling minutes over the given number of days
     alias = f"minutes_sum_{window}_days"

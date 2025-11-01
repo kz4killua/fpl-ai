@@ -3,9 +3,12 @@ import itertools
 import numpy as np
 import polars as pl
 
+from loaders.utils import force_dataframe
 
-def compute_imputed_last_season_mean(df: pl.DataFrame, column: str) -> pl.DataFrame:
+
+def compute_imputed_last_season_mean(df: pl.LazyFrame, column: str) -> pl.LazyFrame:
     """Use a linear fit to approximate missing last season means."""
+    df: pl.DataFrame = force_dataframe(df)
     seasons = sorted(df.get_column("season").unique())
     seasons = seasons[1:]
     element_types = sorted(df.get_column("element_type").unique())
@@ -58,4 +61,4 @@ def compute_imputed_last_season_mean(df: pl.DataFrame, column: str) -> pl.DataFr
     # Drop temporary columns
     df = df.drop("starting_value")
 
-    return df
+    return df.lazy()
