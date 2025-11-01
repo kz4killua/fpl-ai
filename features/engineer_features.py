@@ -1,6 +1,5 @@
 import polars as pl
 
-from datautil.utils import get_matches_view, get_teams_view
 from features.balanced_mean import compute_balanced_mean
 from features.clb_features import compute_clb_features
 from features.depth_rank import compute_depth_rank
@@ -15,6 +14,7 @@ from features.per_90 import compute_per_90
 from features.rolling_std import compute_rolling_std
 from features.share import compute_share
 from features.toa_features import compute_toa_features
+from loaders.utils import get_matches_view, get_teams_view
 
 from .availability import compute_availability
 from .last_season_mean import compute_last_season_mean

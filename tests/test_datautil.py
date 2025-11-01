@@ -3,18 +3,18 @@ from datetime import datetime
 import polars as pl
 from polars.testing import assert_frame_equal
 
-from datautil.clubelo import load_clubelo
-from datautil.fpl import (
+from loaders.clubelo import load_clubelo
+from loaders.fpl import (
     load_fixtures,
     load_fpl,
 )
-from datautil.merged import load_merged
-from datautil.understat import load_understat
-from datautil.upcoming import (
+from loaders.merged import load_merged
+from loaders.understat import load_understat
+from loaders.upcoming import (
     get_upcoming_fixtures,
     get_upcoming_gameweeks,
 )
-from datautil.utils import calculate_implied_probabilities, get_seasons, get_teams_view
+from loaders.utils import calculate_implied_probabilities, get_seasons, get_teams_view
 
 
 def test_load_clubelo():

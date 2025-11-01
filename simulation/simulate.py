@@ -1,8 +1,8 @@
 import polars as pl
 
-from datautil.upcoming import get_upcoming_gameweeks
-from datautil.utils import get_mapper
 from features.engineer_features import engineer_match_features, engineer_player_features
+from loaders.upcoming import get_upcoming_gameweeks
+from loaders.utils import force_dataframe, get_mapper
 from optimization.optimize import optimize_squad
 from optimization.parameters import OPTIMIZATION_WINDOW_SIZE
 from prediction.model import PredictionModel
@@ -53,6 +53,9 @@ def get_best_roles(
     # Engineer features
     players = engineer_player_features(players)
     matches = engineer_match_features(matches)
+
+    players = force_dataframe(players)
+    matches = force_dataframe(matches)
 
     # Keep only the features for upcoming gameweeks
     upcoming_gameweeks = get_upcoming_gameweeks(

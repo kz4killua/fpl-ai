@@ -5,7 +5,7 @@ import polars as pl
 from scipy.optimize import minimize
 from scipy.stats import poisson
 
-from datautil.utils import force_dataframe
+from loaders.utils import force_dataframe
 
 
 def compute_toa_features(

@@ -2,9 +2,9 @@ import json
 
 import polars as pl
 
-from datautil.fpl import load_elements
-from datautil.upcoming import remove_future
 from game.rules import DEF, FWD, GKP, MID
+from loaders.fpl import load_elements
+from loaders.upcoming import remove_future
 from simulation.simulate import Simulator
 from simulation.utils import (
     calculate_points,

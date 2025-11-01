@@ -1,7 +1,7 @@
 import polars as pl
 
-from datautil.utils import force_dataframe
 from features.toa_features import estimate_goals
+from loaders.utils import force_dataframe
 
 
 def compute_clb_features(matches: pl.DataFrame):

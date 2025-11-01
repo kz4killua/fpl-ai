@@ -1,8 +1,8 @@
 import polars as pl
 
-from datautil.merged import load_merged
-from datautil.utils import get_seasons
 from features.engineer_features import engineer_match_features, engineer_player_features
+from loaders.merged import load_merged
+from loaders.utils import force_dataframe, get_seasons
 from prediction.model import PredictionModel
 from prediction.utils import save_model
 
@@ -10,10 +10,9 @@ from prediction.utils import save_model
 def train():
     # Load player and match data
     seasons = get_seasons(2024)
-    players, matches, managers = load_merged(seasons)
+    players, matches, _ = load_merged(seasons)
     players = players.collect()
     matches = matches.collect()
-    managers = managers.collect()
 
     # Engineer features for prediction
     players = engineer_player_features(players)

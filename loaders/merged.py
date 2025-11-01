@@ -2,11 +2,11 @@ from datetime import UTC, datetime
 
 import polars as pl
 
-from datautil.clubelo import load_clubelo
-from datautil.fpl import load_bootstrap_static, load_fpl
-from datautil.theoddsapi import load_theoddsapi
-from datautil.understat import load_understat
-from datautil.utils import get_matches_view
+from loaders.clubelo import load_clubelo
+from loaders.fpl import load_bootstrap_static, load_fpl
+from loaders.theoddsapi import load_theoddsapi
+from loaders.understat import load_understat
+from loaders.utils import get_matches_view
 
 
 def load_merged(

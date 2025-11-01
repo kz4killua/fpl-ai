@@ -3,7 +3,7 @@ from datetime import datetime
 
 import polars as pl
 
-from datautil.constants import DATA_DIR
+from loaders.constants import DATA_DIR
 
 
 def load_understat(seasons: list[int], cutoff_time: datetime):
@@ -101,6 +101,7 @@ def load_understat(seasons: list[int], cutoff_time: datetime):
     )
 
     # Filter records using the cutoff time
+    # TODO: Push this into the respective functions
     players = players.filter(pl.col("date") < cutoff_time.date())
     teams = teams.filter(pl.col("date") < cutoff_time.date())
 
@@ -108,7 +109,7 @@ def load_understat(seasons: list[int], cutoff_time: datetime):
 
 
 def load_players(seasons: list[int]) -> pl.LazyFrame:
-    """Load player match data."""
+    """Load player data."""
     return (
         pl.scan_csv(
             DATA_DIR / "understat/player/matches/*.csv",
@@ -168,17 +169,17 @@ def load_fixtures(seasons: list[str]) -> pl.LazyFrame:
 
 
 def load_player_ids() -> pl.LazyFrame:
-    """Load FPL-to-understat player ID mappings."""
+    """Load FPL player ID mappings."""
     return pl.scan_csv(DATA_DIR / "understat/player_ids.csv")
 
 
 def load_team_ids() -> pl.LazyFrame:
-    """Load FPL-to-understat team ID mappings."""
+    """Load FPL team ID mappings."""
     return pl.scan_csv(DATA_DIR / "understat/team_ids.csv")
 
 
 def load_fixture_ids(seasons: list[str]) -> pl.LazyFrame:
-    """Load FPL-to-understat fixture ID mappings."""
+    """Load FPL fixture ID mappings."""
 
     frames = []
     for season in seasons:

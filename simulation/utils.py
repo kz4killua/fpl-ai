@@ -4,8 +4,6 @@ from copy import deepcopy
 
 import polars as pl
 
-from datautil.fpl import load_elements
-from datautil.utils import get_mapper
 from game.rules import (
     DEF,
     FWD,
@@ -28,6 +26,8 @@ from game.rules import (
     STARTING_BUDGET,
     TRANSFER_COST,
 )
+from loaders.fpl import load_elements
+from loaders.utils import get_mapper
 
 
 def make_random_squad(static_elements: pl.DataFrame) -> tuple[list[int], int]:

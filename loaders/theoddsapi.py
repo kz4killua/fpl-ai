@@ -5,8 +5,8 @@ from datetime import datetime
 
 import polars as pl
 
-from datautil.constants import DATA_DIR
-from datautil.fpl import get_gameweeks
+from loaders.constants import DATA_DIR
+from loaders.fpl import get_gameweeks
 
 
 def load_theoddsapi(
@@ -46,10 +46,10 @@ def load_theoddsapi(
         )
         data["bookmakers"].append(match_data["bookmakers"])
 
-    df = pl.DataFrame(data)
+    df = pl.LazyFrame(data)
 
-    # Add team codes
-    team_ids = pl.read_csv(DATA_DIR / "theoddsapi/team_ids.csv")
+    # Add FPL codes to teams
+    team_ids = pl.scan_csv(DATA_DIR / "theoddsapi/team_ids.csv")
     for column in ["team_h", "team_a"]:
         df = df.join(
             team_ids.select(
@@ -65,7 +65,7 @@ def load_theoddsapi(
 
 def _load_theoddsapi(
     season: int, gameweek: int, cutoff_time: datetime | None = None
-) -> pl.LazyFrame:
+) -> dict:
     """Load odds data from the-odds-api.com for a given season and gameweek."""
 
     path = DATA_DIR / f"theoddsapi/{season}/{gameweek}.json.xz"

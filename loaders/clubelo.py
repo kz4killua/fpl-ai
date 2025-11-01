@@ -2,18 +2,18 @@ from datetime import datetime
 
 import polars as pl
 
-from datautil.constants import DATA_DIR
+from loaders.constants import DATA_DIR
 
 
 def load_clubelo(cutoff_time: datetime) -> pl.LazyFrame:
-    """Load local clubelo ratings for teams."""
+    """Load local Club Elo ratings."""
     ratings = pl.scan_csv(
         DATA_DIR / "clubelo/ratings/*.csv",
         try_parse_dates=True,
         raise_if_empty=False,
         null_values=["None"],
     )
-    # Add FPL team codes to ratings
+    # Add FPL codes to teams
     team_ids = pl.scan_csv(
         DATA_DIR / "clubelo/team_ids.csv",
         try_parse_dates=True,
