@@ -108,8 +108,8 @@ def test_load_fpl():
             "id": [13, 13, 13, 13],
             "code": [43, 43, 43, 43],
             "was_home": [False, True, False, True],
-            "scored": [2, 4, 3, 2],
-            "conceded": [0, 1, 1, 1],
+            "goals_scored": [2, 4, 3, 2],
+            "goals_conceded": [0, 1, 1, 1],
         }
     )
     assert_mappings_correct(

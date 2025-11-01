@@ -9,7 +9,7 @@ from prediction.utils import FeatureSelector
 def make_goals_scored_predictor():
     columns = [
         # Intermediate predictions
-        "predicted_team_scored",
+        "predicted_team_goals_scored",
         "predicted_1_to_59_minutes",
         "predicted_60_plus_minutes",
         # Balanced rolling means of per-90 metrics

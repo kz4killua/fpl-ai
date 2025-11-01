@@ -36,18 +36,18 @@ def compute_relative_strength(df: pl.LazyFrame):
 
     # Compare each team's goals scored with the opponent's goals conceded
     for window in [5, 10, 20, 40]:
-        team_h_relative_scored_rolling_mean = (
-            pl.col(f"team_h_scored_rolling_mean_{window}")
-            * pl.col(f"team_a_conceded_rolling_mean_{window}")
-        ).alias(f"team_h_relative_scored_rolling_mean_{window}")
-        team_a_relative_scored_rolling_mean = (
-            pl.col(f"team_a_scored_rolling_mean_{window}")
-            * pl.col(f"team_h_conceded_rolling_mean_{window}")
-        ).alias(f"team_a_relative_scored_rolling_mean_{window}")
+        team_h_relative_goals_scored_rolling_mean = (
+            pl.col(f"team_h_goals_scored_rolling_mean_{window}")
+            * pl.col(f"team_a_goals_conceded_rolling_mean_{window}")
+        ).alias(f"team_h_relative_goals_scored_rolling_mean_{window}")
+        team_a_relative_goals_scored_rolling_mean = (
+            pl.col(f"team_a_goals_scored_rolling_mean_{window}")
+            * pl.col(f"team_h_goals_conceded_rolling_mean_{window}")
+        ).alias(f"team_a_relative_goals_scored_rolling_mean_{window}")
         expressions.extend(
             [
-                team_h_relative_scored_rolling_mean,
-                team_a_relative_scored_rolling_mean,
+                team_h_relative_goals_scored_rolling_mean,
+                team_a_relative_goals_scored_rolling_mean,
             ]
         )
 

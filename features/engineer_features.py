@@ -571,7 +571,7 @@ def engineer_match_features(matches: pl.LazyFrame) -> pl.LazyFrame:
     # Compute team level features
     teams = get_teams_view(matches)
 
-    for column in ["scored", "conceded", "uds_xG", "uds_xGA"]:
+    for column in ["goals_scored", "goals_conceded", "uds_xG", "uds_xGA"]:
         for window in [5, 10, 20, 30, 40]:
             teams = compute_rolling_mean(
                 teams,
@@ -581,7 +581,9 @@ def engineer_match_features(matches: pl.LazyFrame) -> pl.LazyFrame:
                 over=["code"],
             )
 
-    teams = compute_last_season_mean(teams, ["scored", "conceded", "uds_xG", "uds_xGA"])
+    teams = compute_last_season_mean(
+        teams, ["goals_scored", "goals_conceded", "uds_xG", "uds_xGA"]
+    )
 
     # Add match level features
     matches = get_matches_view(teams, extra_fixed_columns=["toa_bookmakers"])

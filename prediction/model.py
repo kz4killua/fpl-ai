@@ -89,7 +89,7 @@ class PredictionModel:
         return self._fit_model(
             self.team_goals_scored_predictor,
             matches,
-            ["team_h_scored", "team_a_scored"],
+            ["team_h_goals_scored", "team_a_goals_scored"],
         )
 
     def _fit_goals_scored(self, players: pl.DataFrame):
@@ -132,8 +132,8 @@ class PredictionModel:
                 [
                     pl.col("season"),
                     pl.col("fixture_id").alias("fixture"),
-                    pl.col("predicted_team_h_scored"),
-                    pl.col("predicted_team_a_scored"),
+                    pl.col("predicted_team_h_goals_scored"),
+                    pl.col("predicted_team_a_goals_scored"),
                     pl.col("predicted_team_h_clean_sheets"),
                     pl.col("predicted_team_a_clean_sheets"),
                 ]
@@ -144,17 +144,17 @@ class PredictionModel:
         players = players.with_columns(
             [
                 pl.when(pl.col("was_home") == 1)
-                .then(pl.col("predicted_team_h_scored"))
-                .otherwise(pl.col("predicted_team_a_scored"))
-                .alias("predicted_team_scored"),
+                .then(pl.col("predicted_team_h_goals_scored"))
+                .otherwise(pl.col("predicted_team_a_goals_scored"))
+                .alias("predicted_team_goals_scored"),
                 pl.when(pl.col("was_home") == 1)
                 .then(pl.col("predicted_team_h_clean_sheets"))
                 .otherwise(pl.col("predicted_team_a_clean_sheets"))
                 .alias("predicted_team_clean_sheets"),
                 pl.when(pl.col("was_home") == 1)
-                .then(pl.col("predicted_team_a_scored"))
-                .otherwise(pl.col("predicted_team_h_scored"))
-                .alias("predicted_opponent_scored"),
+                .then(pl.col("predicted_team_a_goals_scored"))
+                .otherwise(pl.col("predicted_team_h_goals_scored"))
+                .alias("predicted_opponent_goals_scored"),
                 pl.when(pl.col("was_home") == 1)
                 .then(pl.col("predicted_team_a_clean_sheets"))
                 .otherwise(pl.col("predicted_team_h_clean_sheets"))
@@ -163,8 +163,8 @@ class PredictionModel:
         )
         players = players.drop(
             [
-                "predicted_team_h_scored",
-                "predicted_team_a_scored",
+                "predicted_team_h_goals_scored",
+                "predicted_team_a_goals_scored",
                 "predicted_team_h_clean_sheets",
                 "predicted_team_a_clean_sheets",
             ]
@@ -179,7 +179,7 @@ class PredictionModel:
         # Add predicted (player) goals conceded
         players = players.with_columns(
             (
-                pl.col("predicted_opponent_scored")
+                pl.col("predicted_opponent_goals_scored")
                 * pl.col("predicted_60_plus_minutes")
             ).alias("predicted_goals_conceded")
         )
@@ -214,16 +214,16 @@ class PredictionModel:
     def _predict_matches(self, matches: pl.DataFrame):
         # Make predictions for home and away goals
         predictions = self.team_goals_scored_predictor.predict(matches)
-        predicted_team_h_scored = predictions[:, 0]
-        predicted_team_a_scored = predictions[:, 1]
+        predicted_team_h_goals_scored = predictions[:, 0]
+        predicted_team_a_goals_scored = predictions[:, 1]
         # Predict clean sheets assuming a Poisson distribution for goals
-        predicted_team_h_clean_sheets = np.exp(-predicted_team_a_scored)
-        predicted_team_a_clean_sheets = np.exp(-predicted_team_h_scored)
+        predicted_team_h_clean_sheets = np.exp(-predicted_team_a_goals_scored)
+        predicted_team_a_clean_sheets = np.exp(-predicted_team_h_goals_scored)
         # Return predictions as a DataFrame
         return pl.DataFrame(
             {
-                "predicted_team_h_scored": predicted_team_h_scored,
-                "predicted_team_a_scored": predicted_team_a_scored,
+                "predicted_team_h_goals_scored": predicted_team_h_goals_scored,
+                "predicted_team_a_goals_scored": predicted_team_a_goals_scored,
                 "predicted_team_h_clean_sheets": predicted_team_h_clean_sheets,
                 "predicted_team_a_clean_sheets": predicted_team_a_clean_sheets,
             }
