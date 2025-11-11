@@ -4,7 +4,7 @@ from features.engineer_features import engineer_match_features, engineer_player_
 from loaders.upcoming import get_upcoming_gameweeks
 from loaders.utils import force_dataframe, get_mapper
 from optimization.optimize import optimize_squad
-from optimization.parameters import OPTIMIZATION_WINDOW_SIZE
+from optimization.parameters import get_parameters
 from prediction.model import PredictionModel
 from prediction.predict import make_predictions
 from prediction.utils import load_model
@@ -16,9 +16,14 @@ from .utils import get_selling_prices
 def simulate(
     season: int,
     wildcard_gameweeks: list[int],
-    parameters: dict[str, float] | None = None,
+    parameter_overrides: dict[str, float] | None = None,
     log: bool = False,
 ) -> int:
+    """Simulate a season and return total points."""
+
+    parameters = get_parameters(parameter_overrides)
+
+    # Initialize simulator and load model
     model = load_model(f"simulation_{season}")
     simulator = Simulator(season)
 
@@ -34,7 +39,7 @@ def get_best_roles(
     simulator: Simulator,
     model: PredictionModel,
     wildcard_gameweeks: list[int],
-    parameters: dict[str, float] | None = None,
+    parameters: dict[str, float],
     log: bool = False,
 ) -> dict:
     """Get the optimal squad roles for the next gameweek."""
@@ -59,7 +64,7 @@ def get_best_roles(
 
     # Keep only the features for upcoming gameweeks
     upcoming_gameweeks = get_upcoming_gameweeks(
-        next_gameweek, OPTIMIZATION_WINDOW_SIZE, last_gameweek
+        next_gameweek, parameters["optimization_window_size"], last_gameweek
     )
     players = players.filter(
         (pl.col("season") == season) & (pl.col("gameweek").is_in(upcoming_gameweeks))

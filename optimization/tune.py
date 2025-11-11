@@ -7,7 +7,6 @@ from simulation.simulate import simulate
 
 
 def objective(trial: optuna.Trial) -> float:
-    # Suggest hyperparameters for the optimization
     optimization_window_size = trial.suggest_int("optimization_window_size", 3, 6)
     round_decay = trial.suggest_float("round_decay", 0.5, 1.0)
     vice_captain_multiplier = trial.suggest_float("vice_captain_multiplier", 1.0, 1.5)
@@ -18,8 +17,8 @@ def objective(trial: optuna.Trial) -> float:
     free_transfer_value = trial.suggest_float("free_transfer_value", 0.0, 5.0)
     budget_value = trial.suggest_float("budget_value", 1e-6, 1e-3, log=True)
     transfer_cost_multiplier = trial.suggest_float("transfer_cost_multiplier", 0.5, 2.0)
-    # Evaluate the parameter combination with the simulation
-    parameters = {
+
+    parameter_overrides = {
         "optimization_window_size": optimization_window_size,
         "round_decay": round_decay,
         "vice_captain_multiplier": vice_captain_multiplier,
@@ -31,18 +30,15 @@ def objective(trial: optuna.Trial) -> float:
         "budget_value": budget_value,
         "transfer_cost_multiplier": transfer_cost_multiplier,
     }
-    return evaluate(trial, parameters)
+    return evaluate(trial, parameter_overrides)
 
 
-def evaluate(trial: optuna.Trial, parameters: dict) -> float:
+def evaluate(trial: optuna.Trial, parameter_overrides: dict) -> float:
     results = []
-    for season in [2021, 2022, 2023]:
-        # Simulate the season and get results
+    for season in [2022, 2023, 2024]:
         random.seed(trial.number)
-        wildcard_gameweeks = [random.randint(3, 19), random.randint(20, 36)]
-        points = simulate(season, wildcard_gameweeks, parameters)
+        points = simulate(season, [], parameter_overrides)
         results.append(points)
-    # Calculate the average points across all seasons
     return np.mean(results)
 
 

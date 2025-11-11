@@ -1,20 +1,7 @@
-from game.rules import CAPTAIN_MULTIPLIER, DEF, FWD, GKP, MID
+from game.rules import DEF, FWD, GKP, MID
 from game.utils import format_currency
 from loaders.utils import print_table
 
-from .parameters import (
-    BUDGET_VALUE,
-    FILTER_PERCENTILE,
-    FREE_TRANSFER_VALUE,
-    RESERVE_GKP_MULTIPLIER,
-    RESERVE_OUT_1_MULTIPLIER,
-    RESERVE_OUT_2_MULTIPLIER,
-    RESERVE_OUT_3_MULTIPLIER,
-    ROUND_DECAY,
-    STARTING_XI_MULTIPLIER,
-    TRANSFER_COST_MULTIPLIER,
-    VICE_CAPTAIN_MULTIPLIER,
-)
 from .solver import calculate_decayed_sum, solve
 
 
@@ -30,7 +17,7 @@ def optimize_squad(
     element_types: dict[int, int],
     teams: dict[int, int],
     web_names: dict[int, str],
-    parameters: dict[str, float] | None = None,
+    parameters: dict[str, float],
     log: bool = False,
 ):
     """Runs optimization and returns the optimal squad roles for the next gameweek."""
@@ -55,34 +42,6 @@ def optimize_squad(
             for g in upcoming_gameweeks:
                 selling_prices[(p, g)] = now_costs[(p, g)]
 
-    # Prepare optimization parameters
-    parameters = parameters or {}
-    round_decay = parameters.get("round_decay", ROUND_DECAY)
-    starting_xi_multiplier = parameters.get(
-        "starting_xi_multiplier", STARTING_XI_MULTIPLIER
-    )
-    captain_multiplier = parameters.get("captain_multiplier", CAPTAIN_MULTIPLIER)
-    vice_captain_multiplier = parameters.get(
-        "vice_captain_multiplier", VICE_CAPTAIN_MULTIPLIER
-    )
-    reserve_gkp_multiplier = parameters.get(
-        "reserve_gkp_multiplier", RESERVE_GKP_MULTIPLIER
-    )
-    reserve_out_1_multiplier = parameters.get(
-        "reserve_out_1_multiplier", RESERVE_OUT_1_MULTIPLIER
-    )
-    reserve_out_2_multiplier = parameters.get(
-        "reserve_out_2_multiplier", RESERVE_OUT_2_MULTIPLIER
-    )
-    reserve_out_3_multiplier = parameters.get(
-        "reserve_out_3_multiplier", RESERVE_OUT_3_MULTIPLIER
-    )
-    budget_value = parameters.get("budget_value", BUDGET_VALUE)
-    free_transfer_value = parameters.get("free_transfer_value", FREE_TRANSFER_VALUE)
-    transfer_cost_multiplier = parameters.get(
-        "transfer_cost_multiplier", TRANSFER_COST_MULTIPLIER
-    )
-
     # Filter players to speed up optimization
     players = filter_players(
         initial_squad=initial_squad,
@@ -90,8 +49,8 @@ def optimize_squad(
         gameweeks=upcoming_gameweeks,
         element_types=element_types,
         total_points=total_points,
-        round_decay=round_decay,
-        percentile=FILTER_PERCENTILE,
+        round_decay=parameters["round_decay"],
+        percentile=parameters["filter_percentile"],
     )
 
     # Solve the optimization problem
@@ -107,17 +66,17 @@ def optimize_squad(
         element_types=element_types,
         now_costs=now_costs,
         selling_prices=selling_prices,
-        round_decay=round_decay,
-        starting_xi_multiplier=starting_xi_multiplier,
-        captain_multiplier=captain_multiplier,
-        vice_captain_multiplier=vice_captain_multiplier,
-        reserve_gkp_multiplier=reserve_gkp_multiplier,
-        reserve_out_1_multiplier=reserve_out_1_multiplier,
-        reserve_out_2_multiplier=reserve_out_2_multiplier,
-        reserve_out_3_multiplier=reserve_out_3_multiplier,
-        budget_value=budget_value,
-        free_transfer_value=free_transfer_value,
-        transfer_cost_multiplier=transfer_cost_multiplier,
+        round_decay=parameters["round_decay"],
+        starting_xi_multiplier=parameters["starting_xi_multiplier"],
+        captain_multiplier=parameters["captain_multiplier"],
+        vice_captain_multiplier=parameters["vice_captain_multiplier"],
+        reserve_gkp_multiplier=parameters["reserve_gkp_multiplier"],
+        reserve_out_1_multiplier=parameters["reserve_out_1_multiplier"],
+        reserve_out_2_multiplier=parameters["reserve_out_2_multiplier"],
+        reserve_out_3_multiplier=parameters["reserve_out_3_multiplier"],
+        budget_value=parameters["budget_value"],
+        free_transfer_value=parameters["free_transfer_value"],
+        transfer_cost_multiplier=parameters["transfer_cost_multiplier"],
         log=log,
     )
     if log:
