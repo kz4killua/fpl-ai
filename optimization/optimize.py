@@ -4,6 +4,7 @@ from loaders.utils import print_table
 
 from .parameters import (
     BUDGET_VALUE,
+    FILTER_PERCENTILE,
     FREE_TRANSFER_VALUE,
     RESERVE_GKP_MULTIPLIER,
     RESERVE_OUT_1_MULTIPLIER,
@@ -14,7 +15,7 @@ from .parameters import (
     TRANSFER_COST_MULTIPLIER,
     VICE_CAPTAIN_MULTIPLIER,
 )
-from .solver import solve
+from .solver import calculate_decayed_sum, solve
 
 
 def optimize_squad(
@@ -80,6 +81,17 @@ def optimize_squad(
     free_transfer_value = parameters.get("free_transfer_value", FREE_TRANSFER_VALUE)
     transfer_cost_multiplier = parameters.get(
         "transfer_cost_multiplier", TRANSFER_COST_MULTIPLIER
+    )
+
+    # Filter players to speed up optimization
+    players = filter_players(
+        initial_squad=initial_squad,
+        players=players,
+        gameweeks=upcoming_gameweeks,
+        element_types=element_types,
+        total_points=total_points,
+        round_decay=round_decay,
+        percentile=FILTER_PERCENTILE,
     )
 
     # Solve the optimization problem
@@ -157,3 +169,41 @@ def print_optimization_solution(
         print(f"- Free transfers: {int(free_transfers)}")
         print(f"- Paid transfers: {int(paid_transfers)}")
         print()
+
+
+def filter_players(
+    initial_squad: set[int],
+    players: list[int],
+    gameweeks: list[int],
+    element_types: dict[tuple[int, int], int],
+    total_points: dict[tuple[int, int], float],
+    round_decay: float,
+    percentile: float,
+):
+    """Reduce the player pool to speed up optimization."""
+
+    # Use a weighted sum of predicted points to rank players
+    sort_keys = {}
+    for player in players:
+        player_points = []
+        for gameweek in gameweeks:
+            player_points.append(total_points.get((player, gameweek), 0))
+        sort_keys[player] = calculate_decayed_sum(player_points, round_decay)
+
+    # Keep all players in the initial squad
+    filtered_players = set(initial_squad)
+
+    # Perform filtering across element types to ensure coverage
+    groups = {GKP: [], DEF: [], MID: [], FWD: []}
+    for p in players:
+        groups[element_types[p, gameweeks[0]]].append(p)
+
+    # Filter the top players in each group
+    for element_type in groups:
+        k = int(len(groups[element_type]) * percentile)
+        sorted_players = sorted(
+            groups[element_type], key=lambda p: sort_keys[p], reverse=True
+        )
+        filtered_players.update(sorted_players[:k])
+
+    return list(filtered_players)
