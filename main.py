@@ -2,6 +2,7 @@ import argparse
 import sys
 import warnings
 
+from game.run import run
 from optimization.tune import tune
 from prediction.train import train
 from simulation.simulate import simulate
@@ -14,19 +15,43 @@ def main():
     # Set up command-line argument parsing
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="command", help="Commands")
-    simulate_parser = subparsers.add_parser("simulate", help="Simulate seasons")
-    _ = subparsers.add_parser("tune", help="Tune hyperparameters")
-    _ = subparsers.add_parser("train", help="Train models")
 
+    run_parser = subparsers.add_parser(
+        "run", help="Run optimization on a live FPL team"
+    )
+    run_parser.add_argument(
+        "--season",
+        type=str,
+        required=True,
+        help="The current season",
+    )
+    run_parser.add_argument(
+        "--next-gameweek",
+        type=int,
+        required=True,
+        help="The next gameweek",
+    )
+    run_parser.add_argument(
+        "--wildcard-gameweeks",
+        type=int,
+        nargs="*",
+        default=[],
+        help="Gameweeks to activate wildcards",
+    )
+
+    simulate_parser = subparsers.add_parser("simulate", help="Simulate seasons")
     simulate_parser.add_argument(
         "--season",
         type=int,
-        choices=[2021, 2022, 2023, 2024],
+        choices=[2022, 2023, 2024],
         help="Season to simulate",
     )
     simulate_parser.add_argument(
         "--log", action="store_true", help="Log simulation details"
     )
+
+    subparsers.add_parser("tune", help="Tune hyperparameters")
+    subparsers.add_parser("train", help="Train models")
 
     # Execute the appropriate command based on user input
     args = parser.parse_args()
@@ -38,6 +63,8 @@ def main():
     elif args.command == "train":
         train()
         print("Models trained successfully.")
+    elif args.command == "run":
+        run(args.season, args.next_gameweek, args.wildcard_gameweeks)
     else:
         parser.print_help()
 
