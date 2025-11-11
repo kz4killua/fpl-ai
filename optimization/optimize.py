@@ -1,4 +1,4 @@
-from game.rules import CAPTAIN_MULTIPLIER
+from game.rules import CAPTAIN_MULTIPLIER, DEF, FWD, GKP, MID
 from game.utils import format_currency
 from loaders.utils import print_table
 
@@ -36,7 +36,9 @@ def optimize_squad(
 
     # Prepare optimization data
     initial_squad = set(initial_squad)
-    players = list(set(p for (p, _) in total_points))
+    players = list(
+        set(p for (p, _) in total_points if element_types[p] in {GKP, DEF, MID, FWD})
+    )
     teams = {(p, g): teams[p] for p in teams for g in upcoming_gameweeks}
     element_types = {
         (p, g): element_types[p] for p in element_types for g in upcoming_gameweeks
