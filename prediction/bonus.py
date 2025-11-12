@@ -1,9 +1,18 @@
 import numpy as np
 import polars as pl
+from sklearn.base import BaseEstimator, RegressorMixin
 
 STD_DEV_BPS = 7.5
 NUM_SIMULATIONS = 1_000
 RANDOM_STATE = 42
+
+
+class BonusPredictor(BaseEstimator, RegressorMixin):
+    def fit(self, X, y=None):
+        return self
+
+    def predict(self, X: pl.DataFrame) -> np.ndarray:
+        return predict_bonus(X)
 
 
 def predict_bonus(X: pl.DataFrame) -> np.ndarray:
@@ -56,3 +65,7 @@ def simulate_bonus(predicted_bps: np.ndarray, std_dev_bps: float, n_simulations:
     p_3rd = count_3rd / n_simulations
 
     return p_1st * 3 + p_2nd * 2 + p_3rd * 1
+
+
+def make_bonus_predictor():
+    return BonusPredictor()
