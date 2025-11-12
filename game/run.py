@@ -4,10 +4,11 @@ import polars as pl
 import requests
 
 from features.engineer_features import engineer_match_features, engineer_player_features
+from game.rules import ELEMENT_TYPES
 from loaders.fpl import load_static_elements, load_static_teams
 from loaders.merged import load_merged
 from loaders.upcoming import get_upcoming_gameweeks
-from loaders.utils import get_mapper, get_seasons
+from loaders.utils import get_mapper, get_seasons, print_table
 from optimization.optimize import optimize_squad
 from optimization.parameters import get_parameters
 from prediction.predict import aggregate_predictions, make_predictions, save_predictions
@@ -92,7 +93,13 @@ def run(current_season: int, next_gameweek: int, wildcard_gameweeks: list[int]):
     )
 
     # Display the optimized squad
-    print(roles)
+    print_result(
+        roles,
+        web_names,
+        predictions,
+        upcoming_gameweeks,
+        element_types,
+    )
 
 
 def get_my_team(id: int, api_authorization: str) -> dict:
@@ -104,3 +111,55 @@ def get_my_team(id: int, api_authorization: str) -> dict:
     response = requests.get(url, headers=headers)
     response.raise_for_status()
     return response.json()
+
+
+def print_result(
+    roles: dict,
+    web_names: dict,
+    predictions: dict,
+    upcoming_gameweeks: list[int],
+    element_types: dict,
+):
+    """Print out the optimized squad and predictions."""
+
+    # Print the starting XI
+    print("Starting XI:")
+
+    table = []
+    for player in sorted(roles["starting_xi"], key=element_types.get):
+        row = {
+            "Position": ELEMENT_TYPES[element_types[player]],
+            "Name": web_names[player],
+        }
+        for gameweek in upcoming_gameweeks:
+            row[f"GW{gameweek}"] = predictions[(player, gameweek)]
+
+        if player == roles["captain"]:
+            row["Name"] = "(C) " + row["Name"]
+        if player == roles["vice_captain"]:
+            row["Name"] = "(V) " + row["Name"]
+
+        table.append(row)
+
+    print_table(table)
+
+    # Print the substitutes
+    print("Reserves:")
+
+    table = []
+    for player in [
+        roles["reserve_gkp"],
+        roles["reserve_out_1"],
+        roles["reserve_out_2"],
+        roles["reserve_out_3"],
+    ]:
+        row = {
+            "Position": ELEMENT_TYPES[element_types[player]],
+            "Name": web_names[player],
+        }
+        for gameweek in upcoming_gameweeks:
+            row[f"GW{gameweek}"] = predictions[(player, gameweek)]
+
+        table.append(row)
+
+    print_table(table)
