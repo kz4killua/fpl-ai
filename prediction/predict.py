@@ -72,7 +72,7 @@ def save_predictions(
     )
     path = OUTPUT_DIR / "player_predictions.csv"
     path.parent.mkdir(parents=True, exist_ok=True)
-    player_predictions.write_csv(path)
+    player_predictions.write_csv(path, float_precision=2)
 
     # Save match predictions as a CSV file
     team_predictions = df.group_by(
@@ -94,4 +94,4 @@ def save_predictions(
     )
     path = OUTPUT_DIR / "team_predictions.csv"
     path.parent.mkdir(parents=True, exist_ok=True)
-    team_predictions.write_csv(path)
+    team_predictions.write_csv(path, float_precision=2)
