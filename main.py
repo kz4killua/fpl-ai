@@ -21,7 +21,7 @@ def main():
     )
     run_parser.add_argument(
         "--season",
-        type=str,
+        type=int,
         required=True,
         help="The current season",
     )

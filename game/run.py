@@ -8,7 +8,7 @@ from game.rules import ELEMENT_TYPES
 from loaders.fpl import load_static_elements, load_static_teams
 from loaders.merged import load_merged
 from loaders.upcoming import get_upcoming_gameweeks
-from loaders.utils import get_mapper, get_seasons, print_table
+from loaders.utils import force_dataframe, get_mapper, get_seasons, print_table
 from optimization.optimize import optimize_squad
 from optimization.parameters import get_parameters
 from prediction.predict import aggregate_predictions, make_predictions, save_predictions
@@ -57,6 +57,9 @@ def run(current_season: int, next_gameweek: int, wildcard_gameweeks: list[int]):
         (pl.col("season") == current_season)
         & (pl.col("gameweek").is_in(upcoming_gameweeks))
     )
+
+    players = force_dataframe(players)
+    matches = force_dataframe(matches)
 
     # Predict total points
     model = load_model("live")

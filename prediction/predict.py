@@ -20,6 +20,7 @@ def aggregate_predictions(df: pl.DataFrame):
     df = df.group_by(["season", "gameweek", "element"]).agg(
         pl.col("total_points").sum(),
     )
+    return df
 
 
 def save_predictions(
@@ -75,9 +76,7 @@ def save_predictions(
     player_predictions.write_csv(path, float_precision=2)
 
     # Save match predictions as a CSV file
-    team_predictions = df.group_by(
-        ["season", "gameweek", "team_name", "opponent_team_name"]
-    ).first()
+    team_predictions = df.group_by(["season", "gameweek", "fixture"]).first()
     team_predictions = team_predictions.select(
         "season",
         "gameweek",
