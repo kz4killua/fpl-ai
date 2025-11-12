@@ -4,13 +4,13 @@ import polars as pl
 import requests
 
 from features.engineer_features import engineer_match_features, engineer_player_features
-from loaders.fpl import load_static_elements
+from loaders.fpl import load_static_elements, load_static_teams
 from loaders.merged import load_merged
 from loaders.upcoming import get_upcoming_gameweeks
 from loaders.utils import get_mapper, get_seasons
 from optimization.optimize import optimize_squad
 from optimization.parameters import get_parameters
-from prediction.predict import make_predictions
+from prediction.predict import aggregate_predictions, make_predictions, save_predictions
 from prediction.utils import load_model
 
 
@@ -24,6 +24,8 @@ def run(current_season: int, next_gameweek: int, wildcard_gameweeks: list[int]):
     # Load data from disk
     static_elements = load_static_elements(current_season, next_gameweek)
     static_elements = static_elements.collect()
+    static_teams = load_static_teams(current_season, next_gameweek)
+    static_teams = static_teams.collect()
     seasons = get_seasons(current_season, 2)
     upcoming_gameweeks = get_upcoming_gameweeks(
         next_gameweek, parameters["optimization_window_size"], 38
@@ -58,6 +60,8 @@ def run(current_season: int, next_gameweek: int, wildcard_gameweeks: list[int]):
     # Predict total points
     model = load_model("live")
     predictions = make_predictions(model, players, matches)
+    save_predictions(predictions, static_elements, static_teams)
+    predictions = aggregate_predictions(predictions)
 
     # Map each prediction to an ID and gameweek
     predictions = get_mapper(predictions, ["element", "gameweek"], "total_points")

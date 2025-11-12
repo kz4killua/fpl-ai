@@ -6,7 +6,7 @@ from loaders.utils import force_dataframe, get_mapper
 from optimization.optimize import optimize_squad
 from optimization.parameters import get_parameters
 from prediction.model import PredictionModel
-from prediction.predict import make_predictions
+from prediction.predict import aggregate_predictions, make_predictions
 from prediction.utils import load_model
 
 from .simulator import Simulator
@@ -75,6 +75,7 @@ def get_best_roles(
 
     # Predict total points
     predictions = make_predictions(model, players, matches)
+    predictions = aggregate_predictions(predictions)
 
     # Map each prediction to an ID and gameweek
     predictions = get_mapper(predictions, ["element", "gameweek"], "total_points")

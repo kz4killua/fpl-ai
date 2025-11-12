@@ -211,6 +211,5 @@ models
 # notebooks
 *.ipynb
 
-# temp
-.data_cache/
-results/
+# output
+output/
