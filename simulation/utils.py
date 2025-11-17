@@ -30,32 +30,34 @@ from loaders.fpl import load_elements
 from loaders.utils import get_mapper
 
 
-def make_random_squad(static_elements: pl.DataFrame) -> tuple[list[int], int]:
+def make_random_squad(
+    static_elements: pl.DataFrame, seed: int = 42
+) -> tuple[list[int], int]:
     """Return a random (legal) FPL squad and its budget."""
 
     while True:
         # Randomly select 2 GKPs, 5 DEFs, 5 MIDs, and 3 FWDs
         gkps = (
             static_elements.filter(pl.col("element_type") == GKP)
-            .sample(NUM_SQUAD_GKPS)
+            .sample(NUM_SQUAD_GKPS, seed=seed)
             .get_column("id")
             .to_list()
         )
         defs = (
             static_elements.filter(pl.col("element_type") == DEF)
-            .sample(NUM_SQUAD_DEFS)
+            .sample(NUM_SQUAD_DEFS, seed=seed)
             .get_column("id")
             .to_list()
         )
         mids = (
             static_elements.filter(pl.col("element_type") == MID)
-            .sample(NUM_SQUAD_MIDS)
+            .sample(NUM_SQUAD_MIDS, seed=seed)
             .get_column("id")
             .to_list()
         )
         fwds = (
             static_elements.filter(pl.col("element_type") == FWD)
-            .sample(NUM_SQUAD_FWDS)
+            .sample(NUM_SQUAD_FWDS, seed=seed)
             .get_column("id")
             .to_list()
         )
