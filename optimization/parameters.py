@@ -17,7 +17,7 @@ default_parameters = MappingProxyType(
         "budget_value": 0.008,
         "free_transfer_value": 1.0,
         "transfer_cost_multiplier": 1.0,
-        "filter_percentile": 1.0,
+        "filter_percentile": 0.5,
     }
 )
 
