@@ -1,6 +1,10 @@
 import argparse
+import random
 import sys
 import warnings
+
+import numpy as np
+import polars as pl
 
 from game.run import run
 from optimization.tune import tune
@@ -9,6 +13,7 @@ from simulation.simulate import simulate
 
 
 def main():
+    set_seed(42)
     sys.stdout.reconfigure(encoding="utf-8")
     warnings.filterwarnings("ignore", category=UserWarning)
 
@@ -67,6 +72,13 @@ def main():
         run(args.season, args.next_gameweek, args.wildcard_gameweeks)
     else:
         parser.print_help()
+
+
+def set_seed(seed: int):
+    """Set global random seeds."""
+    random.seed(seed)
+    np.random.seed(seed)
+    pl.set_random_seed(seed)
 
 
 if __name__ == "__main__":
