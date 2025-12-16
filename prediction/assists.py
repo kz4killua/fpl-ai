@@ -21,7 +21,7 @@ def make_assists_predictor():
         "balanced_uds_xA_per_90_rolling_mean_5",
         "balanced_uds_xA_per_90_rolling_mean_10",
         "balanced_uds_xA_per_90_rolling_mean_20",
-        "balanced_creativity_rolling_mean_3",
+        "balanced_creativity_per_90_rolling_mean_3",
         "balanced_creativity_per_90_rolling_mean_5",
         "balanced_creativity_per_90_rolling_mean_10",
         "balanced_creativity_per_90_rolling_mean_20",
