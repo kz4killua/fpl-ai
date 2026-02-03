@@ -133,6 +133,25 @@ def load_fpl(
             on=["season", "gameweek", column],
         )
 
+    # Compute defensive contributions for seasons before the 2024-2025 season
+    if any(season < 2025 for season in seasons):
+        elements = elements.with_columns(
+            pl.when(pl.col("defensive_contribution").is_not_null())
+            .then(pl.col("defensive_contribution"))
+            .when(pl.col("element_type") == GKP)
+            .then(pl.lit(0))
+            .when(pl.col("element_type") == DEF)
+            .then(pl.col("clearances_blocks_interceptions") + pl.col("tackles"))
+            .when(pl.col("element_type").is_in([MID, FWD]))
+            .then(
+                pl.col("clearances_blocks_interceptions")
+                + pl.col("tackles")
+                + pl.col("recoveries")
+            )
+            .otherwise(pl.col("defensive_contribution"))
+            .alias("defensive_contribution")
+        )
+
     # Split elements into players and managers
     players = elements.filter(pl.col("element_type").is_in([GKP, DEF, MID, FWD]))
     managers = elements.filter(pl.col("element_type").is_in([MNG]))
@@ -247,13 +266,25 @@ def load_elements(seasons: list[int]) -> pl.LazyFrame:
     if all(season < 2022 for season in seasons):
         elements = elements.with_columns(pl.lit(None).cast(pl.Int64).alias("starts"))
 
+    # Add columns for defensive contribution calculations when unavailable
+    if all(2018 < season < 2025 for season in seasons):
+        elements = elements.with_columns(
+            pl.lit(None).cast(pl.Int64).alias("clearances_blocks_interceptions"),
+            pl.lit(None).cast(pl.Int64).alias("tackles"),
+            pl.lit(None).cast(pl.Int64).alias("recoveries"),
+        )
+
+    if all(season < 2025 for season in seasons):
+        elements = elements.with_columns(
+            pl.lit(None).cast(pl.Int64).alias("defensive_contribution")
+        )
+
     # Remove discontinued features
     elements = elements.drop(
         [
             "attempted_passes",
             "big_chances_created",
             "big_chances_missed",
-            "clearances_blocks_interceptions",
             "completed_passes",
             "dribbles",
             "ea_index",
@@ -268,9 +299,7 @@ def load_elements(seasons: list[int]) -> pl.LazyFrame:
             "offside",
             "open_play_crosses",
             "penalties_conceded",
-            "recoveries",
             "tackled",
-            "tackles",
             "target_missed",
             "winning_goals",
         ],
