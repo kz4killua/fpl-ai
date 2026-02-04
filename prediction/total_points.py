@@ -1,5 +1,3 @@
-import warnings
-
 import numpy as np
 import polars as pl
 from sklearn.base import BaseEstimator, RegressorMixin
@@ -121,6 +119,10 @@ TOTAL_POINTS_RULES = {
     },
 }
 
+# Fill in total points rules for past seasons
+for season in range(2016, 2024):
+    TOTAL_POINTS_RULES[season] = TOTAL_POINTS_RULES[2024]
+
 
 class TotalPointsPredictor(BaseEstimator, RegressorMixin):
     def __init__(self):
@@ -159,18 +161,9 @@ class TotalPointsPredictor(BaseEstimator, RegressorMixin):
             action: X[f"predicted_{action}"].to_numpy() for action in actions
         }
 
-        # Get the BPS rules for each season
-        default_season = max(TOTAL_POINTS_RULES.keys())
+        # Get the scoring rules for each season
         for season in seasons:
-            if season not in TOTAL_POINTS_RULES:
-                warnings.warn(
-                    f"No points rules have been configured for the {season} season. "
-                    f"Defaulting to rules for {default_season}",
-                    stacklevel=2,
-                )
-                season_rules = TOTAL_POINTS_RULES[default_season]
-            else:
-                season_rules = TOTAL_POINTS_RULES[season]
+            season_rules = TOTAL_POINTS_RULES[season]
 
             # Award points for each action, depending on the element type
             for action in actions:

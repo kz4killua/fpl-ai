@@ -1,5 +1,3 @@
-import warnings
-
 import numpy as np
 import polars as pl
 from sklearn.base import BaseEstimator, RegressorMixin
@@ -133,6 +131,10 @@ BPS_RULES = {
     },
 }
 
+# Fill in BPS rules for past seasons
+for season in range(2016, 2024):
+    BPS_RULES[season] = BPS_RULES[2024]
+
 
 def make_bps_predictor():
     return BPSPredictor()
@@ -168,23 +170,17 @@ class BPSPredictor(BaseEstimator, RegressorMixin):
             "clean_sheets",
             "saves",
             "goals_conceded",
+            "clearances_blocks_interceptions",
+            "tackles",
+            "recoveries",
         ]
         predicted_values = {
             action: X[f"predicted_{action}"].to_numpy() for action in actions
         }
 
         # Get the BPS rules for each season
-        default_season = max(BPS_RULES.keys())
         for season in seasons:
-            if season not in BPS_RULES:
-                warnings.warn(
-                    f"No BPS rules have been configured for the {season} season. "
-                    f"Defaulting to rules for {default_season}",
-                    stacklevel=2,
-                )
-                season_rules = BPS_RULES[default_season]
-            else:
-                season_rules = BPS_RULES[season]
+            season_rules = BPS_RULES[season]
 
             # Award points for each action, depending on the element type
             for action in actions:
