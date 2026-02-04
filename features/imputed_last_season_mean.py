@@ -1,4 +1,5 @@
 import itertools
+import warnings
 
 import numpy as np
 import polars as pl
@@ -48,6 +49,14 @@ def compute_imputed_last_season_mean(df: pl.LazyFrame, column: str) -> pl.LazyFr
         # Create a linear fit between "starting_value" and the target column
         x = filtered.get_column("starting_value").to_numpy()
         y = filtered.get_column(column).to_numpy()
+        if len(x) < 2:
+            warnings.warn(
+                f"Not enough data to fit for season {season}, "
+                f"element type {element_type}. Skipping imputation...",
+                stacklevel=2,
+            )
+            continue
+
         m, b = np.polyfit(x, y, deg=1)
 
         # Use the fit coefficients to fill in missing values

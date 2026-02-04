@@ -14,7 +14,7 @@ from features.per_90 import compute_per_90
 from features.rolling_std import compute_rolling_std
 from features.share import compute_share
 from features.toa_features import compute_toa_features
-from loaders.utils import get_matches_view, get_teams_view
+from loaders.utils import force_dataframe, get_matches_view, get_teams_view
 
 from .availability import compute_availability
 from .last_season_mean import compute_last_season_mean
@@ -24,545 +24,141 @@ from .rolling_mean import compute_rolling_mean
 
 
 def engineer_player_features(df: pl.LazyFrame) -> pl.LazyFrame:
-    per_90 = [
-        # For predicting goals scored
-        "uds_xG",
+    base_columns = [
         "goals_scored",
-        "threat",
-        # For predicting assists
-        "uds_xA",
         "assists",
+        "clean_sheets",
+        "goals_conceded",
+        "saves",
+        "bonus",
+        "bps",
+        "clearances_blocks_interceptions",
+        "tackles",
+        "recoveries",
+        "defensive_contribution",
+        "total_points",
+        "influence",
         "creativity",
-    ]
-    df = compute_per_90(df, columns=per_90)
-
-    share = [
-        # For predicting goals scored
+        "threat",
+        "ict_index",
         "uds_xG",
-        "goals_scored",
-        "threat",
-        # For predicting assists
         "uds_xA",
-        "assists",
-        "creativity",
     ]
-    df = compute_share(df, columns=share)
+    base_windows = [3, 5, 10, 20]
 
-    rolling_means = [
-        # For predicting minutes
-        ("availability", 1),
-        ("availability", 3),
-        ("availability", 5),
-        ("availability", 10),
-        ("minutes", 1),
-        ("minutes", 3),
-        ("minutes", 5),
-        ("minutes", 10),
-        ("minutes", 20),
-        ("minutes", 38),
-        ("minutes_category_1_to_59_minutes", 1),
-        ("minutes_category_1_to_59_minutes", 3),
-        ("minutes_category_1_to_59_minutes", 5),
-        ("minutes_category_1_to_59_minutes", 10),
-        ("minutes_category_60_plus_minutes", 1),
-        ("minutes_category_60_plus_minutes", 3),
-        ("minutes_category_60_plus_minutes", 5),
-        ("minutes_category_60_plus_minutes", 10),
-        # For predicting goals scored
-        ("uds_xG", 3),
-        ("uds_xG", 5),
-        ("uds_xG", 10),
-        ("uds_xG", 20),
-        ("uds_xG_share", 3),
-        ("uds_xG_share", 5),
-        ("uds_xG_share", 10),
-        ("uds_xG_share", 20),
-        ("goals_scored", 3),
-        ("goals_scored", 5),
-        ("goals_scored", 10),
-        ("goals_scored", 20),
-        ("goals_scored_share", 3),
-        ("goals_scored_share", 5),
-        ("goals_scored_share", 10),
-        ("goals_scored_share", 20),
-        ("threat", 3),
-        ("threat", 5),
-        ("threat", 10),
-        ("threat", 20),
-        ("threat_share", 3),
-        ("threat_share", 5),
-        ("threat_share", 10),
-        ("threat_share", 20),
-        ("uds_xG_per_90", 3),
-        ("uds_xG_per_90", 5),
-        ("uds_xG_per_90", 10),
-        ("uds_xG_per_90", 20),
-        ("goals_scored_per_90", 3),
-        ("goals_scored_per_90", 5),
-        ("goals_scored_per_90", 10),
-        ("goals_scored_per_90", 20),
-        ("threat_per_90", 3),
-        ("threat_per_90", 5),
-        ("threat_per_90", 10),
-        ("threat_per_90", 20),
-        # For predicting assists
-        ("uds_xA", 3),
-        ("uds_xA", 5),
-        ("uds_xA", 10),
-        ("uds_xA", 20),
-        ("uds_xA_share", 3),
-        ("uds_xA_share", 5),
-        ("uds_xA_share", 10),
-        ("uds_xA_share", 20),
-        ("assists", 3),
-        ("assists", 5),
-        ("assists", 10),
-        ("assists", 20),
-        ("assists_share", 3),
-        ("assists_share", 5),
-        ("assists_share", 10),
-        ("assists_share", 20),
-        ("creativity", 3),
-        ("creativity", 5),
-        ("creativity", 10),
-        ("creativity", 20),
-        ("creativity_share", 3),
-        ("creativity_share", 5),
-        ("creativity_share", 10),
-        ("creativity_share", 20),
-        ("uds_xA_per_90", 3),
-        ("uds_xA_per_90", 5),
-        ("uds_xA_per_90", 10),
-        ("uds_xA_per_90", 20),
-        ("assists_per_90", 3),
-        ("assists_per_90", 5),
-        ("assists_per_90", 10),
-        ("assists_per_90", 20),
-        ("creativity_per_90", 3),
-        ("creativity_per_90", 5),
-        ("creativity_per_90", 10),
-        ("creativity_per_90", 20),
-    ]
+    # Create extra features from the base columns
+    df = compute_availability(df)
+    df = compute_record_count(df, on="total_points")
+    df = compute_imputed_set_piece_order(df)
+    df = compute_minutes_category(df)
+    df = compute_one_hot_minutes_category(df)
+    df = compute_per_90(df, base_columns)
+    df = compute_share(df, base_columns)
 
-    rolling_stds = [
-        # For predicting minutes
-        ("availability", 3),
-        ("availability", 5),
-        ("availability", 10),
-        ("minutes", 3),
-        ("minutes", 5),
-        ("minutes", 10),
-        ("minutes_category_1_to_59_minutes", 3),
-        ("minutes_category_1_to_59_minutes", 5),
-        ("minutes_category_1_to_59_minutes", 10),
-        ("minutes_category_60_plus_minutes", 3),
-        ("minutes_category_60_plus_minutes", 5),
-        ("minutes_category_60_plus_minutes", 10),
-    ]
+    # Compute rolling means
+    rolling_mean_columns = []
+    rolling_mean_windows = []
 
-    last_season_means = [
-        # For predicting minutes
-        "availability",
-        "minutes",
-        "minutes_category_1_to_59_minutes",
-        "minutes_category_60_plus_minutes",
-        # For predicting goals scored
-        "uds_xG",
-        "uds_xG_per_90",
-        "uds_xG_share",
-        "goals_scored",
-        "goals_scored_per_90",
-        "goals_scored_share",
-        "threat",
-        "threat_per_90",
-        "threat_share",
-        # For predicting assists
-        "uds_xA",
-        "uds_xA_per_90",
-        "uds_xA_share",
-        "assists",
-        "assists_per_90",
-        "assists_share",
-        "creativity",
-        "creativity_per_90",
-        "creativity_share",
-    ]
-
-    balanced_means = [
-        # For predicting goals scored
-        ("uds_xG_rolling_mean_3", "imputed_uds_xG_mean_last_season"),
-        ("uds_xG_rolling_mean_5", "imputed_uds_xG_mean_last_season"),
-        ("uds_xG_rolling_mean_10", "imputed_uds_xG_mean_last_season"),
-        ("uds_xG_rolling_mean_20", "imputed_uds_xG_mean_last_season"),
-        ("goals_scored_rolling_mean_3", "imputed_goals_scored_mean_last_season"),
-        ("goals_scored_rolling_mean_5", "imputed_goals_scored_mean_last_season"),
-        ("goals_scored_rolling_mean_10", "imputed_goals_scored_mean_last_season"),
-        ("goals_scored_rolling_mean_20", "imputed_goals_scored_mean_last_season"),
-        ("threat_rolling_mean_3", "imputed_threat_mean_last_season"),
-        ("threat_rolling_mean_5", "imputed_threat_mean_last_season"),
-        ("threat_rolling_mean_10", "imputed_threat_mean_last_season"),
-        ("threat_rolling_mean_20", "imputed_threat_mean_last_season"),
-        ("uds_xG_per_90_rolling_mean_3", "imputed_uds_xG_per_90_mean_last_season"),
-        ("uds_xG_per_90_rolling_mean_5", "imputed_uds_xG_per_90_mean_last_season"),
-        ("uds_xG_per_90_rolling_mean_10", "imputed_uds_xG_per_90_mean_last_season"),
-        ("uds_xG_per_90_rolling_mean_20", "imputed_uds_xG_per_90_mean_last_season"),
-        (
-            "goals_scored_per_90_rolling_mean_3",
-            "imputed_goals_scored_per_90_mean_last_season",
-        ),
-        (
-            "goals_scored_per_90_rolling_mean_5",
-            "imputed_goals_scored_per_90_mean_last_season",
-        ),
-        (
-            "goals_scored_per_90_rolling_mean_10",
-            "imputed_goals_scored_per_90_mean_last_season",
-        ),
-        (
-            "goals_scored_per_90_rolling_mean_20",
-            "imputed_goals_scored_per_90_mean_last_season",
-        ),
-        ("threat_per_90_rolling_mean_3", "imputed_threat_per_90_mean_last_season"),
-        ("threat_per_90_rolling_mean_5", "imputed_threat_per_90_mean_last_season"),
-        ("threat_per_90_rolling_mean_10", "imputed_threat_per_90_mean_last_season"),
-        ("threat_per_90_rolling_mean_20", "imputed_threat_per_90_mean_last_season"),
-        ("uds_xG_share_rolling_mean_3", "imputed_uds_xG_share_mean_last_season"),
-        ("uds_xG_share_rolling_mean_5", "imputed_uds_xG_share_mean_last_season"),
-        ("uds_xG_share_rolling_mean_10", "imputed_uds_xG_share_mean_last_season"),
-        ("uds_xG_share_rolling_mean_20", "imputed_uds_xG_share_mean_last_season"),
-        (
-            "goals_scored_share_rolling_mean_3",
-            "imputed_goals_scored_share_mean_last_season",
-        ),
-        (
-            "goals_scored_share_rolling_mean_5",
-            "imputed_goals_scored_share_mean_last_season",
-        ),
-        (
-            "goals_scored_share_rolling_mean_10",
-            "imputed_goals_scored_share_mean_last_season",
-        ),
-        (
-            "goals_scored_share_rolling_mean_20",
-            "imputed_goals_scored_share_mean_last_season",
-        ),
-        ("threat_share_rolling_mean_3", "imputed_threat_share_mean_last_season"),
-        ("threat_share_rolling_mean_5", "imputed_threat_share_mean_last_season"),
-        ("threat_share_rolling_mean_10", "imputed_threat_share_mean_last_season"),
-        ("threat_share_rolling_mean_20", "imputed_threat_share_mean_last_season"),
-        # For predicting assists
-        ("uds_xA_rolling_mean_3", "imputed_uds_xA_mean_last_season"),
-        ("uds_xA_rolling_mean_5", "imputed_uds_xA_mean_last_season"),
-        ("uds_xA_rolling_mean_10", "imputed_uds_xA_mean_last_season"),
-        ("uds_xA_rolling_mean_20", "imputed_uds_xA_mean_last_season"),
-        ("assists_rolling_mean_3", "imputed_assists_mean_last_season"),
-        ("assists_rolling_mean_5", "imputed_assists_mean_last_season"),
-        ("assists_rolling_mean_10", "imputed_assists_mean_last_season"),
-        ("assists_rolling_mean_20", "imputed_assists_mean_last_season"),
-        ("creativity_rolling_mean_3", "imputed_creativity_mean_last_season"),
-        ("creativity_rolling_mean_5", "imputed_creativity_mean_last_season"),
-        ("creativity_rolling_mean_10", "imputed_creativity_mean_last_season"),
-        ("creativity_rolling_mean_20", "imputed_creativity_mean_last_season"),
-        (
-            "creativity_per_90_rolling_mean_3",
-            "imputed_creativity_per_90_mean_last_season",
-        ),
-        (
-            "creativity_per_90_rolling_mean_5",
-            "imputed_creativity_per_90_mean_last_season",
-        ),
-        (
-            "creativity_per_90_rolling_mean_10",
-            "imputed_creativity_per_90_mean_last_season",
-        ),
-        (
-            "creativity_per_90_rolling_mean_20",
-            "imputed_creativity_per_90_mean_last_season",
-        ),
-        (
-            "uds_xA_per_90_rolling_mean_3",
-            "imputed_uds_xA_per_90_mean_last_season",
-        ),
-        (
-            "uds_xA_per_90_rolling_mean_5",
-            "imputed_uds_xA_per_90_mean_last_season",
-        ),
-        (
-            "uds_xA_per_90_rolling_mean_10",
-            "imputed_uds_xA_per_90_mean_last_season",
-        ),
-        (
-            "uds_xA_per_90_rolling_mean_20",
-            "imputed_uds_xA_per_90_mean_last_season",
-        ),
-        (
-            "assists_per_90_rolling_mean_3",
-            "imputed_assists_per_90_mean_last_season",
-        ),
-        (
-            "assists_per_90_rolling_mean_5",
-            "imputed_assists_per_90_mean_last_season",
-        ),
-        (
-            "assists_per_90_rolling_mean_10",
-            "imputed_assists_per_90_mean_last_season",
-        ),
-        (
-            "assists_per_90_rolling_mean_20",
-            "imputed_assists_per_90_mean_last_season",
-        ),
-        ("uds_xA_share_rolling_mean_3", "imputed_uds_xA_share_mean_last_season"),
-        ("uds_xA_share_rolling_mean_5", "imputed_uds_xA_share_mean_last_season"),
-        ("uds_xA_share_rolling_mean_10", "imputed_uds_xA_share_mean_last_season"),
-        ("uds_xA_share_rolling_mean_20", "imputed_uds_xA_share_mean_last_season"),
-        (
-            "assists_share_rolling_mean_3",
-            "imputed_assists_share_mean_last_season",
-        ),
-        (
-            "assists_share_rolling_mean_5",
-            "imputed_assists_share_mean_last_season",
-        ),
-        (
-            "assists_share_rolling_mean_10",
-            "imputed_assists_share_mean_last_season",
-        ),
-        (
-            "assists_share_rolling_mean_20",
-            "imputed_assists_share_mean_last_season",
-        ),
-        (
-            "creativity_share_rolling_mean_3",
-            "imputed_creativity_share_mean_last_season",
-        ),
-        (
-            "creativity_share_rolling_mean_5",
-            "imputed_creativity_share_mean_last_season",
-        ),
-        (
-            "creativity_share_rolling_mean_10",
-            "imputed_creativity_share_mean_last_season",
-        ),
-        (
-            "creativity_share_rolling_mean_20",
-            "imputed_creativity_share_mean_last_season",
-        ),
-    ]
-
-    imputed_last_season_means = [
-        # For predicting goals scored
-        "uds_xG_mean_last_season",
-        "uds_xG_per_90_mean_last_season",
-        "uds_xG_share_mean_last_season",
-        "goals_scored_mean_last_season",
-        "goals_scored_per_90_mean_last_season",
-        "goals_scored_share_mean_last_season",
-        "threat_mean_last_season",
-        "threat_per_90_mean_last_season",
-        "threat_share_mean_last_season",
-        # For predicting assists
-        "uds_xA_mean_last_season",
-        "uds_xA_per_90_mean_last_season",
-        "uds_xA_share_mean_last_season",
-        "assists_mean_last_season",
-        "assists_per_90_mean_last_season",
-        "assists_share_mean_last_season",
-        "creativity_mean_last_season",
-        "creativity_per_90_mean_last_season",
-        "creativity_share_mean_last_season",
-    ]
-
-    last_season_stds = [
-        # For predicting minutes
-        "availability",
-        "minutes",
-        "minutes_category_1_to_59_minutes",
-        "minutes_category_60_plus_minutes",
-    ]
-
-    rolling_means_when_available = [
-        # For predicting minutes
-        ("minutes", 1),
-        ("minutes", 3),
-        ("minutes", 5),
-        ("minutes", 10),
-        ("minutes_category_1_to_59_minutes", 1),
-        ("minutes_category_1_to_59_minutes", 3),
-        ("minutes_category_1_to_59_minutes", 5),
-        ("minutes_category_1_to_59_minutes", 10),
-        ("minutes_category_60_plus_minutes", 1),
-        ("minutes_category_60_plus_minutes", 3),
-        ("minutes_category_60_plus_minutes", 5),
-        ("minutes_category_60_plus_minutes", 10),
-        # For predicting goals scored
-        ("uds_xG", 3),
-        ("uds_xG", 5),
-        ("uds_xG", 10),
-        ("uds_xG", 20),
-        ("goals_scored", 3),
-        ("goals_scored", 5),
-        ("goals_scored", 10),
-        ("goals_scored", 20),
-        ("threat", 3),
-        ("threat", 5),
-        ("threat", 10),
-        ("threat", 20),
-        # For predicting assists
-        ("uds_xA", 3),
-        ("uds_xA", 5),
-        ("uds_xA", 10),
-        ("uds_xA", 20),
-        ("assists", 3),
-        ("assists", 5),
-        ("assists", 10),
-        ("assists", 20),
-        ("creativity", 3),
-        ("creativity", 5),
-        ("creativity", 10),
-        ("creativity", 20),
-    ]
-
-    # For predicting minutes
-    rolling_stds_when_available = [
-        ("minutes", 3),
-        ("minutes", 5),
-        ("minutes", 10),
-        ("minutes_category_1_to_59_minutes", 3),
-        ("minutes_category_1_to_59_minutes", 5),
-        ("minutes_category_1_to_59_minutes", 10),
-        ("minutes_category_60_plus_minutes", 3),
-        ("minutes_category_60_plus_minutes", 5),
-        ("minutes_category_60_plus_minutes", 10),
-    ]
-
-    last_season_means_when_available = last_season_means
-    last_season_stds_when_available = last_season_stds
-
-    df = (
-        df.pipe(compute_availability)
-        .pipe(compute_record_count, on="total_points")
-        .pipe(compute_imputed_set_piece_order)
-        .pipe(compute_minutes_category)
-        .pipe(compute_one_hot_minutes_category)
-        .pipe(
-            compute_rolling_mean,
-            columns=[c for c, _ in rolling_means],
-            window_sizes=[w for _, w in rolling_means],
-        )
-        .pipe(
-            compute_rolling_std,
-            columns=[c for c, _ in rolling_stds],
-            window_sizes=[w for _, w in rolling_stds],
-        )
-        .pipe(
-            compute_last_season_mean,
-            columns=last_season_means,
-        )
-        .pipe(
-            compute_last_season_std,
-            columns=last_season_stds,
-        )
-        .pipe(
-            compute_rolling_mean,
-            columns=[c for c, _ in rolling_means_when_available],
-            window_sizes=[w for _, w in rolling_means_when_available],
-            condition=pl.col("availability") == 100,
-            suffix="_when_available",
-        )
-        .pipe(
-            compute_rolling_std,
-            columns=[c for c, _ in rolling_stds_when_available],
-            window_sizes=[w for _, w in rolling_stds_when_available],
-            condition=pl.col("availability") == 100,
-            suffix="_when_available",
-        )
-        .pipe(
-            compute_last_season_mean,
-            columns=last_season_means_when_available,
-            condition=pl.col("availability") == 100,
-            suffix="_when_available",
-        )
-        .pipe(
-            compute_last_season_std,
-            columns=last_season_stds_when_available,
-            condition=pl.col("availability") == 100,
-            suffix="_when_available",
-        )
-        .pipe(compute_fatigue, window=5)
-        .pipe(compute_fatigue, window=7)
-        .pipe(compute_fatigue, window=10)
-        .pipe(compute_fatigue, window=14)
-        .pipe(compute_depth_rank, "value")
-        .pipe(compute_depth_rank, "minutes_rolling_mean_38")
-        .pipe(compute_depth_unavailability, "value")
-        .pipe(compute_depth_unavailability, "minutes_rolling_mean_38")
-        .pipe(
-            compute_last_season_mean,
-            columns=[
-                "total_points",
-                "clean_sheets",
-                "goals_conceded",
-                "saves",
-                "bonus",
-                "bps",
-                "influence",
-                "ict_index",
-            ],
-        )
-        # Compute short-term form
-        .pipe(
-            compute_rolling_mean,
-            columns=[
-                "total_points",
-                "clean_sheets",
-                "goals_conceded",
-                "saves",
-                "bonus",
-                "bps",
-                "influence",
-                "ict_index",
-            ],
-            window_sizes=[5, 5, 5, 5, 5, 5, 5, 5],
-            # Compute player averages over seasons and codes
-            over=["season", "code"],
-        )
-        # Compute long-term form
-        .pipe(
-            compute_rolling_mean,
-            columns=[
-                "total_points",
-                "clean_sheets",
-                "goals_conceded",
-                "saves",
-                "bonus",
-                "bps",
-                "influence",
-                "ict_index",
-            ],
-            window_sizes=[
-                20,
-                20,
-                20,
-                20,
-                20,
-                20,
-                20,
-                20,
-            ],
-            # Compute player averages over seasons and codes
-            over=["season", "code"],
-        )
+    derived_columns = (
+        base_columns
+        + [f"{c}_per_90" for c in base_columns]
+        + [f"{c}_share" for c in base_columns]
     )
 
-    # Compute imputed last season means
-    for column in imputed_last_season_means:
-        df = compute_imputed_last_season_mean(df, column)
+    for c in derived_columns:
+        for w in base_windows:
+            rolling_mean_columns.append(c)
+            rolling_mean_windows.append(w)
 
-    # Compute balanced means
-    for this_season_column, last_season_column in balanced_means:
-        df = compute_balanced_mean(
-            df, this_season_column, last_season_column, decay=0.7, default=0.0
-        )
+    # Handle columns for minutes and availability separately
+    minutes_columns = [
+        "availability",
+        "minutes",
+        "minutes_category_1_to_59_minutes",
+        "minutes_category_60_plus_minutes",
+    ]
+    minutes_windows = [1, 3, 5, 10, 20, 38]
+
+    for c in minutes_columns:
+        for w in minutes_windows:
+            rolling_mean_columns.append(c)
+            rolling_mean_windows.append(w)
+
+    df = compute_rolling_mean(df, rolling_mean_columns, rolling_mean_windows)
+
+    # Compute rolling standard deviations (only for minutes)
+    rolling_std_columns = []
+    rolling_std_windows = []
+
+    for c in minutes_columns:
+        for w in [3, 5, 10]:
+            rolling_std_columns.append(c)
+            rolling_std_windows.append(w)
+
+    df = compute_rolling_std(df, rolling_std_columns, rolling_std_windows)
+
+    # Weight each average using the average of the previous season
+    last_season_mean_columns = minutes_columns + derived_columns
+    df = compute_last_season_mean(df, last_season_mean_columns)
+
+    for c in derived_columns:
+        df = compute_imputed_last_season_mean(df, f"{c}_mean_last_season")
+
+    # Materialize dataframe to avoid OOM issues
+    df = force_dataframe(df)
+
+    for c in derived_columns:
+        for w in base_windows:
+            df = compute_balanced_mean(
+                df,
+                this_season_column=f"{c}_rolling_mean_{w}",
+                last_season_column=f"imputed_{c}_mean_last_season",
+                decay=0.7,
+                default=0.0,
+            )
+
+    # Compute standard deviations over the last season
+    last_season_std_columns = minutes_columns
+    df = compute_last_season_std(df, last_season_std_columns)
+
+    # Create "_when_available" columns (for minutes)
+    available_condition = pl.col("availability") == 100
+    df = compute_rolling_mean(
+        df,
+        rolling_mean_columns,
+        rolling_mean_windows,
+        condition=available_condition,
+        suffix="_when_available",
+    )
+    df = compute_rolling_std(
+        df,
+        rolling_std_columns,
+        rolling_std_windows,
+        condition=available_condition,
+        suffix="_when_available",
+    )
+    df = compute_last_season_mean(
+        df,
+        last_season_mean_columns,
+        condition=available_condition,
+        suffix="_when_available",
+    )
+    df = compute_last_season_std(
+        df,
+        last_season_std_columns,
+        condition=available_condition,
+        suffix="_when_available",
+    )
+
+    # Compute fatigue
+    for w in [5, 7, 10, 14]:
+        df = compute_fatigue(df, window=w)
+
+    # Compute features for squad depth
+    df = compute_depth_rank(df, "value")
+    df = compute_depth_rank(df, "minutes_rolling_mean_38")
+    df = compute_depth_unavailability(df, "value")
+    df = compute_depth_unavailability(df, "minutes_rolling_mean_38")
 
     return df
 
@@ -571,19 +167,26 @@ def engineer_match_features(matches: pl.LazyFrame) -> pl.LazyFrame:
     # Compute team level features
     teams = get_teams_view(matches)
 
-    for column in ["goals_scored", "goals_conceded", "uds_xG", "uds_xGA"]:
-        for window in [5, 10, 20, 30, 40]:
-            teams = compute_rolling_mean(
-                teams,
-                [column],
-                [window],
-                # Compute team averages over just codes
-                over=["code"],
-            )
+    base_columns = ["goals_scored", "goals_conceded", "uds_xG", "uds_xGA"]
+    base_windows = [5, 10, 20, 30, 40]
 
-    teams = compute_last_season_mean(
-        teams, ["goals_scored", "goals_conceded", "uds_xG", "uds_xGA"]
+    rolling_mean_columns = []
+    rolling_mean_windows = []
+
+    for column in base_columns:
+        for window in base_windows:
+            rolling_mean_columns.append(column)
+            rolling_mean_windows.append(window)
+
+    teams = compute_rolling_mean(
+        teams,
+        rolling_mean_columns,
+        rolling_mean_windows,
+        # Compute team averages over just codes
+        over=["code"],
     )
+
+    teams = compute_last_season_mean(teams, base_columns)
 
     # Add match level features
     matches = get_matches_view(teams, extra_fixed_columns=["toa_bookmakers"])

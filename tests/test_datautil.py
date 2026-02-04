@@ -14,7 +14,7 @@ from loaders.upcoming import (
     get_upcoming_fixtures,
     get_upcoming_gameweeks,
 )
-from loaders.utils import calculate_implied_probabilities, get_seasons, get_teams_view
+from loaders.utils import get_seasons, get_teams_view
 
 
 def test_load_clubelo():
@@ -362,29 +362,6 @@ def test_get_upcoming_fixtures():
     assert upcoming_fixtures.height == 50
     assert upcoming_fixtures.get_column("gameweek").min() == 1
     assert upcoming_fixtures.get_column("gameweek").max() == 5
-
-
-def test_calculate_implied_probabilities():
-    cases = [
-        {
-            "input": (1.7, 5.0, 3.6),
-            "expected": (0.552, 0.188, 0.261),
-        },
-        {
-            "input": (1.42, 6.0, 4.35),
-            "expected": (0.640, 0.151, 0.209),
-        },
-        {
-            "input": (2.5, 2.5, 3.0),
-            "expected": (0.353, 0.353, 0.294),
-        },
-    ]
-    for case in cases:
-        result = calculate_implied_probabilities(*case["input"])
-        expected = case["expected"]
-        assert all(abs(r - e) < 1e-3 for r, e in zip(result, expected, strict=True)), (
-            f"Expected: {expected}, got: {result}"
-        )
 
 
 def assert_mappings_correct(

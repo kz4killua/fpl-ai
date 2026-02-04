@@ -8,10 +8,19 @@ from .assists import make_assists_predictor
 from .bonus import make_bonus_predictor
 from .bps import make_bps_predictor
 from .clean_sheets import make_clean_sheets_predictor
+from .clearances_blocks_interceptions import (
+    make_clearances_blocks_interceptions_predictor,
+)
+from .defensive_contribution import (
+    calculate_defensive_contribution_threshold_prob,
+    make_defensive_contribution_predictor,
+)
 from .goals_conceded import make_goals_conceded_predictor
 from .goals_scored import make_goals_scored_predictor
 from .minutes import make_minutes_predictor
+from .recoveries import make_recoveries_predictor
 from .saves import make_saves_predictor
+from .tackles import make_tackles_predictor
 from .team_goals_scored import make_team_goals_scored_predictor
 from .total_points import make_total_points_predictor
 
@@ -27,6 +36,12 @@ class PredictionModel:
         self.saves_predictor = make_saves_predictor()
         self.bps_predictor = make_bps_predictor()
         self.bonus_predictor = make_bonus_predictor()
+        self.clearances_blocks_interceptions_predictor = (
+            make_clearances_blocks_interceptions_predictor()
+        )
+        self.tackles_predictor = make_tackles_predictor()
+        self.recoveries_predictor = make_recoveries_predictor()
+        self.defensive_contribution_predictor = make_defensive_contribution_predictor()
         self.total_points_predictor = make_total_points_predictor()
 
         self.player_pipeline: list[GenericPipelineStep] = [
@@ -54,6 +69,23 @@ class PredictionModel:
                 self.saves_predictor,
                 "saves",
             ),
+            GenericPipelineStep(
+                self.clearances_blocks_interceptions_predictor,
+                "clearances_blocks_interceptions",
+            ),
+            GenericPipelineStep(
+                self.tackles_predictor,
+                "tackles",
+            ),
+            GenericPipelineStep(
+                self.recoveries_predictor,
+                "recoveries",
+            ),
+            GenericPipelineStep(
+                self.defensive_contribution_predictor,
+                "defensive_contribution",
+            ),
+            DefensiveContributionThresholdProbStep(),
             GenericPipelineStep(
                 self.bps_predictor,
                 "bps",
@@ -142,6 +174,25 @@ class MinutesCategoryPipelineStep(GenericPipelineStep):
         return pl.DataFrame(predictions, schema=classes)
 
 
+class DefensiveContributionThresholdProbStep(GenericPipelineStep):
+    def __init__(self):
+        pass
+
+    def fit(self, X: pl.DataFrame):
+        return self
+
+    def predict(self, X: pl.DataFrame) -> pl.Series:
+        probs = calculate_defensive_contribution_threshold_prob(
+            X, "predicted_defensive_contribution"
+        )
+        return pl.Series(
+            "predicted_defensive_contribution_threshold_prob", probs, dtype=pl.Float64
+        )
+
+    def combine(self, X: pl.DataFrame, predictions: pl.Series):
+        return X.with_columns(predictions)
+
+
 def combine_match_results(
     players: pl.DataFrame,
     matches: pl.DataFrame,
@@ -217,6 +268,7 @@ def predict_match_results(goals_predictor: BaseEstimator, matches: pl.DataFrame)
 
 
 def fit_model(model: BaseEstimator, X: pl.DataFrame, target: str | Iterable[str]):
+    X = X.drop_nulls(subset=target)
     X_fit = X.drop(target)
     y_fit = X.get_column(target) if isinstance(target, str) else X.select(target)
     return model.fit(X_fit, y_fit)
