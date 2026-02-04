@@ -56,7 +56,69 @@ TOTAL_POINTS_RULES = {
             MID: 1,
             FWD: 1,
         },
-    }
+        "defensive_contribution_threshold_prob": {
+            GKP: 0,
+            DEF: 0,
+            MID: 0,
+            FWD: 0,
+        },
+    },
+    2025: {
+        "1_to_59_minutes": {
+            GKP: 1,
+            DEF: 1,
+            MID: 1,
+            FWD: 1,
+        },
+        "60_plus_minutes": {
+            GKP: 2,
+            DEF: 2,
+            MID: 2,
+            FWD: 2,
+        },
+        "goals_scored": {
+            GKP: 10,
+            DEF: 6,
+            MID: 5,
+            FWD: 4,
+        },
+        "assists": {
+            GKP: 3,
+            DEF: 3,
+            MID: 3,
+            FWD: 3,
+        },
+        "clean_sheets": {
+            GKP: 4,
+            DEF: 4,
+            MID: 1,
+            FWD: 0,
+        },
+        "saves": {
+            GKP: 1 / 3,
+            DEF: 0,
+            MID: 0,
+            FWD: 0,
+        },
+        "goals_conceded": {
+            GKP: -1 / 2,
+            DEF: -1 / 2,
+            MID: 0,
+            FWD: 0,
+        },
+        "bonus": {
+            GKP: 1,
+            DEF: 1,
+            MID: 1,
+            FWD: 1,
+        },
+        "defensive_contribution_threshold_prob": {
+            GKP: 0,
+            DEF: 2,
+            MID: 2,
+            FWD: 2,
+        },
+    },
 }
 
 
@@ -90,6 +152,7 @@ class TotalPointsPredictor(BaseEstimator, RegressorMixin):
             "clean_sheets",
             "saves",
             "goals_conceded",
+            "defensive_contribution_threshold_prob",
             "bonus",
         ]
         predicted_values = {
