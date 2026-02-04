@@ -1,5 +1,7 @@
 import polars as pl
 
+from loaders.utils import force_dataframe
+
 
 def compute_rolling_std(
     df: pl.LazyFrame,
@@ -10,6 +12,7 @@ def compute_rolling_std(
     suffix: str = "",
 ) -> pl.LazyFrame:
     """Calculate rolling stds ignoring null values."""
+    df = force_dataframe(df)
 
     # Sort rows for forward-filling
     df = df.sort("kickoff_time")
@@ -20,33 +23,37 @@ def compute_rolling_std(
     if condition is None:
         condition = pl.lit(True)
 
+    results = []
     for column, window_size in zip(columns, window_sizes, strict=True):
-        alias = f"{column}_rolling_std_{window_size}{suffix}"
-        # Compute the rolling std for selected values
-        selected = df.filter(pl.col(column).is_not_null() & condition).select(
-            ["index", *over, column]
-        )
-        selected = selected.with_columns(
+        alias = _alias(column, window_size, suffix)
+        # Compute the rolling deviations for selected values
+        subset = df.filter(pl.col(column).is_not_null() & condition)
+        subset = subset.select(["index", *over, column])
+        subset = subset.with_columns(
             pl.col(column)
             .rolling_std(window_size, min_samples=1)
             .over(over)
             .alias(alias)
         )
-        # Add the selected results to the original frame
-        df = df.join(
-            selected.select(["index", alias]),
-            on="index",
-            how="left",
-        )
-        df = df.with_columns(
-            pl.col(alias)
-            # Important: To avoid data leakage, shift the rolling std by 1
-            .shift(1)
-            .forward_fill()
-            .over(over)
-        )
+        results.append(subset.select(["index", alias]))
+
+    # Join all results back to the original frame
+    for result in results:
+        df = df.join(result, on="index", how="left")
+
+    # Shift and forward-fill to avoid data leakage
+    expressions = []
+    for column, window_size in zip(columns, window_sizes, strict=True):
+        alias = _alias(column, window_size, suffix)
+        expressions.append(pl.col(alias).shift(1).forward_fill().over(over))
+
+    df = df.with_columns(expressions)
 
     # Drop the temporary index column
     df = df.drop("index")
 
-    return df
+    return df.lazy()
+
+
+def _alias(column: str, window_size: int, suffix: str) -> str:
+    return f"{column}_rolling_std_{window_size}{suffix}"
