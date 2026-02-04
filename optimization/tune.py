@@ -14,7 +14,6 @@ def objective(trial: optuna.Trial) -> float:
     reserve_out_1_multiplier = trial.suggest_float("reserve_out_1_multiplier", 0.0, 0.5)
     reserve_out_2_multiplier = trial.suggest_float("reserve_out_2_multiplier", 0.0, 0.3)
     reserve_out_3_multiplier = trial.suggest_float("reserve_out_3_multiplier", 0.0, 0.1)
-    free_transfer_value = trial.suggest_float("free_transfer_value", 0.0, 5.0)
     budget_value = trial.suggest_float("budget_value", 1e-6, 1e-3, log=True)
     transfer_cost_multiplier = trial.suggest_float("transfer_cost_multiplier", 0.5, 2.0)
 
@@ -26,7 +25,6 @@ def objective(trial: optuna.Trial) -> float:
         "reserve_out_1_multiplier": reserve_out_1_multiplier,
         "reserve_out_2_multiplier": reserve_out_2_multiplier,
         "reserve_out_3_multiplier": reserve_out_3_multiplier,
-        "free_transfer_value": free_transfer_value,
         "budget_value": budget_value,
         "transfer_cost_multiplier": transfer_cost_multiplier,
     }

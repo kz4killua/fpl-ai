@@ -48,7 +48,7 @@ def solve(
     reserve_out_2_multiplier: float,
     reserve_out_3_multiplier: float,
     budget_value: float,
-    free_transfer_value: float,
+    free_transfer_value: dict[int, float],
     transfer_cost_multiplier: float,
     # Logging
     log: bool = False,
@@ -174,14 +174,21 @@ def create_variables(
     }
 
     # Add variables for transfers
-    variables["budget"] = {
-        g: solver.IntVar(0, 999_999, f"budget_{g}") for g in gameweeks
-    }
-    variables["free_transfers"] = {
-        g: solver.IntVar(0, 15, f"free_transfers_{g}") for g in gameweeks
-    }
     variables["paid_transfers"] = {
         g: solver.IntVar(0, 15, f"paid_transfers_{g}") for g in gameweeks
+    }
+    variables["free_transfers"] = {
+        g: solver.IntVar(0, MAX_FREE_TRANSFERS, f"free_transfers_{g}")
+        for g in gameweeks
+    }
+    for i in range(MAX_FREE_TRANSFERS + 1):
+        variables[f"free_transfers_{i}"] = {
+            g: solver.IntVar(0, 1, f"free_transfers_{i}_{g}") for g in gameweeks
+        }
+
+    # Add variables for budget, purchases, and sales
+    variables["budget"] = {
+        g: solver.IntVar(0, 999_999, f"budget_{g}") for g in gameweeks
     }
     variables["purchases"] = {
         (p, g): solver.IntVar(0, 1, f"purchase_{p}_{g}")
@@ -469,6 +476,24 @@ def create_constraints(
             # Enforce the outer min constraint
             create_min_constraint(solver, ft2, inner, MAX_FREE_TRANSFERS, 15)
 
+    for g in gameweeks:
+        # Ensure exactly one free transfer count is selected
+        solver.Add(
+            sum(
+                variables[f"free_transfers_{i}"][g]
+                for i in range(MAX_FREE_TRANSFERS + 1)
+            )
+            == 1
+        )
+        # Link the free transfer count to the corresponding variable
+        solver.Add(
+            variables["free_transfers"][g]
+            == sum(
+                i * variables[f"free_transfers_{i}"][g]
+                for i in range(MAX_FREE_TRANSFERS + 1)
+            )
+        )
+
 
 def create_objective(
     solver: pywraplp.Solver,
@@ -486,7 +511,7 @@ def create_objective(
     reserve_out_2_multiplier: float,
     reserve_out_3_multiplier: float,
     budget_value: float,
-    free_transfer_value: float,
+    free_transfer_value: dict[int, float],
     transfer_cost_multiplier: float,
 ):
     """Create the objective function for the optimization problem."""
@@ -550,7 +575,8 @@ def create_objective(
         score += variables["budget"][g] * budget_value
 
         # Add the free transfer value
-        score += variables["free_transfers"][g] * free_transfer_value
+        for i in range(MAX_FREE_TRANSFERS + 1):
+            score += variables[f"free_transfers_{i}"][g] * free_transfer_value[i]
 
         scores.append(score)
 
