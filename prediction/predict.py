@@ -66,6 +66,8 @@ def save_predictions(
         "predicted_saves",
         "predicted_bps",
         "predicted_bonus",
+        "predicted_defensive_contribution",
+        "predicted_defensive_contribution_threshold_prob",
     )
     player_predictions = player_predictions.sort(
         ["season", "gameweek", "predicted_total_points"],
