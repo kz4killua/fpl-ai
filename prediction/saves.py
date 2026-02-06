@@ -1,7 +1,7 @@
 from sklearn.ensemble import HistGradientBoostingRegressor
 from sklearn.pipeline import make_pipeline
 
-from prediction.utils import FeatureSelector
+from prediction.utils import FeatureSelector, NonNegativeRegressor
 
 
 def make_saves_predictor():
@@ -21,8 +21,7 @@ def make_saves_predictor():
         "element_type",
     ]
     categorical_features = [column in categorical_columns for column in columns]
-    return make_pipeline(
-        FeatureSelector(columns),
+    model = NonNegativeRegressor(
         HistGradientBoostingRegressor(
             max_iter=1000,
             early_stopping=True,
@@ -32,5 +31,9 @@ def make_saves_predictor():
             min_samples_leaf=64,
             categorical_features=categorical_features,
             random_state=42,
-        ),
+        )
+    )
+    return make_pipeline(
+        FeatureSelector(columns),
+        model,
     )

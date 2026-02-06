@@ -3,7 +3,7 @@ from sklearn.linear_model import Ridge
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import PolynomialFeatures, StandardScaler
 
-from prediction.utils import FeatureSelector
+from prediction.utils import FeatureSelector, NonNegativeRegressor
 
 
 def make_assists_predictor():
@@ -46,10 +46,7 @@ def make_assists_predictor():
         "imputed_corners_and_indirect_freekicks_order",
         "corners_and_indirect_freekicks_order_missing",
     ]
-    model = Ridge(
-        alpha=10000,
-        random_state=42,
-    )
+    model = NonNegativeRegressor(Ridge(alpha=10_000, random_state=42))
     return Pipeline(
         [
             ("features", FeatureSelector(columns)),

@@ -74,6 +74,22 @@ class SeasonSplit(BaseCrossValidator):
         return len(self.seasons) - 1
 
 
+class NonNegativeRegressor(BaseEstimator, RegressorMixin):
+    """Clips the predictions of a regressor to be non-negative."""
+
+    def __init__(self, estimator):
+        self.estimator = estimator
+
+    def fit(self, X, y):
+        self.estimator_ = clone(self.estimator)
+        self.estimator_.fit(X, y)
+        return self
+
+    def predict(self, X):
+        predictions = self.estimator_.predict(X)
+        return np.maximum(0, predictions)
+
+
 class RoutingEstimator(BaseEstimator):
     """Uses a different estimator for each unique value in a column."""
 
