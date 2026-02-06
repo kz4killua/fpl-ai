@@ -128,15 +128,15 @@ class RoutingEstimator(BaseEstimator):
 
 class ConditionalRegressor(BaseEstimator, RegressorMixin):
     """
-    Returns the prediction of an estimator if a condition is met,
-    otherwise returns a default value.
+    Fits and predicts only on the rows where the condition is met.
+    Returns a default value for all other rows.
     """
 
     def __init__(
         self,
         estimator: BaseEstimator,
         condition: pl.Expr,
-        default: float,
+        default: float = 0.0,
         verbose: bool = False,
     ):
         self.estimator = estimator
@@ -146,23 +146,41 @@ class ConditionalRegressor(BaseEstimator, RegressorMixin):
 
     def fit(self, X: pl.DataFrame, y: pl.Series):
         """Fit the estimator only on the rows where the condition is met."""
+        self.check_input_types(X, y)
+
         mask = X.select(self.condition).to_series()
         if not mask.any():
             raise ValueError("No rows match the condition for fitting.")
+
         if self.verbose:
             print(f"Fitting estimator on {mask.sum()}/{len(mask)} rows.")
 
+        self.estimator_ = clone(self.estimator)
+
         X_condition = X.filter(mask)
         y_condition = y.filter(mask)
-        self.estimator.fit(X_condition, y_condition)
+        self.estimator_.fit(X_condition, y_condition)
         return self
 
     def predict(self, X: pl.DataFrame) -> np.ndarray:
         """Predict using the estimator only where the condition is met."""
+        self.check_input_types(X)
+
+        predictions = np.full(X.height, self.default, dtype=np.float64)
+
         mask = X.select(self.condition).to_series()
         if self.verbose:
             print(f"Predicting on {mask.sum()}/{len(mask)} rows.")
-        predictions = np.full(X.height, self.default, dtype=np.float64)
+
+        if not mask.any():
+            return predictions
+
         X_condition = X.filter(mask)
-        predictions[mask.to_numpy()] = self.estimator.predict(X_condition)
+        predictions[mask.to_numpy()] = self.estimator_.predict(X_condition)
         return predictions
+
+    def check_input_types(self, X, y=None):
+        if not isinstance(X, pl.DataFrame):
+            raise TypeError("X must be a Polars DataFrame.")
+        if y is not None and not isinstance(y, pl.Series):
+            raise TypeError("y must be a Polars Series.")
