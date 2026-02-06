@@ -90,42 +90,6 @@ class NonNegativeRegressor(BaseEstimator, RegressorMixin):
         return np.maximum(0, predictions)
 
 
-class RoutingEstimator(BaseEstimator):
-    """Uses a different estimator for each unique value in a column."""
-
-    def __init__(self, base: BaseEstimator, column: str):
-        self.base = base
-        self.column = column
-        self.estimators = {}
-
-    def fit(self, X: pl.DataFrame, y: pl.Series):
-        """Fit the base estimator for each unique value in the column."""
-        # Get all unique values in the specified column
-        unique = X.get_column(self.column).unique().to_list()
-        if len(unique) > 10:
-            raise ValueError(
-                f"Too many unique values in column '{self.column}': {len(unique)}"
-            )
-        # Fit a separate estimator for each unique value
-        for value in unique:
-            mask = X[self.column] == value
-            X_value = X.filter(mask)
-            y_value = y.filter(mask)
-            estimator = clone(self.base)
-            estimator.fit(X_value, y_value)
-            self.estimators[value] = estimator
-
-    def predict(self, X: pl.DataFrame) -> np.ndarray:
-        """Predict using the appropriate estimator for each row."""
-        y = np.zeros(len(X))
-        for value, estimator in self.estimators.items():
-            mask = X[self.column] == value
-            if mask.any():
-                X_value = X.filter(mask)
-                y[mask.to_numpy()] = estimator.predict(X_value)
-        return y
-
-
 class ConditionalRegressor(BaseEstimator, RegressorMixin):
     """
     Fits and predicts only on the rows where the condition is met.
