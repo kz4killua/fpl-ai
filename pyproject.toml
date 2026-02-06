@@ -6,21 +6,21 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "lightgbm>=4.6.0",
-    "numpy>=2.2.5",
-    "ortools>=9.12.4544",
-    "polars>=1.29.0",
+    "numpy>=2.4.2",
+    "ortools>=9.15.6755",
+    "polars>=1.38.0",
     "requests>=2.32.5",
-    "scikit-learn>=1.6.1",
-    "scipy>=1.15.3",
+    "scikit-learn>=1.8.0",
+    "scipy>=1.17.0",
 ]
 
 [dependency-groups]
 dev = [
-    "ipykernel>=6.29.5",
-    "matplotlib>=3.10.3",
-    "optuna>=4.3.0",
-    "pytest>=8.4.0",
-    "ruff>=0.11.8",
+    "ipykernel>=7.1.0",
+    "matplotlib>=3.10.8",
+    "optuna>=4.7.0",
+    "pytest>=9.0.2",
+    "ruff>=0.15.0",
 ]
 
 [tool.ruff.lint]
