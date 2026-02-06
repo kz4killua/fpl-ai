@@ -254,7 +254,7 @@ def test_load_merged():
         players,
         expected,
         on=["season", "element", "gameweek"],
-        atol=1e-2,
+        abs_tol=1e-2,
     )
 
     # Test non-upcoming team mappings
@@ -273,7 +273,7 @@ def test_load_merged():
         teams,
         expected,
         on=["season", "code", "gameweek"],
-        atol=1e-2,
+        abs_tol=1e-2,
     )
 
     # Test upcoming player mappings
@@ -296,7 +296,7 @@ def test_load_merged():
         players,
         expected,
         on=["season", "code", "gameweek"],
-        atol=1e-2,
+        abs_tol=1e-2,
     )
 
     # Test upcoming team mappings
@@ -316,7 +316,7 @@ def test_load_merged():
         teams,
         expected,
         on=["season", "code", "gameweek"],
-        atol=1e-2,
+        abs_tol=1e-2,
     )
 
     # Test that the correct number of rows (for upcoming players) is returned
@@ -373,8 +373,8 @@ def assert_mappings_correct(
     check_column_order: bool = False,
     check_exact: bool = False,
     check_dtypes: bool = False,
-    atol: float = 1e-8,
-    rtol: float = 1e-5,
+    abs_tol: float = 1e-8,
+    rel_tol: float = 1e-5,
 ):
     result = (
         df.join(
@@ -392,6 +392,6 @@ def assert_mappings_correct(
         check_column_order=check_column_order,
         check_exact=check_exact,
         check_dtypes=check_dtypes,
-        atol=atol,
-        rtol=rtol,
+        abs_tol=abs_tol,
+        rel_tol=rel_tol,
     )

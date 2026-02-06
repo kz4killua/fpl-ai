@@ -247,7 +247,7 @@ def test_compute_share():
         check_column_order=False,
         check_exact=False,
         check_dtypes=False,
-        atol=1e-3,
+        abs_tol=1e-3,
     )
 
     # Test with multiple fixtures
@@ -271,7 +271,7 @@ def test_compute_share():
         check_column_order=False,
         check_exact=False,
         check_dtypes=False,
-        atol=1e-3,
+        abs_tol=1e-3,
     )
 
     # Test zero division
@@ -295,7 +295,7 @@ def test_compute_share():
         check_column_order=False,
         check_exact=False,
         check_dtypes=False,
-        atol=1e-3,
+        abs_tol=1e-3,
     )
 
 
