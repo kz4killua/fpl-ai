@@ -1,5 +1,6 @@
 import argparse
 import random
+import subprocess
 import sys
 import warnings
 
@@ -7,6 +8,7 @@ import numpy as np
 import polars as pl
 
 from game.run import run
+from loaders.constants import DATA_REPO_PATH
 from optimization.tune import tune
 from prediction.train import train
 from simulation.simulate import simulate
@@ -57,6 +59,15 @@ def main():
 
     subparsers.add_parser("tune", help="Tune hyperparameters")
     subparsers.add_parser("train", help="Train models")
+
+    # Ensure the data repository is up to date
+    subprocess.run(
+        ["git", "pull"],
+        cwd=DATA_REPO_PATH,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
 
     # Execute the appropriate command based on user input
     args = parser.parse_args()

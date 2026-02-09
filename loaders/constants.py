@@ -1,3 +1,4 @@
 from pathlib import Path
 
-DATA_DIR = Path("fpl-data/data")
+DATA_REPO_PATH = Path("fpl-data")
+DATA_DIR = DATA_REPO_PATH / "data"
