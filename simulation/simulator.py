@@ -30,7 +30,9 @@ class Simulator:
 
         # Load fixture data
         self.fixtures = load_fixtures([self.season]).collect()
-        self.gameweeks = self.fixtures.get_column("gameweek").unique().sort().to_list()
+        self.gameweeks = (
+            self.fixtures.get_column("gameweek").drop_nulls().unique().sort().to_list()
+        )
         self.first_gameweek = self.gameweeks[0]
         self.last_gameweek = self.gameweeks[-1]
 
