@@ -17,7 +17,7 @@ from .defensive_contribution import (
 )
 from .goals_conceded import make_goals_conceded_predictor
 from .goals_scored import make_goals_scored_predictor
-from .minutes import make_minutes_predictor
+from .minutes import make_minutes_category_predictor
 from .recoveries import make_recoveries_predictor
 from .saves import make_saves_predictor
 from .tackles import make_tackles_predictor
@@ -28,7 +28,7 @@ from .total_points import make_total_points_predictor
 class PredictionModel:
     def __init__(self):
         self.team_goals_scored_predictor = make_team_goals_scored_predictor()
-        self.minutes_predictor = make_minutes_predictor()
+        self.minutes_category_predictor = make_minutes_category_predictor()
         self.clean_sheets_predictor = make_clean_sheets_predictor()
         self.goals_conceded_predictor = make_goals_conceded_predictor()
         self.goals_scored_predictor = make_goals_scored_predictor()
@@ -46,7 +46,7 @@ class PredictionModel:
 
         self.player_pipeline: list[GenericPipelineStep] = [
             MinutesCategoryPipelineStep(
-                self.minutes_predictor,
+                self.minutes_category_predictor,
                 "minutes_category",
             ),
             GenericPipelineStep(
