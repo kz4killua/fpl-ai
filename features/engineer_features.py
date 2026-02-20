@@ -27,16 +27,10 @@ def engineer_player_features(df: pl.LazyFrame) -> pl.LazyFrame:
     base_columns = [
         "goals_scored",
         "assists",
-        "clean_sheets",
-        "goals_conceded",
         "saves",
-        "bonus",
-        "bps",
         "clearances_blocks_interceptions",
         "tackles",
         "recoveries",
-        "defensive_contribution",
-        "total_points",
         "influence",
         "creativity",
         "threat",
@@ -74,6 +68,7 @@ def engineer_player_features(df: pl.LazyFrame) -> pl.LazyFrame:
     minutes_columns = [
         "availability",
         "minutes",
+        "minutes_category_0_minutes",
         "minutes_category_1_to_59_minutes",
         "minutes_category_60_plus_minutes",
     ]
@@ -91,7 +86,7 @@ def engineer_player_features(df: pl.LazyFrame) -> pl.LazyFrame:
     rolling_std_windows = []
 
     for c in minutes_columns:
-        for w in [3, 5, 10]:
+        for w in [3, 5, 10, 20]:
             rolling_std_columns.append(c)
             rolling_std_windows.append(w)
 
