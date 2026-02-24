@@ -125,7 +125,6 @@ def print_result(
 ):
     """Print out the optimized squad and predictions."""
 
-    # Print the starting XI
     print("Starting XI:")
 
     table = []
@@ -146,7 +145,6 @@ def print_result(
 
     print_table(table)
 
-    # Print the substitutes
     print("Reserves:")
 
     table = []
