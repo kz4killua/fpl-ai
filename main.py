@@ -1,8 +1,6 @@
 import argparse
 import random
 import subprocess
-import sys
-import warnings
 
 import numpy as np
 import polars as pl
@@ -16,8 +14,6 @@ from simulation.simulate import simulate
 
 def main():
     set_seed(42)
-    sys.stdout.reconfigure(encoding="utf-8")
-    warnings.filterwarnings("ignore", category=UserWarning)
 
     # Set up command-line argument parsing
     parser = argparse.ArgumentParser()
