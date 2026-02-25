@@ -42,8 +42,7 @@ def compute_imputed_last_season_mean(df: pl.LazyFrame, column: str) -> pl.LazyFr
             & pl.col(column).is_not_null()
             &
             # Note: This is important to prevent data leakage.
-            pl.col("gameweek")
-            == 1
+            (pl.col("gameweek") == 1)
         )
 
         # Create a linear fit between "starting_value" and the target column
