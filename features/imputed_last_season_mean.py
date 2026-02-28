@@ -1,72 +1,50 @@
-import itertools
-import warnings
-
-import numpy as np
 import polars as pl
-
-from loaders.utils import force_dataframe
 
 
 def compute_imputed_last_season_mean(df: pl.LazyFrame, column: str) -> pl.LazyFrame:
     """Use a linear fit to approximate missing last season means."""
-    df: pl.DataFrame = force_dataframe(df)
-    seasons = sorted(df.get_column("season").unique())
-    seasons = seasons[1:]
-    element_types = sorted(df.get_column("element_type").unique())
 
-    # Compute the starting values for each player in each season
-    starting_values = df.sort("kickoff_time").group_by(["season", "element"]).first()
-    df = df.join(
-        starting_values.select(
-            [
-                pl.col("season"),
-                pl.col("element"),
-                pl.col("value").alias("starting_value"),
-            ]
-        ),
-        on=["season", "element"],
-        how="left",
+    # Compute starting values for each player in each season
+    df = df.with_columns(
+        pl.col("value")
+        .sort_by("kickoff_time")
+        .first()
+        .over(["season", "element"])
+        .alias("starting_value")
     )
 
-    # Initialize a new column for imputed values
-    alias = f"imputed_{column}"
-    df = df.with_columns(pl.col(column).alias(alias))
+    # Only fit on gameweek 1 to avoid leaking information from later gameweeks
+    fit_data = df.filter((pl.col("gameweek") == 1) & pl.col(column).is_not_null())
 
-    # Get linear fit coefficients for each season and element type
-    for season, element_type in itertools.product(seasons, element_types):
-        filters = (pl.col("season") == season) & (
-            pl.col("element_type") == element_type
+    # Compute the fit coefficients (m and b) for each season and element type
+    coefficients = (
+        fit_data.group_by(["season", "element_type"])
+        .agg(
+            pl.len().alias("count"),
+            pl.mean("starting_value").alias("x_mean"),
+            pl.mean(column).alias("y_mean"),
+            pl.var("starting_value").alias("var"),
+            pl.cov("starting_value", column).alias("cov"),
         )
-        filtered = df.filter(
-            filters
-            & pl.col(column).is_not_null()
-            &
-            # Note: This is important to prevent data leakage.
-            (pl.col("gameweek") == 1)
+        .filter(pl.col("count") >= 2)
+        .with_columns(
+            pl.when(pl.col("var") == 0.0)
+            .then(0.0)
+            .otherwise(pl.col("cov") / pl.col("var"))
+            .alias("m")
         )
+        .with_columns((pl.col("y_mean") - pl.col("m") * pl.col("x_mean")).alias("b"))
+        .select("season", "element_type", "m", "b")
+    )
+    df = df.join(coefficients, on=["season", "element_type"], how="left")
 
-        # Create a linear fit between "starting_value" and the target column
-        x = filtered.get_column("starting_value").to_numpy()
-        y = filtered.get_column(column).to_numpy()
-        if len(x) < 2:
-            warnings.warn(
-                f"Not enough data to fit for season {season}, "
-                f"element type {element_type}. Skipping imputation...",
-                stacklevel=2,
-            )
-            continue
+    # Compute the linear fit for missing entries
+    df = df.with_columns(
+        pl.when(pl.col(column).is_null())
+        .then(pl.col("m") * pl.col("starting_value") + pl.col("b"))
+        .otherwise(pl.col(column))
+        .alias(f"imputed_{column}")
+    )
+    df = df.drop(["starting_value", "m", "b"])
 
-        m, b = np.polyfit(x, y, deg=1)
-
-        # Use the fit coefficients to fill in missing values
-        df = df.with_columns(
-            pl.when(filters & pl.col(alias).is_null())
-            .then(m * pl.col("starting_value") + b)
-            .otherwise(pl.col(alias))
-            .alias(alias)
-        )
-
-    # Drop temporary columns
-    df = df.drop("starting_value")
-
-    return df.lazy()
+    return df
