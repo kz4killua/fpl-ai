@@ -18,6 +18,7 @@ from loaders.utils import force_dataframe, get_matches_view, get_teams_view
 
 from .availability import compute_availability
 from .last_season_mean import compute_last_season_mean
+from .overperformance import compute_adjusted_uds_xa, compute_adjusted_uds_xg
 from .record_count import compute_record_count
 from .relative_strength import compute_relative_strength
 from .rolling_mean import compute_rolling_mean
@@ -35,8 +36,8 @@ def engineer_player_features(df: pl.LazyFrame) -> pl.LazyFrame:
         "creativity",
         "threat",
         "ict_index",
-        "uds_xG",
-        "uds_xA",
+        "adjusted_uds_xG",
+        "adjusted_uds_xA",
     ]
     base_windows = [3, 5, 10, 20]
 
@@ -46,6 +47,8 @@ def engineer_player_features(df: pl.LazyFrame) -> pl.LazyFrame:
     df = compute_imputed_set_piece_order(df)
     df = compute_minutes_category(df)
     df = compute_one_hot_minutes_category(df)
+    df = compute_adjusted_uds_xg(df)
+    df = compute_adjusted_uds_xa(df)
     df = compute_per_90(df, base_columns)
     df = compute_share(df, base_columns)
 
