@@ -82,7 +82,7 @@ def load_fpl(
             [static_teams, upcoming_static_teams], how="diagonal_relaxed"
         )
 
-    # Add "element_type" and "code" to elements
+    # Add "element_type", "code", and "web_name" to elements
     elements = elements.join(
         static_elements.select(
             [
@@ -91,6 +91,7 @@ def load_fpl(
                 pl.col("id").alias("element"),
                 pl.col("element_type"),
                 pl.col("code"),
+                pl.col("web_name"),
             ]
         ),
         how="left",
