@@ -3,7 +3,7 @@ from collections.abc import Iterable
 import polars as pl
 
 
-def get_seasons(current_season: int, n: int = None) -> list[str]:
+def get_seasons(current_season: int, n: int | None = None) -> list[int]:
     """Returns a list of seasons up to the current season."""
     min_season = 2016 if n is None else (current_season - n + 1)
     max_season = current_season
