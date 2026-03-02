@@ -194,9 +194,9 @@ def engineer_match_features(matches: pl.LazyFrame) -> pl.LazyFrame:
     bookmaker_weights = {
         "pinnacle": 1.0,
         "betfair_ex_uk": 0.5,
-        "smarkets": 0.1,
-        "skybet": 0.1,
-        "matchbook": 0.1,
+        "smarkets": 0.01,
+        "matchbook": 0.01,
+        "skybet": 0.001,
     }
     matches = compute_toa_features(matches, bookmaker_weights)
 
